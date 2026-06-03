@@ -103,11 +103,24 @@
                     @php
                         $rootExpense = $uniqueFamily->sortBy('created_at')->first();
                         $displayBase = $rootExpense->original_amount > 0 ? $rootExpense->original_amount : $rootExpense->actual_amount;
-                        $displayTotal = $rootExpense->schedule_amount > 0 ? $rootExpense->schedule_amount : $rootExpense->planned_amount;
+                        
+                        $displayTotal = $displayBase;
+                        if($rootExpense->taxes && $rootExpense->taxes->count() > 0) {
+                            foreach($rootExpense->taxes as $tax) {
+                                $originalTaxAmount = $displayBase * ($tax->tax_percentage / 100);
+                                if ($tax->tax_type == 'tds') {
+                                    $displayTotal -= $originalTaxAmount;
+                                } else {
+                                    $displayTotal += $originalTaxAmount;
+                                }
+                            }
+                        }
+                        $totalPaidAmount = $uniqueFamily->sum('planned_amount');
+                        $calculatedBalance = max(0, $displayTotal - $totalPaidAmount);
                     @endphp
                     <div class="d-flex justify-content-between mb-3 border-bottom pb-2">
                         <span class="text-muted">Base Amount:</span>
-                        <span class="fw-bold">{{ $itemSymbol }}{{ number_format($displayBase, 2) }}</span>
+                        <span class="fw-bold">{{ $itemSymbol }}{{ fmod($displayBase, 1) == 0 ? number_format($displayBase, 0, '.', '') : number_format($displayBase, 2) }}</span>
                     </div>
                     
                     @if($rootExpense->taxes && $rootExpense->taxes->count() > 0)
@@ -116,9 +129,9 @@
                                 $originalTaxAmount = $displayBase * ($tax->tax_percentage / 100);
                             @endphp
                             <div class="d-flex justify-content-between mb-2">
-                                <span class="text-muted text-uppercase">{{ $tax->tax_type }} ({{ $tax->tax_percentage }}%):</span>
+                                <span class="text-muted">{{ strtolower($tax->tax_type) }} ({{ number_format($tax->tax_percentage, 2) }}%):</span>
                                 <span class="fw-medium text-{{ $tax->tax_type == 'tds' ? 'danger' : 'primary' }}">
-                                    {{ $tax->tax_type == 'tds' ? '-' : '+' }}{{ $itemSymbol }}{{ number_format($originalTaxAmount, 2) }}
+                                    {{ $tax->tax_type == 'tds' ? '-' : '+' }}{{ $itemSymbol }}{{ fmod($originalTaxAmount, 1) == 0 ? number_format($originalTaxAmount, 0, '.', '') : number_format($originalTaxAmount, 2) }}
                                 </span>
                             </div>
                         @endforeach
@@ -126,7 +139,7 @@
 
                     <div class="d-flex justify-content-between mt-4 pt-3 border-top border-dark">
                         <span class="text-dark fw-bold h5 mb-0">Total payable Amount:</span>
-                        <span class="text-danger fw-bold h5 mb-0">{{ $itemSymbol }}{{ number_format($displayTotal, 2) }} </span>
+                        <span class="text-danger fw-bold h5 mb-0">{{ $itemSymbol }}{{ fmod($displayTotal, 1) == 0 ? number_format($displayTotal, 0, '.', '') : number_format($displayTotal, 2) }}</span>
                     </div>
                 </div>
             </div>
@@ -177,18 +190,23 @@
                                 <td>{{ $split->due_date ? \Carbon\Carbon::parse($split->due_date)->format('d M Y') : 'N/A' }}</td>
                                 <td>{{ $split->paid_date ? \Carbon\Carbon::parse($split->paid_date)->format('d M Y') : 'N/A' }}</td>
                             </tr>
-                            @if($split->balance_amount > 0 && $split->settle_notes)
+                            @if($split->settle_notes)
+                                @php
+                                    $showBalance = $loop->last ? $calculatedBalance : $split->balance_amount;
+                                @endphp
+                                @if($showBalance > 0)
                                 <tr class="table-light">
                                     <td colspan="2"></td>
                                     <td colspan="2">
-                                        <span class="fw-bold text-secondary">{{ $itemSymbol }}{{ number_format($split->balance_amount, 2) }}</span>
+                                        <span class="fw-bold text-secondary">{{ $itemSymbol }}{{ fmod($showBalance, 1) == 0 ? number_format($showBalance, 0, '.', '') : number_format($showBalance, 2) }}</span>
                                         <div class="text-muted small mt-1">({{ $split->settle_notes }})</div>
                                     </td>
                                     <td>
-                                        <span class="badge bg-secondary">Settled</span>
+                                        <span class="badge bg-secondary">settled</span>
                                     </td>
                                     <td colspan="3"></td>
                                 </tr>
+                                @endif
                             @endif
                         @empty
                             <tr>

@@ -267,8 +267,7 @@ class ExpensesController extends Controller
       $originalGstAmount = $allSplits->sum(fn($split) => $split->taxes->where('tax_type', 'gst')->sum('tax_amount'));
       $originalTdsAmount = $allSplits->sum(fn($split) => $split->taxes->where('tax_type', 'tds')->sum('tax_amount'));
 
-      $tdsBalance = $allSplits->whereNotIn('status', ['paid', 'settle'])
-                              ->sum(fn($split) => $split->taxes->where('tax_type', 'tds')->sum('tax_amount'));
+      $tdsBalance = $allSplits->sum(fn($split) => $split->taxes->where('tax_type', 'tds')->whereNotIn('payment_status', ['paid', 'received'])->sum('tax_amount'));
 
       $rootGst = $rootExpense->taxes->where('tax_type', 'gst')->first();
       $rootTds = $rootExpense->taxes->where('tax_type', 'tds')->first();
@@ -1229,18 +1228,18 @@ class ExpensesController extends Controller
       $paidBaseAmount = $originalBaseAmount;
       $balanceBaseAmount = 0;
 
-      if ($isSplitPayment && $netPayableAmount > 0) {
-        // Calculate proportion for taxes and base amounts
-        $proportion = $paidAmount / $netPayableAmount;
-        $gstAmountForCurrent = $originalGstAmount * $proportion;
-        $tdsAmountForCurrent = $originalTdsAmount * $proportion;
-        $paidBaseAmount = $originalBaseAmount * $proportion;
-        $balanceBaseAmount = $originalBaseAmount - $paidBaseAmount;
-      } else {
-        $proportion = $paidAmount / $netPayableAmount;
-        
-        $paidBaseAmount = $originalBaseAmount * $proportion;
-        $balanceBaseAmount = $originalBaseAmount - $paidBaseAmount;
+      $proportion = $netPayableAmount > 0 ? ($paidAmount / $netPayableAmount) : 1;
+      
+      $paidBaseAmount = $originalBaseAmount * $proportion;
+      $balanceBaseAmount = $originalBaseAmount - $paidBaseAmount;
+      
+      if ($request->boolean('apply_gst')) {
+          $gstPercentage = $request->gst_percentage ?? ($expense->taxes->where('tax_type', 'gst')->first()->tax_percentage ?? 0);
+          $gstAmountForCurrent = $paidBaseAmount * ($gstPercentage / 100);
+      }
+      if ($request->boolean('apply_tds')) {
+          $tdsPercentage = $request->tds_percentage ?? ($expense->taxes->where('tax_type', 'tds')->first()->tax_percentage ?? 0);
+          $tdsAmountForCurrent = $paidBaseAmount * ($tdsPercentage / 100);
       }
 
 
