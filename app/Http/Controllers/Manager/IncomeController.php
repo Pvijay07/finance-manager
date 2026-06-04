@@ -1011,7 +1011,7 @@ class IncomeController extends Controller
       
       $receivedAmount = $validated['received_amount'] ?? $income->received_amount ?? 0;
 
-      $isSplitPayment = ($validated['status'] === 'due' || $validated['status'] === 'settle' || $validated['status'] === 'received') &&
+      $isSplitPayment = $validated['status'] === 'due' &&
         $receivedAmount > 0 &&
         $receivedAmount < $payableAmountTotal;
 
