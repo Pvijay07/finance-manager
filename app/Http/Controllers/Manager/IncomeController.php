@@ -500,6 +500,7 @@ class IncomeController extends Controller
         'company_id' => $data['company_id'],
         'party_name' => $data['client_name'],
         'amount' => $isSplitPayment ? $receivedAmount : $payableAmountTotal,
+        'received_amount' => $receivedAmount,
         'planned_amount' => $paidPlannedAmount,
         'actual_amount' => $paidBaseAmount,
         'original_amount' => $actualTotalBase,
@@ -1058,6 +1059,7 @@ class IncomeController extends Controller
       $incomeData = [
         'party_name' => $validated['client_name'] ?? $income->party_name,
         'amount' => $isSplitPayment ? $receivedAmount : $payableAmountTotal,
+        'received_amount' => $receivedAmount,
         'planned_amount' => $paidPlannedAmount,
         'actual_amount' => $paidBaseAmountToSave,
         'original_amount' => $actualTotalBase,
