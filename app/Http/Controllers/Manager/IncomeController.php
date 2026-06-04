@@ -476,7 +476,7 @@ class IncomeController extends Controller
         $receivedAmount > 0 &&
         $receivedAmount < $payableAmountTotal;
 
-      if ($isSplitPayment && $payableAmountTotal > 0) {
+      if (($isSplitPayment || $request->status === 'settle') && $payableAmountTotal > 0) {
         $proportion = $receivedAmount / $payableAmountTotal;
         $gstAmountForCurrent = $gstAmountTotal * $proportion;
         $tdsAmountForCurrent = $tdsAmountTotal * $proportion;
@@ -499,7 +499,7 @@ class IncomeController extends Controller
       $income = Income::create([
         'company_id' => $data['company_id'],
         'party_name' => $data['client_name'],
-        'amount' => $isSplitPayment ? $receivedAmount : $payableAmountTotal,
+        'amount' => ($isSplitPayment || $request->status === 'settle') ? $receivedAmount : $payableAmountTotal,
         'received_amount' => $receivedAmount,
         'planned_amount' => $paidPlannedAmount,
         'actual_amount' => $paidBaseAmount,
