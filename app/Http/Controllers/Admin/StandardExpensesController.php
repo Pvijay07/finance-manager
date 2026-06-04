@@ -307,7 +307,7 @@ class StandardExpensesController extends Controller
       } elseif ($mainPaid > 0) {
         $expense->update(['payment_status' => 'partially_paid', 'status' => 'pending']);
       } else {
-        $expense->update(['payment_status' => 'pending', 'status' => 'pending']);
+        $expense->update(['payment_status' => 'pending', 'status' => 'upcoming']);
       }
     } else {
       // Check tax payments
@@ -325,7 +325,7 @@ class StandardExpensesController extends Controller
         if ($someTaxesPaid) {
           $expense->update(['payment_status' => 'partially_paid', 'status' => 'pending']);
         } else {
-          $expense->update(['payment_status' => 'pending', 'status' => 'pending']);
+          $expense->update(['payment_status' => 'pending', 'status' => 'upcoming']);
         }
       }
     }

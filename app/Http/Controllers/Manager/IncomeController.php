@@ -828,9 +828,8 @@ class IncomeController extends Controller
           $rate = $rootIncome->invoice->converted_amount / $rootIncome->invoice->original_currency_amount;
       }
 
-      $tdsBalance = $allSplits->whereNotIn('status', $paidStatuses)
-                              ->sum(fn($split) => $split->taxes->where('tax_type', 'tds')->sum('tax_amount')) / $rate;
-                              
+            $tdsBalance = $allSplits->sum(fn($split) => $split->taxes->where('tax_type', 'tds')->whereNotIn('payment_status', ['paid', 'received'])->sum('tax_amount'));
+
       $rootGst = $rootIncome->taxes->where('tax_type', 'gst')->first();
       $rootTds = $rootIncome->taxes->where('tax_type', 'tds')->first();
       $gstPercentage = $rootGst ? $rootGst->tax_percentage : 0;

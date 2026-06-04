@@ -160,16 +160,38 @@ class SalaryController extends Controller
         ]);
         
         $employees = SalaryEmployee::where('company_id', $request->company_id)->where('status', 'Active')->get();
+        $totalGross = 0;
+        $totalDeductions = 0;
+        $totalNet = 0;
+
         foreach ($employees as $emp) {
+            $basic = $emp->monthly_ctc * 0.4;
+            $hra = $emp->monthly_ctc * 0.2;
+            $allowance = $emp->monthly_ctc * 0.4;
+            $gross = $basic + $hra + $allowance;
+            $net = $gross;
+
             SalarySheetItem::create([
                 'salary_sheet_id' => $sheet->id,
                 'salary_employee_id' => $emp->id,
                 'present_days' => $sheet->standard_days,
-                'basic' => $emp->monthly_ctc * 0.4, // rough estimate just for placeholder
-                'hra' => $emp->monthly_ctc * 0.2,
-                'allowance' => $emp->monthly_ctc * 0.4,
+                'basic' => $basic,
+                'hra' => $hra,
+                'allowance' => $allowance,
+                'gross_pay' => $gross,
+                'deductions' => 0,
+                'net_pay' => $net,
             ]);
+
+            $totalGross += $gross;
+            $totalNet += $net;
         }
+
+        $sheet->update([
+            'total_gross' => $totalGross,
+            'total_deductions' => $totalDeductions,
+            'total_net_pay' => $totalNet,
+        ]);
         
         return redirect()->route('manager.salary.editSheet', $sheet->id);
     }

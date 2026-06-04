@@ -1088,7 +1088,10 @@
             const settleNotesContainer = document.getElementById(inputId === 'dueDate' ? 'addSettleNotesContainer' : 'editSettleNotesContainer');
             
             if (settleNotesEl && settleNotesContainer) {
-                if (selectElement.value === 'settle' || selectElement.value === 'paid') {
+                const statusContainer = selectElement.closest('div[class^="col-"]');
+                const isStatusHidden = statusContainer && statusContainer.style.display === 'none';
+
+                if ((selectElement.value === 'settle' || selectElement.value === 'paid') && !isStatusHidden) {
                     settleNotesContainer.style.display = 'block';
                     settleNotesEl.required = true;
                     settleNotesEl.setAttribute('required', 'required');
@@ -2226,7 +2229,7 @@
                                             <th>gst (${parseFloat(data.parent_expense.gst_percentage || 0)}%)</th>
                                             <th>tds (${parseFloat(data.parent_expense.tds_percentage || 0)}%)</th>
                                             ` : ''}
-                                            <th>payable</th>
+                                            <th>receivable</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -2317,7 +2320,7 @@
                                 <table class="table table-bordered text-center">
                                     <thead class="table-light">
                                         <tr>
-                                            <th>Original Payable Amount</th>
+                                            <th>Original Receivable Amount</th>
                                             <th>Total Paid</th>
                                             <th>Total Balance</th>
                                             ${!isUSD ? `<th>Tds Bal. Amount</th>` : ''}
@@ -2401,7 +2404,7 @@
 
             function calculateEditTaxAndBalance(source) {
                 const baseAmount = parseFloat(plannedAmountInput.value) || 0; // plannedAmountInput maps to the Base amount in our new logic
-                const paidAmount = parseFloat(paidAmountInput.value) || 0;
+                let paidAmount = parseFloat(paidAmountInput.value) || 0;
                 
                 const applyGst = gstCheckbox ? gstCheckbox.checked : false;
                 const applyTds = tdsCheckbox ? tdsCheckbox.checked : false;
@@ -2426,6 +2429,12 @@
                 }
                 
                 updateBreakdownText('incomePlannedBreakdown', baseAmount, gstAmount, tdsAmount, conversionCost, false);
+
+                if (source !== 'paid') {
+                    const currentBalance = parseFloat(balanceAmountInput?.value) || 0;
+                    paidAmount = Math.max(0, netPayable - currentBalance);
+                    if (paidAmountInput) paidAmountInput.value = paidAmount.toFixed(2);
+                }
 
                 // Validation: Paid amount should not be greater than Net Payable
                 // Added a small 0.05 tolerance to account for past database decimal rounding truncations

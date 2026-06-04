@@ -100,11 +100,22 @@
                     @php
                         $rootIncome = $uniqueFamily->sortBy('created_at')->first();
                         $displayBase = $rootIncome->original_amount > 0 ? $rootIncome->original_amount : ($rootIncome->actual_amount > 0 ? $rootIncome->actual_amount : $rootIncome->amount);
-                        $displayTotal = $rootIncome->schedule_amount > 0 ? $rootIncome->schedule_amount : ($rootIncome->planned_amount > 0 ? $rootIncome->planned_amount : $original_total_amount);
+                        
+                        $displayTotal = $displayBase;
+                        if($rootIncome->taxes && $rootIncome->taxes->count() > 0) {
+                            foreach($rootIncome->taxes as $tax) {
+                                $originalTaxAmount = $displayBase * ($tax->tax_percentage / 100);
+                                if ($tax->tax_type == 'tds') {
+                                    $displayTotal -= $originalTaxAmount;
+                                } else {
+                                    $displayTotal += $originalTaxAmount;
+                                }
+                            }
+                        }
                     @endphp
                     <div class="d-flex justify-content-between mb-3 border-bottom pb-2">
                         <span class="text-muted">Base Amount:</span>
-                        <span class="fw-bold">{{ $itemSymbol }}{{ number_format($displayBase, 2) }}</span>
+                        <span class="fw-bold">{{ $itemSymbol }}{{ fmod($displayBase, 1) == 0 ? number_format($displayBase, 0, '.', '') : number_format($displayBase, 2) }}</span>
                     </div>
                     
                     @if($rootIncome->taxes && $rootIncome->taxes->count() > 0)
@@ -115,7 +126,7 @@
                             <div class="d-flex justify-content-between mb-2">
                                 <span class="text-muted text-uppercase">{{ $tax->tax_type }} ({{ $tax->tax_percentage }}%):</span>
                                 <span class="fw-medium text-{{ $tax->tax_type == 'tds' ? 'danger' : 'primary' }}">
-                                    {{ $tax->tax_type == 'tds' ? '-' : '+' }}{{ $itemSymbol }}{{ number_format($originalTaxAmount, 2) }}
+                                    {{ $tax->tax_type == 'tds' ? '-' : '+' }}{{ $itemSymbol }}{{ fmod($originalTaxAmount, 1) == 0 ? number_format($originalTaxAmount, 0, '.', '') : number_format($originalTaxAmount, 2) }}
                                 </span>
                             </div>
                         @endforeach
@@ -123,7 +134,7 @@
 
                     <div class="d-flex justify-content-between mt-4 pt-3 border-top border-dark">
                         <span class="text-dark fw-bold h5 mb-0">Total Amount:</span>
-                        <span class="text-success fw-bold h5 mb-0">{{ $itemSymbol }}{{ number_format($displayTotal, 2) }}</span>
+                        <span class="text-success fw-bold h5 mb-0">{{ $itemSymbol }}{{ fmod($displayTotal, 1) == 0 ? number_format($displayTotal, 0, '.', '') : number_format($displayTotal, 2) }}</span>
                     </div>
                 </div>
             </div>
@@ -155,8 +166,8 @@
                             <tr>
                                 <td class="ps-4 fw-medium">{{ $index + 1 }}</td>
                                 <td>#{{ $split->invoice_number ?? ('INC-' . $split->id) }}</td>
-                                <td class="fw-bold text-success">{{ $itemSymbol }}{{ number_format($split->amount, 2) }}</td>
-                                <td>{{ $itemSymbol }}{{ number_format($split->actual_amount, 2) }}</td>
+                                <td class="fw-bold text-success">{{ $itemSymbol }}{{ fmod($split->amount, 1) == 0 ? number_format($split->amount, 0, '.', '') : number_format($split->amount, 2) }}</td>
+                                <td>{{ $itemSymbol }}{{ fmod($split->actual_amount, 1) == 0 ? number_format($split->actual_amount, 0, '.', '') : number_format($split->actual_amount, 2) }}</td>
                                 <td>
                                     @php
                                         $splitStatusClass = match ($split->status) {
@@ -178,7 +189,7 @@
                                 <tr class="table-light">
                                     <td colspan="2"></td>
                                     <td colspan="2">
-                                        <span class="fw-bold text-secondary">{{ $itemSymbol }}{{ number_format($split->balance_amount, 2) }}</span>
+                                        <span class="fw-bold text-secondary">{{ $itemSymbol }}{{ fmod($split->balance_amount, 1) == 0 ? number_format($split->balance_amount, 0, '.', '') : number_format($split->balance_amount, 2) }}</span>
                                         <div class="text-muted small mt-1">({{ $split->settle_notes }})</div>
                                     </td>
                                     <td>

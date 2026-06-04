@@ -699,6 +699,13 @@ class ExpensesController extends Controller
         $paidAmount = $netPayableAmount;
       }
 
+      if ($paidAmount > $netPayableAmount + 0.01) {
+          return response()->json([
+              'success' => false,
+              'message' => 'Paid Amount cannot be more than Planned Amount - TDS Amount (₹' . number_format($netPayableAmount, 2) . ')'
+          ], 422);
+      }
+
       // Check if this should be a split payment
       $isSplitPayment = $request->status === 'due' &&
         $paidAmount > 0 &&
@@ -709,13 +716,20 @@ class ExpensesController extends Controller
       $gstAmountForCurrent = $request->gst_amount ?? 0;
       $tdsAmountForCurrent = $request->tds_amount ?? 0;
 
-      if ($isSplitPayment && $netPayableAmount > 0) {
-        $proportion = $paidAmount / $netPayableAmount;
-        $gstAmountForCurrent = ($request->gst_amount ?? 0) * $proportion;
-        $tdsAmountForCurrent = ($request->tds_amount ?? 0) * $proportion;
+      $proportion = $netPayableAmount > 0 ? ($paidAmount / $netPayableAmount) : 1;
 
+      if ($isSplitPayment) {
         $paidBaseAmount = $actualTotalBase * $proportion;
         $balanceBaseAmount = $actualTotalBase - $paidBaseAmount;
+        
+        if ($request->boolean('apply_gst')) {
+            $gstPercentage = $request->gst_percentage ?? 0;
+            $gstAmountForCurrent = $paidBaseAmount * ($gstPercentage / 100);
+        }
+        if ($request->boolean('apply_tds')) {
+            $tdsPercentage = $request->tds_percentage ?? 0;
+            $tdsAmountForCurrent = $paidBaseAmount * ($tdsPercentage / 100);
+        }
       } else {
         $paidBaseAmount = $actualTotalBase;
         $balanceBaseAmount = 0;
@@ -734,7 +748,7 @@ class ExpensesController extends Controller
         'status' => ($isSplitPayment || in_array($request->status, ['paid', 'settle']))
           ? 'paid'
           : ($request->status === 'due'
-            ? 'pending'
+            ? 'upcoming'
             : $request->status),
         'source' => 'manual',
         'payment_mode' => $request->payment_mode ?? 'cash',
@@ -824,7 +838,8 @@ class ExpensesController extends Controller
         $newExpense = $expense->replicate();
         $newExpense->expense_name = $expense->expense_name . ' - Balance';
         $newExpense->planned_amount = $balanceAmount;
-        $newExpense->actual_amount = $balanceBaseAmount;
+        $newExpense->actual_amount = 0;
+        $newExpense->original_amount = $balanceBaseAmount;
         $newExpense->status = 'pending';
         $newExpense->due_date = $request->new_due_date ?? now()->addDays(30)->format('Y-m-d');
         $newExpense->paid_date = null;
@@ -1043,12 +1058,28 @@ class ExpensesController extends Controller
               return redirect()->back()->with('error', 'Expense not found');
           }
 
-          // Calculate family totals
-          $familyExpenses = collect([$expense]);
-          if ($expense->parent) {
-              $familyExpenses = $familyExpenses->merge([$expense->parent])->merge($expense->parent->children);
-          } else {
-              $familyExpenses = $familyExpenses->merge($expense->children);
+          // Find the root expense
+          $rootExpense = $expense;
+          while ($rootExpense->parent_id) {
+              $parent = Expense::find($rootExpense->parent_id);
+              if ($parent) {
+                  $rootExpense = $parent;
+              } else {
+                  break;
+              }
+          }
+
+          // Fetch all descendants
+          $familyExpenses = collect([$rootExpense]);
+          $childrenIds = [$rootExpense->id];
+          
+          while (!empty($childrenIds)) {
+              $children = Expense::whereIn('parent_id', $childrenIds)->get();
+              if ($children->isEmpty()) {
+                  break;
+              }
+              $familyExpenses = $familyExpenses->merge($children);
+              $childrenIds = $children->pluck('id')->toArray();
           }
           
           $uniqueFamily = $familyExpenses->unique('id');
@@ -1214,6 +1245,12 @@ class ExpensesController extends Controller
         $netPayableAmount = $originalPlannedAmount - $originalTdsAmount;
       }
 
+      if ($paidAmount > $netPayableAmount + 0.01) {
+          return response()->json([
+              'success' => false,
+              'message' => 'Paid Amount cannot be more than Planned Amount - TDS Amount (₹' . number_format($netPayableAmount, 2) . ')'
+          ], 422);
+      }
 
       // Check if this is a split payment
       $isSplitPayment = $request->status === 'due' &&
@@ -1225,6 +1262,14 @@ class ExpensesController extends Controller
       $gstAmountForCurrent = $originalGstAmount;
       $tdsAmountForCurrent = $originalTdsAmount;
       $originalBaseAmount = $expense->original_amount ?? $expense->actual_amount ?? 0;
+      
+      // Fix for legacy child expenses where original_amount was incorrectly copied from parent
+      if ($expense->parent_id && $originalBaseAmount > $expense->planned_amount) {
+          $originalBaseAmount = ($expense->actual_amount > 0 && $expense->actual_amount <= $expense->planned_amount) 
+              ? $expense->actual_amount 
+              : $expense->planned_amount - ($originalGstAmount ?? 0);
+      }
+      
       $paidBaseAmount = $originalBaseAmount;
       $balanceBaseAmount = 0;
 
@@ -1285,15 +1330,16 @@ class ExpensesController extends Controller
         }
       }
 
+      $expenseData['payment_mode'] = $request->payment_mode ?? $expense->payment_mode;
+      $expenseData['bank_name'] = $request->bank_name ?? $expense->bank_name;
+      $expenseData['upi_type'] = $request->upi_type ?? $expense->upi_type;
+      $expenseData['upi_number'] = $request->upi_number ?? $expense->upi_number;
+      $expenseData['party_name'] = $request->party_name ?? $expense->party_name;
+      $expenseData['notes'] = $request->notes ?? $expense->notes;
+      $expenseData['settle_notes'] = $request->settle_notes ?? $expense->settle_notes;
+
       // Add additional fields for standard expenses
       if ($expense->source === 'standard') {
-        $expenseData['payment_mode'] = $request->payment_mode ?? $expense->payment_mode;
-        $expenseData['bank_name'] = $request->bank_name ?? $expense->bank_name;
-        $expenseData['upi_type'] = $request->upi_type ?? $expense->upi_type;
-        $expenseData['upi_number'] = $request->upi_number ?? $expense->upi_number;
-        $expenseData['party_name'] = $request->party_name ?? $expense->party_name;
-        $expenseData['notes'] = $request->notes ?? $expense->notes;
-        $expenseData['settle_notes'] = $request->settle_notes ?? $expense->settle_notes;
         $expenseData['frequency'] = $request->frequency ?? $expense->frequency;
         $expenseData['due_day'] = $request->due_day ?? $expense->due_day;
       }

@@ -28,9 +28,10 @@ class TDSController extends Controller
 
         // Try relationships or direct attributes
         return $taxable->client->name ??
-            ($taxable->customer_name ??
-                ($taxable->client_name ??
-                    ($taxable->customer ?? 'N/A')));
+            ($taxable->party_name ??
+                ($taxable->customer_name ??
+                    ($taxable->client_name ??
+                        ($taxable->customer ?? 'N/A'))));
     }
 
     private function getTaxableAmount($taxable)

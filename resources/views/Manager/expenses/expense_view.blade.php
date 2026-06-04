@@ -157,7 +157,7 @@
                     <thead class="table-light">
                         <tr>
                             <th class="ps-4">Split #</th>
-                            <th>Expense ID</th>
+                            <th>Bill No</th>
                             <th>Total Amount</th>
                             <th>Base Amount</th>
                             <th>Status</th>

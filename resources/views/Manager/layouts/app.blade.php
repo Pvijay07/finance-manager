@@ -820,21 +820,23 @@ input[type=number] {
             });
 
             // Initialize Charts
-            const profitLossCtx = document.getElementById('profitLossChart').getContext('2d');
-            const profitLossChart = new Chart(profitLossCtx, {
-                type: 'bar',
-                data: {
-                    labels: ['Company A', 'Company B', 'Company C'],
-                    datasets: [{
-                            label: 'Income',
-                            data: [125000, 95000, 75000],
-                            backgroundColor: '#27ae60'
-                        },
-                        {
-                            label: 'Expenses',
-                            data: [85000, 72000, 68000],
-                            backgroundColor: '#e74c3c'
-                        },
+            const profitLossCanvas = document.getElementById('profitLossChart');
+            if (profitLossCanvas) {
+                const profitLossCtx = profitLossCanvas.getContext('2d');
+                const profitLossChart = new Chart(profitLossCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Company A', 'Company B', 'Company C'],
+                        datasets: [{
+                                label: 'Income',
+                                data: [125000, 95000, 75000],
+                                backgroundColor: '#27ae60'
+                            },
+                            {
+                                label: 'Expenses',
+                                data: [85000, 72000, 68000],
+                                backgroundColor: '#e74c3c'
+                            },
                         {
                             label: 'Net Profit',
                             data: [40000, 23000, 7000],
@@ -857,26 +859,29 @@ input[type=number] {
                     }
                 }
             });
+            }
 
-            const detailedProfitLossCtx = document.getElementById('detailedProfitLossChart').getContext('2d');
-            const detailedProfitLossChart = new Chart(detailedProfitLossCtx, {
-                type: 'line',
-                data: {
-                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-                    datasets: [{
-                            label: 'Income',
-                            data: [220000, 240000, 245000, 260000, 255000, 270000],
-                            borderColor: '#27ae60',
-                            backgroundColor: 'rgba(39, 174, 96, 0.1)',
-                            fill: true
-                        },
-                        {
-                            label: 'Expenses',
-                            data: [180000, 190000, 187000, 195000, 200000, 205000],
-                            borderColor: '#e74c3c',
-                            backgroundColor: 'rgba(231, 76, 60, 0.1)',
-                            fill: true
-                        },
+            const detailedProfitLossCanvas = document.getElementById('detailedProfitLossChart');
+            if (detailedProfitLossCanvas) {
+                const detailedProfitLossCtx = detailedProfitLossCanvas.getContext('2d');
+                const detailedProfitLossChart = new Chart(detailedProfitLossCtx, {
+                    type: 'line',
+                    data: {
+                        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                        datasets: [{
+                                label: 'Income',
+                                data: [220000, 240000, 245000, 260000, 255000, 270000],
+                                borderColor: '#27ae60',
+                                backgroundColor: 'rgba(39, 174, 96, 0.1)',
+                                fill: true
+                            },
+                            {
+                                label: 'Expenses',
+                                data: [180000, 190000, 187000, 195000, 200000, 205000],
+                                borderColor: '#e74c3c',
+                                backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                                fill: true
+                            },
                         {
                             label: 'Net Profit',
                             data: [40000, 50000, 58000, 65000, 55000, 65000],
@@ -901,6 +906,7 @@ input[type=number] {
                     }
                 }
             });
+            }
         });
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

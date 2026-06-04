@@ -513,7 +513,7 @@
                                 <input type="text" readonly id="editExpenseNameDisplay" name="expense_name"
                                     class="form-control">
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-8">
                                 <label class="form-label fw-bold text-uppercase small text-muted">Planned Amount
                                     (₹) <span id="nonStandardPlannedBreakdown" class="text-primary ms-2"
                                         style="text-transform: none;"></span></label>
@@ -583,7 +583,40 @@
                                     placeholder="Enter Number">
                             </div>
                         </div>
+<!-- Balance Section -->
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold text-uppercase small text-muted">Balance Amount
+                                    (₹)</label>
+                                <input type="number" class="form-control bg-light" id="editBalanceAmount"
+                                    name="editBalanceAmount" step="0.01" readonly value="0.00">
+                                <small class="text-muted" id="pendingBreakdown"></small>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
 
+                                    <label class="form-label fw-bold text-uppercase small text-muted">Status</label>
+                                    <select class="form-control form-select-lg" id="editStatus" name="status" required>
+                                        <option value="" selected disabled>Select Status</option>
+                                        <option value="due" class="text-warning">Due</option>
+                                        <option value="settle" class="text-info">Settle</option>
+                                        <!-- <option value="convert_to_tds">Convert to TDS</option> -->
+                                    </select>
+                                </div>
+
+                            </div>
+                            <div class="col-md-4" id="editSettleNotesContainer" style="display:none;">
+                                <div class="form-group">
+                                    <label class="form-label fw-bold text-uppercase small text-muted" for="editSettleNotes">Settle Notes <span class="text-danger">*</span></label>
+                                    <textarea class="form-control" id="editSettleNotes" name="settle_notes" rows="1" placeholder="Enter notes..."></textarea>
+                                </div>
+                            </div>
+                            <div class="col-md-4" style="display: none;">
+                                <label class="form-label fw-bold text-uppercase small text-muted">Due Date</label>
+                                <input type="date" class="form-control" id="editNonStandardDueDate" name="due_date"
+                                    min="{{ date('Y-m-d') }}">
+                            </div>
+                        </div>
                         <!-- GST Section -->
                         <div class="tax-section mb-3" id="nonstGstSection">
                             <div class="row g-3 align-items-end">
@@ -661,40 +694,7 @@
                             </div>
                         </div>
 
-                        <!-- Balance Section -->
-                        <div class="row mb-4">
-                            <div class="col-md-4">
-                                <label class="form-label fw-bold text-uppercase small text-muted">Balance Amount
-                                    (₹)</label>
-                                <input type="number" class="form-control bg-light" id="editBalanceAmount"
-                                    name="editBalanceAmount" step="0.01" readonly value="0.00">
-                                <small class="text-muted" id="pendingBreakdown"></small>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-
-                                    <label class="form-label fw-bold text-uppercase small text-muted">Status</label>
-                                    <select class="form-control form-select-lg" id="editStatus" name="status" required>
-                                        <option value="" selected disabled>Select Status</option>
-                                        <option value="due" class="text-warning">Due</option>
-                                        <option value="settle" class="text-info">Settle</option>
-                                        <!-- <option value="convert_to_tds">Convert to TDS</option> -->
-                                    </select>
-                                </div>
-
-                            </div>
-                            <div class="col-md-4" id="editSettleNotesContainer" style="display:none;">
-                                <div class="form-group">
-                                    <label class="form-label fw-bold text-uppercase small text-muted" for="editSettleNotes">Settle Notes <span class="text-danger">*</span></label>
-                                    <textarea class="form-control" id="editSettleNotes" name="settle_notes" rows="1" placeholder="Enter notes..."></textarea>
-                                </div>
-                            </div>
-                            <div class="col-md-4" style="display: none;">
-                                <label class="form-label fw-bold text-uppercase small text-muted">Due Date</label>
-                                <input type="date" class="form-control" id="editNonStandardDueDate" name="due_date"
-                                    min="{{ date('Y-m-d') }}">
-                            </div>
-                        </div>
+                        
 
                         <!-- Vendor Information -->
                         <div class="row mb-4">
@@ -1001,7 +1001,6 @@
                                     <option value="" selected disabled>Select Status</option>
                                     <option value="due" class="text-warning">Due</option>
                                     <option value="settle" class="text-info">Settle</option>
-                                    <!-- <option value="convert_to_tds">Convert to TDS</option> -->
                                 </select>
                             </div>
                             <div class="col-md-3" id="addSettleNotesContainer" style="display:none;">
@@ -1079,7 +1078,7 @@
                                     <input type="hidden" id="editFixedExpenseName" name="expense_name">
                                 </div>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-8">
                                 <div class="form-group">
                                     <label class="form-label fw-bold text-uppercase small text-muted">Planned Amount
                                         (₹)<i class="fas fa-lock me-1"></i> <span id="fixedPlannedBreakdown"
@@ -1344,7 +1343,7 @@
                                 <p class="form-control-plaintext" id="editEditableExpenseNameDisplay"></p>
                                 <input type="hidden" id="editEditableExpenseName" name="expense_name">
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-8">
                                 <label class="form-label fw-bold text-uppercase small text-muted">Planned Amount (₹)
                                     * <span id="editablePlannedBreakdown" class="text-primary ms-2"
                                         style="text-transform: none;"></span></label>
@@ -1981,7 +1980,6 @@
 
             // Final balance calculation
             let finalPaid = parseFloat(paidAmountInput.value) || 0;
-            statusField = document.getElementById('editStatus');
             if (statusField && document.activeElement === statusField && (statusField.value === 'settle' || statusField.value === 'paid')) {
                 finalPaid = isSplit ? plannedAmount : netPayable;
                 if (paidAmountInput) paidAmountInput.value = finalPaid.toFixed(2);
@@ -1995,7 +1993,7 @@
                 if (paidAmountInput) paidAmountInput.value = finalPaid.toFixed(2);
             }
 
-            if (!isSplit && finalPaid > netPayable + 0.01) {
+            if (finalPaid > netPayable + 0.01) {
                 Swal.fire({
                     icon: 'error',
                     title: 'Invalid Amount',
@@ -2098,7 +2096,7 @@
             }
 
             // Net Payable = Planned Amount - TDS
-            const totalWithTax = (isSplitFixed ? plannedAmount : baseAmount) + gstAmount - tdsAmount;
+            const totalWithTax = baseAmount + gstAmount - tdsAmount;
 
             const paidAmountInput = document.getElementById('editFixedActualAmount');
             
@@ -2111,7 +2109,7 @@
             }
 
             // Validation
-            if (!isSplitFixed && paidAmount > totalWithTax + 0.01) {
+            if (paidAmount > totalWithTax + 0.01) {
                 Swal.fire({
                     icon: 'error',
                     title: 'Invalid Amount',
@@ -2221,9 +2219,7 @@
             }
 
             // Net Payable Calculation
-            const netPayable = isSplitEditable ? 
-                (plannedAmount + gstAmount - tdsAmount) : 
-                (baseAmount + gstAmount - tdsAmount);
+            const netPayable = baseAmount + gstAmount - tdsAmount;
 
             // Get actual paid amount
             const actualAmountField = document.getElementById('editEditableActualAmount');
@@ -2246,7 +2242,7 @@
             }
 
             // Validation: Paid Amount cannot be greater than Net Payable or negative
-            if (!isSplitEditable && actualAmount > netPayable + 0.01) {
+            if (actualAmount > netPayable + 0.01) {
                 Swal.fire({
                     icon: 'error',
                     title: 'Invalid Amount',
@@ -2493,6 +2489,25 @@
             standardFixedForm.addEventListener('submit', async function (e) {
                 e.preventDefault();
 
+                // Validate before submission
+                let paidAmount = parseFloat(document.getElementById('editFixedActualAmount').value) || 0;
+                let plannedAmount = parseFloat(document.getElementById('editFixedPlannedAmountDisplay').value) || 0;
+                let tdsAmount = parseFloat(document.getElementById('fixedTdsAmount').value) || 0;
+                let isSplitFixed = document.getElementById('editFixedIsSplit').value == '1' || document.getElementById('editFixedParentId').value != '0';
+                
+                let totalWithTax = isSplitFixed ? plannedAmount : (plannedAmount - tdsAmount);
+
+                if (paidAmount > totalWithTax + 0.01) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Invalid Amount',
+                        text: 'Paid Amount cannot be more than Planned Amount - TDS Amount (₹' + totalWithTax.toFixed(2) + ')',
+                        confirmButtonColor: '#6c5ce7'
+                    });
+                    document.getElementById('editFixedActualAmount').value = totalWithTax.toFixed(2);
+                    return;
+                }
+
                 const expenseId = document.getElementById('editFixedExpenseId').value;
                 const formData = new FormData(this);
                 formData.append('_method', 'PUT');
@@ -2529,6 +2544,29 @@
             standardEditableForm.addEventListener('submit', async function (e) {
                 e.preventDefault();
 
+                // Validate before submission
+                let paidAmount = parseFloat(document.getElementById('editEditableActualAmount').value) || 0;
+                let plannedAmount = parseFloat(document.getElementById('editEditablePlannedAmount').value) || 0;
+                let tdsAmount = parseFloat(document.getElementById('editableTdsAmount').value) || 0;
+                let gstAmount = parseFloat(document.getElementById('editableGstAmount').value) || 0;
+                let baseAmount = parseFloat(document.getElementById('editEditableBaseAmount').value) || 0;
+                let isSplitEditable = document.getElementById('editEditableIsSplit').value == '1' || document.getElementById('editEditableParentId').value != '0';
+                
+                let netPayable = isSplitEditable ? 
+                    plannedAmount : 
+                    (baseAmount + gstAmount - tdsAmount);
+
+                if (paidAmount > netPayable + 0.01) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Invalid Amount',
+                        text: 'Paid Amount cannot be more than Planned Amount - TDS Amount (₹' + netPayable.toFixed(2) + ')',
+                        confirmButtonColor: '#6c5ce7'
+                    });
+                    document.getElementById('editEditableActualAmount').value = netPayable.toFixed(2);
+                    return;
+                }
+
                 const expenseId = document.getElementById('editEditableExpenseId').value;
                 const formData = new FormData(this);
                 formData.append('_method', 'PUT');
@@ -2564,6 +2602,26 @@
         if (editExpenseForm) {
             editExpenseForm.addEventListener('submit', async function (e) {
                 e.preventDefault();
+
+                // Validate before submission
+                let paidAmount = parseFloat(document.getElementById('editPaidAmount').value) || 0;
+                let baseAmount = parseFloat(document.getElementById('editCurrentBaseAmount').value) || 0;
+                let gstAmount = parseFloat(document.getElementById('editGstAmount').value) || 0;
+                let tdsAmount = parseFloat(document.getElementById('editTdsAmount').value) || 0;
+                let isSplit = document.getElementById('editIsSplit').value == '1' || document.getElementById('editParentId').value != '0';
+                
+                let netPayable = baseAmount + gstAmount - tdsAmount;
+
+                if (paidAmount > netPayable + 0.01) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Invalid Amount',
+                        text: 'Paid Amount cannot be more than Planned Amount - TDS Amount (₹' + netPayable.toFixed(2) + ')',
+                        confirmButtonColor: '#6c5ce7'
+                    });
+                    document.getElementById('editPaidAmount').value = netPayable.toFixed(2);
+                    return;
+                }
 
                 const expenseId = document.getElementById('editExpenseId').value;
                 const formData = new FormData(this);
@@ -2822,20 +2880,20 @@
             const el = document.getElementById(displayId);
             if (!el) return;
 
-            el.className = "d-block mt-2";
-            el.style.fontSize = "0.85em";
+            el.className = "ms-1 text-primary fw-normal";
+            el.style.fontSize = "0.9em";
             el.style.textTransform = "none";
 
-            let html = `<span class="badge bg-light text-dark border">Base: ₹${baseAmount.toFixed(2)}</span>`;
-            if (gstAmount > 0) html += ` <span class="text-muted mx-1">+</span> <span class="badge bg-info text-dark">GST: ₹${gstAmount.toFixed(2)}</span>`;
+            let html = `(Base: ₹${baseAmount.toFixed(2)}`;
+            if (gstAmount > 0) html += ` + GST: ₹${gstAmount.toFixed(2)}`;
             if (isSplit && tdsAmount > 0) {
-                html += ` <span class="text-muted mx-1">-</span> <span class="badge bg-danger text-white">TDS: ₹${tdsAmount.toFixed(2)}</span>`;
+                html += ` - TDS: ₹${tdsAmount.toFixed(2)}`;
             }
             let finalAmt = isSplit ? (baseAmount + gstAmount - tdsAmount) : (baseAmount + gstAmount);
-            html += ` <span class="text-muted mx-1">=</span> <span class="badge bg-success text-white">₹${finalAmt.toFixed(2)}</span>`;
+            html += ` = ₹${finalAmt.toFixed(2)})`;
 
             if (!isSplit && tdsAmount > 0) {
-                html += ` <div class="mt-1"><span class="text-danger" style="font-size:0.95em;"><i class="bi bi-info-circle"></i> TDS ₹${tdsAmount.toFixed(2)} deducted from payable</span></div>`;
+                html += ` <span class="text-danger ms-1" style="font-size:0.95em;"><i class="bi bi-info-circle"></i> TDS ₹${tdsAmount.toFixed(2)} deducted from payable</span>`;
             }
             el.innerHTML = html;
         }
