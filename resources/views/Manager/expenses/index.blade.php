@@ -2018,6 +2018,9 @@
                 const statusContainer = statusField.closest('div[class^="col-"]');
                 if (balance > 0.01) {
                     if (statusContainer) statusContainer.style.display = 'block';
+                    if (statusField.value === 'settle') {
+                        statusField.value = 'due';
+                    }
                     statusField.required = true;
                     statusField.setAttribute('required', 'required');
                     const label = statusField.previousElementSibling;
@@ -2140,6 +2143,9 @@
                 const statusContainer = statusField.closest('div[class^="col-"]');
                 if (balance > 0.01) {
                     if (statusContainer) statusContainer.style.display = 'block';
+                    if (statusField.value === 'settle') {
+                        statusField.value = 'due';
+                    }
                     statusField.required = true;
                     statusField.setAttribute('required', 'required');
                 } else {
@@ -2268,6 +2274,9 @@
                 const statusContainer = statusField.closest('div[class^="col-"]');
                 if (balanceAmount > 0.01) {
                     if (statusContainer) statusContainer.style.display = 'block';
+                    if (statusField.value === 'settle') {
+                        statusField.value = 'due';
+                    }
                     statusField.required = true;
                     statusField.setAttribute('required', 'required');
                 } else {

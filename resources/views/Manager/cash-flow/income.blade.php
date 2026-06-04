@@ -2475,6 +2475,9 @@
                             handleStatusChange(statusSelect, 'editDueDateContainer', 'editDueDate');
                         } else {
                             if (statusContainer) statusContainer.style.display = 'block';
+                            if (statusSelect.value === 'settle') {
+                                statusSelect.value = 'due';
+                            }
                             handleStatusChange(statusSelect, 'editDueDateContainer', 'editDueDate');
                         }
                     }
