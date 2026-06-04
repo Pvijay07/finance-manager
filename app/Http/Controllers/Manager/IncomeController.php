@@ -229,12 +229,28 @@ class IncomeController extends Controller
               return redirect()->back()->with('error', 'Income not found');
           }
 
-          // Calculate family totals
-          $familyIncomes = collect([$income]);
-          if ($income->parent) {
-              $familyIncomes = $familyIncomes->merge([$income->parent])->merge($income->parent->children);
+          // Traverse up to find the ultimate root income
+          $rootIncome = $income;
+          while ($rootIncome->parent_id) {
+              $rootIncome = Income::with(['parent', 'children', 'taxes'])->find($rootIncome->parent_id);
+              if (!$rootIncome) break;
+          }
+          
+          if ($rootIncome) {
+              $rootId = $rootIncome->id;
+              $allSplits = collect([$rootIncome]);
+              $toProcess = collect([$rootId]);
+
+              while ($toProcess->isNotEmpty()) {
+                  $nextLevel = Income::with(['company', 'invoice', 'parent', 'children', 'taxes'])->whereIn('parent_id', $toProcess)->get();
+                  if ($nextLevel->isEmpty()) break;
+                  
+                  $allSplits = $allSplits->concat($nextLevel);
+                  $toProcess = $nextLevel->pluck('id');
+              }
+              $familyIncomes = $allSplits;
           } else {
-              $familyIncomes = $familyIncomes->merge($income->children);
+              $familyIncomes = collect([$income]);
           }
           
           $uniqueFamily = $familyIncomes->unique('id');
@@ -253,12 +269,28 @@ class IncomeController extends Controller
       $income = Income::with(['company', 'invoice', 'parent.children', 'children'])->find($id);
       
       if ($income) {
-          // Calculate the original conversion cost by summing across the entire split family
-          $familyIncomes = collect([$income]);
-          if ($income->parent) {
-              $familyIncomes = $familyIncomes->merge([$income->parent])->merge($income->parent->children);
+          // Traverse up to find the ultimate root income
+          $rootIncome = $income;
+          while ($rootIncome->parent_id) {
+              $rootIncome = Income::with(['parent', 'children'])->find($rootIncome->parent_id);
+              if (!$rootIncome) break;
+          }
+          
+          if ($rootIncome) {
+              $rootId = $rootIncome->id;
+              $allSplits = collect([$rootIncome]);
+              $toProcess = collect([$rootId]);
+
+              while ($toProcess->isNotEmpty()) {
+                  $nextLevel = Income::with(['company', 'invoice', 'parent', 'children'])->whereIn('parent_id', $toProcess)->get();
+                  if ($nextLevel->isEmpty()) break;
+                  
+                  $allSplits = $allSplits->concat($nextLevel);
+                  $toProcess = $nextLevel->pluck('id');
+              }
+              $familyIncomes = $allSplits;
           } else {
-              $familyIncomes = $familyIncomes->merge($income->children);
+              $familyIncomes = collect([$income]);
           }
           
           $uniqueFamily = $familyIncomes->unique('id');

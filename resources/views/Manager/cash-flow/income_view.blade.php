@@ -152,8 +152,8 @@
                     <thead class="table-light">
                         <tr>
                             <th class="ps-4">Split #</th>
-                            <th>Income ID</th>
-                            <th>Amount</th>
+                            <th>Invoice No</th>
+                            <th>Receivable Amount</th>
                             <th>Base Amount</th>
                             <th>Status</th>
                             <th>Created Date</th>

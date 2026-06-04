@@ -598,7 +598,7 @@
                                     <label class="form-label fw-bold text-uppercase small text-muted">Status</label>
                                     <select class="form-control form-select-lg" id="editStatus" name="status" required>
                                         <option value="" selected disabled>Select Status</option>
-                                        <option value="due" class="text-warning">Due</option>
+                                        <option value="due" class="text-warning" selected>Due</option>
                                         <option value="settle" class="text-info">Settle</option>
                                         <!-- <option value="convert_to_tds">Convert to TDS</option> -->
                                     </select>

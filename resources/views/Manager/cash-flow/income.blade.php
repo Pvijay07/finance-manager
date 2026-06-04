@@ -226,7 +226,7 @@
                                 <th>Invoice No</th>
                                 <th>Company</th>
                                 <th>Client Name</th>
-                                <th>Payable Amount</th>
+                                <th>Receivable Amount</th>
                                 <th>Base Amount</th>
                                 <th>Income Type</th>
                                 <th>Status</th>
@@ -2034,6 +2034,9 @@
 
                     document.getElementById('editBalanceAmount').value = Math.max(0, balance).toFixed(2);
                     let statusVal = (income.status === 'received' || income.status === 'settle') ? 'settle' : 'due';
+                    if (balance > 0.01) {
+                        statusVal = 'due';
+                    }
                     document.getElementById('editStatus').value = statusVal;
                     document.getElementById('editPaymentMode').value = income.payment_mode || '';
                     document.getElementById('editPartyName').value = income.party_name || '';
