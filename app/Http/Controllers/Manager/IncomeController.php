@@ -1019,7 +1019,7 @@ class IncomeController extends Controller
       $originalActualAmount = floatval($income->actual_amount);
       $isForeignCurrency = ($income->invoice && $income->invoice->currency != 'INR') || ($income->currency && $income->currency != 'INR');
 
-      if ($isSplitPayment && $payableAmountTotal > 0) {
+      if (($isSplitPayment || $validated['status'] === 'settle') && $payableAmountTotal > 0) {
         $proportion = $receivedAmount / $payableAmountTotal;
         $gstAmountForCurrent = $gstAmountTotal * $proportion;
         $tdsAmountForCurrent = $tdsAmountTotal * $proportion;
@@ -1058,7 +1058,7 @@ class IncomeController extends Controller
 
       $incomeData = [
         'party_name' => $validated['client_name'] ?? $income->party_name,
-        'amount' => $isSplitPayment ? $receivedAmount : $payableAmountTotal,
+        'amount' => ($isSplitPayment || $validated['status'] === 'settle') ? $receivedAmount : $payableAmountTotal,
         'received_amount' => $receivedAmount,
         'planned_amount' => $paidPlannedAmount,
         'actual_amount' => $paidBaseAmountToSave,
