@@ -362,6 +362,9 @@ class IncomeController extends Controller
           $newIncome->is_partial = true;
           $newIncome->parent_id = $income->parent_id ?? $income->id;
           $newIncome->conversion_cost = $pendingConversionCost;
+          $newIncome->received_amount = 0;
+          $newIncome->payment_mode = null;
+          $newIncome->settle_notes = null;
           $newIncome->save();
 
           // Handle taxes replication
@@ -530,7 +533,7 @@ class IncomeController extends Controller
             'tax_type' => 'gst',
             'tax_percentage' => $data['gst_percentage'] ?? 0,
             'tax_amount' => $gstAmountForCurrent,
-            'payment_status' => 'received',
+            'payment_status' => ($isSplitPayment || $request->status === 'settle') ? 'received' : 'not_received',
             'direction' => 'income',
             'taxable_amount' => $paidBaseAmount
           ]);
@@ -584,6 +587,9 @@ class IncomeController extends Controller
         $newIncome->notes = $request->balance_notes ?? 'Balance from partial payment of income #' . $income->id;
         $newIncome->created_at = now();
         $newIncome->updated_at = now();
+        $newIncome->received_amount = 0;
+        $newIncome->payment_mode = null;
+        $newIncome->settle_notes = null;
         $newIncome->save();
 
         $newIncomeId = $newIncome->id;
@@ -901,6 +907,8 @@ class IncomeController extends Controller
             'created_at' => $split->created_at->toIso8601String(),
             'paid_date' => $split->status =='received' ? $split->income_date : 'N/A',
             'due_date' => $split->due_date,
+            'balance_amount' => $split->balance_amount,
+            'settle_notes' => $split->settle_notes,
             'gst_amount' => $split->taxes->where('tax_type', 'gst')->sum('tax_amount') / $rate,
             'tds_amount' => $split->taxes->where('tax_type', 'tds')->sum('tax_amount') / $rate
           ];
@@ -956,7 +964,7 @@ class IncomeController extends Controller
         'payment_mode' => 'nullable|string',
         'bank_name' => 'nullable|required_if:payment_mode,bank_transfer,cheque|string',
         'upi_type' => 'nullable|required_if:payment_mode,upi|string',
-        'upi_number' => 'nullable|required_if:payment_mode,upi|string',
+        'upi_number' => 'nullable|required_if:payment_mode,upi|digits:10',
 
         // File uploads
         'tds_receipt' => 'nullable|file|max:5120|mimes:jpg,jpeg,png,pdf,doc,docx',
@@ -1098,7 +1106,7 @@ class IncomeController extends Controller
           [
             'tax_amount' => $gstAmountForCurrent,
             'tax_percentage' => $gstPercentage,
-            'payment_status' => 'received',
+            'payment_status' => ($isSplitPayment || $validated['status'] === 'settle' || $receivedAmount > 0) ? 'received' : 'not_received',
             'company_id' => $income->company_id,
             'taxable_amount' => $paidBaseAmount
           ]
@@ -1172,6 +1180,9 @@ class IncomeController extends Controller
         $newIncome->notes = $request->balance_notes ?? 'Balance from partial payment of income #' . $income->id;
         $newIncome->created_at = now();
         $newIncome->updated_at = now();
+        $newIncome->received_amount = 0;
+        $newIncome->payment_mode = null;
+        $newIncome->settle_notes = null;
         $newIncome->save();
 
         $newIncomeId = $newIncome->id;

@@ -19,6 +19,7 @@ class Income extends Model
     'invoice_id',
     'import_method',
     'income_date',
+    'paid_date',
     'status',
     'tax_type',
     'actual_amount',

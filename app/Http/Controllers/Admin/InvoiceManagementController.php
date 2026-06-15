@@ -372,6 +372,7 @@ class InvoiceManagementController extends Controller
 
     return $tax;
   }
+  
   public function processPartialPayment(Request $request)
   {
     $request->validate([
@@ -732,8 +733,7 @@ class InvoiceManagementController extends Controller
 
     $prefix = $type === 'invoice' ? 'INV' : 'PRO';
 
-    $lastInvoice = Invoice::where('company_id', $companyId)
-      ->where('invoice_number', 'like', "{$companyPrefix}-{$year}-{$nextYear}-{$prefix}-%")
+    $lastInvoice = Invoice::where('invoice_number', 'like', "{$companyPrefix}-{$year}-{$nextYear}-{$prefix}-%")
       ->orderBy('id', 'desc')
       ->first();
 

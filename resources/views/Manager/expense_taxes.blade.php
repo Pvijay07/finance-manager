@@ -165,7 +165,7 @@
                                 <td>
                                     <span class="badge {{ $badgeClass }}">{{ $taxTypeLabel }}</span>
                                 </td>
-                                <td class="text-end">{{ number_format($expense->actual_amount ?? 0, 2) }}</td>
+                                <td class="text-end">{{ number_format($tax->taxable_amount ?? $expense->actual_amount ?? 0, 2) }}</td>
                                 <td class="text-end">{{ $tax->tax_percentage }}%</td>
                                 <td class="text-end fw-semibold">{{ number_format($tax->tax_amount, 2) }}</td>
                                 <td>

@@ -301,6 +301,8 @@ class ExpensesController extends Controller
             'created_at' => $split->created_at->toIso8601String(),
             'paid_date' => $split->paid_date,
             'due_date' => $split->due_date,
+            'balance_amount' => $split->balance_amount,
+            'settle_notes' => $split->settle_notes,
             'gst_amount' => $split->taxes->where('tax_type', 'gst')->sum('tax_amount'),
             'tds_amount' => $split->taxes->where('tax_type', 'tds')->sum('tax_amount')
           ];
@@ -630,7 +632,7 @@ class ExpensesController extends Controller
       'payment_mode' => 'nullable|in:cash,bank_transfer,cheque,upi,online',
       'bank_name' => 'nullable|string|max:255',
       'upi_type' => 'nullable|string|max:255',
-      'upi_number' => 'nullable|string|max:20',
+      'upi_number' => 'nullable|required_if:payment_mode,upi|digits:10',
       'party_name' => 'nullable|string|max:255',
       'mobile_number' => 'nullable|string|max:20',
       'notes' => 'nullable|string',
@@ -718,7 +720,7 @@ class ExpensesController extends Controller
 
       $proportion = $netPayableAmount > 0 ? ($paidAmount / $netPayableAmount) : 1;
 
-      if ($isSplitPayment) {
+      if ($isSplitPayment || $request->status === 'settle') {
         $paidBaseAmount = $actualTotalBase * $proportion;
         $balanceBaseAmount = $actualTotalBase - $paidBaseAmount;
         
@@ -744,7 +746,7 @@ class ExpensesController extends Controller
         'company_id' => $request->company_id,
         'category_id' => $request->category_id,
         'actual_amount' => $isSplitPayment ? $paidBaseAmount : (in_array($request->status, ['paid', 'settle']) ? $actualTotalBase : 0),
-        'planned_amount' => $isSplitPayment ? $paidAmount : $plannedAmount,
+        'planned_amount' => ($isSplitPayment || $request->status === 'settle') ? $paidAmount : $plannedAmount,
         'status' => ($isSplitPayment || in_array($request->status, ['paid', 'settle']))
           ? 'paid'
           : ($request->status === 'due'
@@ -785,8 +787,10 @@ class ExpensesController extends Controller
             'tax_amount' => $gstAmountForCurrent,
             'amount_paid' => 0,
             'paid_date' => null,
-            'payment_status' => 'received',
+            'payment_status' => (in_array($request->status, ['paid', 'settle']) || $isSplitPayment) ? 'received' : 'not_received',
             'due_date' => $request->payment_date,
+          'taxable_amount' => $paidBaseAmount
+
           ]);
         } else {
           \App\Models\Tax::create([
@@ -796,8 +800,9 @@ class ExpensesController extends Controller
             'tax_percentage' => $request->gst_percentage ?? 0,
             'tax_amount' => $gstAmountForCurrent,
             'amount_paid' => 0,
-            'payment_status' => 'received',
+            'payment_status' => (in_array($request->status, ['paid', 'settle']) || $isSplitPayment) ? 'received' : 'not_received',
             'direction' => 'expense',
+            'taxable_amount' => $paidBaseAmount
           ]);
         }
       }
@@ -816,6 +821,8 @@ class ExpensesController extends Controller
             'paid_date' => $tdsPaidDate,
             'payment_status' => $tdsPaymentStatus,
             'due_date' => $request->payment_date,
+          'taxable_amount' => $paidBaseAmount
+
           ]);
         } else {
           \App\Models\Tax::create([
@@ -828,6 +835,8 @@ class ExpensesController extends Controller
             'paid_date' => $tdsPaidDate,
             'payment_status' => $tdsPaymentStatus,
             'direction' => 'expense',
+          'taxable_amount' => $paidBaseAmount
+
           ]);
         }
       }
@@ -1187,7 +1196,7 @@ class ExpensesController extends Controller
       'payment_mode' => 'nullable|string|in:cash,bank_transfer,cheque,upi,online',
       'bank_name' => 'nullable|string|max:255',
       'upi_type' => 'nullable|string|max:255',
-      'upi_number' => 'nullable|string|max:20',
+      'upi_number' => 'nullable|required_if:payment_mode,upi|digits:10',
       'split_payment' => 'nullable|boolean',
       'create_new_for_balance' => 'nullable|boolean',
       'new_due_date' => 'nullable|date',
@@ -1263,11 +1272,14 @@ class ExpensesController extends Controller
       $tdsAmountForCurrent = $originalTdsAmount;
       $originalBaseAmount = $expense->original_amount ?? $expense->actual_amount ?? 0;
       
+      // Calculate expected base amount: Base = Payable + TDS - GST
+      $dbTdsAmount = $expense->taxes->where('tax_type', 'tds')->first()->tax_amount ?? 0;
+      $dbGstAmount = $expense->taxes->where('tax_type', 'gst')->first()->tax_amount ?? 0;
+      $expectedBase = $expense->planned_amount + $dbTdsAmount - $dbGstAmount;
+
       // Fix for legacy child expenses where original_amount was incorrectly copied from parent
-      if ($expense->parent_id && $originalBaseAmount > $expense->planned_amount) {
-          $originalBaseAmount = ($expense->actual_amount > 0 && $expense->actual_amount <= $expense->planned_amount) 
-              ? $expense->actual_amount 
-              : $expense->planned_amount - ($originalGstAmount ?? 0);
+      if ($expense->parent_id && $originalBaseAmount > $expectedBase + 1.00) {
+          $originalBaseAmount = $expectedBase;
       }
       
       $paidBaseAmount = $originalBaseAmount;
@@ -1308,9 +1320,9 @@ class ExpensesController extends Controller
 
         $expenseData = [
           'expense_name' => $request->expense_name ?? $expense->expense_name,
-          'planned_amount' => $paidAmount,
-          'actual_amount' => $paidBaseAmount,
-          'status' => 'paid',
+          'planned_amount' => ($request->status === 'settle') ? $paidAmount : $originalPlannedAmount,
+          'actual_amount' => (in_array($request->status, ['paid', 'settle'])) ? $paidBaseAmount : 0,
+          'status' => in_array($request->status, ['paid', 'settle']) ? 'paid' : ($request->status === 'due' ? 'upcoming' : $request->status),
           'party_name' => $request->party_name ?? $expense->party_name,
           'mobile_number' => $request->mobile_number ?? $expense->mobile_number,
           'notes' => $request->notes ?? $expense->notes,
@@ -1355,10 +1367,10 @@ class ExpensesController extends Controller
           'tax_type' => 'gst',
           'tax_amount' => $gstAmountForCurrent,
           'tax_percentage' => $request->gst_percentage ?? 0,
-          'payment_status' => 'received',
+          'payment_status' => (in_array($request->status, ['paid', 'settle']) || $isSplitPayment) ? 'received' : 'not_received',
           'direction' => 'expense',
           'company_id' => $expense->company_id,
-          'taxable_amount' => $isSplitPayment ? $paidAmount : $originalPlannedAmount
+          'taxable_amount' => $paidBaseAmount
 
         ];
 
@@ -1399,7 +1411,7 @@ class ExpensesController extends Controller
           'payment_status' => $request->tds_status ?? 'not_received',
           'direction' => 'expense',
           'company_id' => $expense->company_id,
-          'taxable_amount' => $isSplitPayment ? $paidAmount : $originalPlannedAmount
+          'taxable_amount' => $paidBaseAmount
 
         ];
 

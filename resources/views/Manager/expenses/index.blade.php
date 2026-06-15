@@ -389,13 +389,7 @@
                                     <td>{{ $expense->company->name ?? 'All Companies' }}</td>
                                     <td>{{ $expense->categoryRelation->name ?? 'N/A' }}</td>
                                     <td>
-                                        <span
-                                            class="badge 
-                                                                                                                                                                                                                                                                                                                                                                                    @if ($expense->categoryRelation->category_type == 'standard_fixed') bg-primary 
-                                                                                                                                                                                                                                                                                                                                                                                    @elseif($expense->categoryRelation->category_type == 'standard_editable') 
-                                                                                                                                                                                                                                                                                                                                                                                        bg-success 
-                                                                                                                                                                                                                                                                                                                                                                                    @else 
-                                                                                                                                                                                                                                                                                                                                                                                    bg-warning @endif">
+                                        <span class="badge @if ($expense->categoryRelation->category_type == 'standard_fixed') bg-success @elseif($expense->categoryRelation->category_type == 'standard_editable') bg-info @else bg-warning @endif">
                                             @if ($expense->categoryRelation->category_type == 'standard_fixed')
                                                 Standard Fixed
                                             @elseif($expense->categoryRelation->category_type == 'standard_editable')
@@ -580,10 +574,10 @@
                             <div class="col-md-4 upi-details" style="display: none;">
                                 <label class="form-label fw-bold text-uppercase small text-muted">UPI Phone</label>
                                 <input type="text" class="form-control" id="editUpiNumber" name="upi_number"
-                                    placeholder="Enter Number">
+                                    placeholder="Enter Number" maxlength="10" pattern="[0-9]{10}" title="UPI phone number must be exactly 10 digits">
                             </div>
                         </div>
-<!-- Balance Section -->
+                        <!-- Balance Section -->
                         <div class="row mb-4">
                             <div class="col-md-4">
                                 <label class="form-label fw-bold text-uppercase small text-muted">Balance Amount
@@ -968,7 +962,7 @@
                             </div>
                             <div class="col-md-6 upi-details" style="display: none;">
                                 <label class="form-label">UPI Phone Number</label>
-                                <input type="text" class="form-control" name="upi_number" placeholder="Enter phone number">
+                                <input type="text" class="form-control" id="addUpiNumber" name="upi_number" placeholder="Enter phone number" maxlength="10" pattern="[0-9]{10}" title="UPI phone number must be exactly 10 digits">
                             </div>
                         </div>
                         <!-- Add these hidden inputs for split payment in your form -->
@@ -1158,7 +1152,7 @@
                             <div class="col-md-4 upi-details" style="display: none;">
                                 <label class="form-label fw-bold text-uppercase small text-muted">UPI Phone</label>
                                 <input type="text" class="form-control" id="editFixedUpiNumber" name="upi_number"
-                                    placeholder="Number">
+                                    placeholder="Number" maxlength="10" pattern="[0-9]{10}" title="UPI phone number must be exactly 10 digits">
                             </div>
                         </div>
 
@@ -1409,7 +1403,7 @@
                                 <div class="col-md-4 upi-details" style="display: none;">
                                     <label class="form-label fw-bold text-uppercase small text-muted">UPI Phone</label>
                                     <input type="text" class="form-control" id="editEditableUpiNumber" name="upi_number"
-                                        placeholder="Number">
+                                        placeholder="Number" maxlength="10" pattern="[0-9]{10}" title="UPI phone number must be exactly 10 digits">
                                 </div>
                             </div>
 
@@ -1598,6 +1592,14 @@
                 if (el && !el.value) {
                     el.value = today;
                 }
+            });
+
+            // Restrict UPI Phone Number inputs to 10 digits only
+            const upiInputs = document.querySelectorAll('input[name="upi_number"]');
+            upiInputs.forEach(input => {
+                input.addEventListener('input', function() {
+                    this.value = this.value.replace(/[^0-9]/g, '');
+                });
             });
         });
         // State variables
@@ -1980,9 +1982,14 @@
 
             // Final balance calculation
             let finalPaid = parseFloat(paidAmountInput.value) || 0;
-            if (statusField && document.activeElement === statusField && (statusField.value === 'settle' || statusField.value === 'paid')) {
-                finalPaid = isSplit ? plannedAmount : netPayable;
-                if (paidAmountInput) paidAmountInput.value = finalPaid.toFixed(2);
+            if (statusField && document.activeElement === statusField) {
+                if (statusField.value === 'settle') {
+                    finalPaid = 0;
+                    if (paidAmountInput) paidAmountInput.value = '0.00';
+                } else if (statusField.value === 'paid') {
+                    finalPaid = isSplit ? plannedAmount : netPayable;
+                    if (paidAmountInput) paidAmountInput.value = finalPaid.toFixed(2);
+                }
             }
 
             const isTaxChange = event && event.target && ['editGstPercentage', 'editApplyGst', 'editTdsPercentage', 'editApplyTds'].includes(event.target.id);
@@ -2018,7 +2025,7 @@
                 const statusContainer = statusField.closest('div[class^="col-"]');
                 if (balance > 0.01) {
                     if (statusContainer) statusContainer.style.display = 'block';
-                    if (statusField.value === 'settle') {
+                    if (finalPaid <= 0 || !statusField.value || statusField.value === 'settle') {
                         statusField.value = 'due';
                     }
                     statusField.required = true;
@@ -2106,9 +2113,14 @@
             let paidAmount = parseFloat(paidAmountInput?.value) || 0;
 
             const statusField = document.getElementById('editFixedStatus');
-            if (statusField && document.activeElement === statusField && (statusField.value === 'settle' || statusField.value === 'paid')) {
-                paidAmount = isSplitFixed ? plannedAmount : totalWithTax;
-                if (paidAmountInput) paidAmountInput.value = paidAmount.toFixed(2);
+            if (statusField && document.activeElement === statusField) {
+                if (statusField.value === 'settle') {
+                    paidAmount = 0;
+                    if (paidAmountInput) paidAmountInput.value = '0.00';
+                } else if (statusField.value === 'paid') {
+                    paidAmount = isSplitFixed ? plannedAmount : totalWithTax;
+                    if (paidAmountInput) paidAmountInput.value = paidAmount.toFixed(2);
+                }
             }
 
             // Validation
@@ -2143,7 +2155,7 @@
                 const statusContainer = statusField.closest('div[class^="col-"]');
                 if (balance > 0.01) {
                     if (statusContainer) statusContainer.style.display = 'block';
-                    if (statusField.value === 'settle') {
+                    if (paidAmount <= 0 || !statusField.value || statusField.value === 'settle') {
                         statusField.value = 'due';
                     }
                     statusField.required = true;
@@ -2233,9 +2245,14 @@
             let actualAmount = parseFloat(actualAmountField?.value) || 0;
 
             const statusField = document.getElementById('editEditableStatus');
-            if (statusField && document.activeElement === statusField && (statusField.value === 'settle' || statusField.value === 'paid')) {
-                actualAmount = isSplitEditable ? plannedAmount : netPayable;
-                if (actualAmountField) actualAmountField.value = actualAmount.toFixed(2);
+            if (statusField && document.activeElement === statusField) {
+                if (statusField.value === 'settle') {
+                    actualAmount = 0;
+                    if (actualAmountField) actualAmountField.value = '0.00';
+                } else if (statusField.value === 'paid') {
+                    actualAmount = isSplitEditable ? plannedAmount : netPayable;
+                    if (actualAmountField) actualAmountField.value = actualAmount.toFixed(2);
+                }
             }
 
             const isTaxChange = event && event.target && ['editableGstPercentage', 'editableApplyGst', 'editableTdsPercentage', 'editableApplyTds'].includes(event.target.id);
@@ -2274,7 +2291,7 @@
                 const statusContainer = statusField.closest('div[class^="col-"]');
                 if (balanceAmount > 0.01) {
                     if (statusContainer) statusContainer.style.display = 'block';
-                    if (statusField.value === 'settle') {
+                    if (actualAmount <= 0 || !statusField.value || statusField.value === 'settle') {
                         statusField.value = 'due';
                     }
                     statusField.required = true;
@@ -2334,6 +2351,9 @@
                     statusDropdown.disabled = false;
                     if (balance > 0.01) {
                         if (statusContainer) statusContainer.style.display = 'block';
+                        if (paidAmount <= 0 || !statusDropdown.value) {
+                            statusDropdown.value = 'due';
+                        }
                         statusDropdown.required = true;
                         statusDropdown.setAttribute('required', 'required');
                     } else {
@@ -2957,7 +2977,7 @@
             // If it's an existing record, show actual_amount. If new/reset, show Net Payable.
             const netPayableVal = plannedAmount - tdsAmountVal;
             let paidAmountVal;
-            if (expense.status === 'due' || expense.status === 'pending') {
+            if (['due', 'pending', 'upcoming'].includes(expense.status)) {
                 paidAmountVal = netPayableVal;
             } else {
                 paidAmountVal = parseFloat(expense.actual_amount) || netPayableVal;
@@ -3538,28 +3558,41 @@
         });
 
         function handleStatusBehavior(modalType) {
-            let statusId, balanceId, dueDateId;
+            let statusId, balanceId, dueDateId, notesId;
+            let receiptFileId, paymentModeId, paidDateId;
 
             if (modalType === 'non-standard') {
                 statusId = 'editStatus';
                 balanceId = 'editBalanceAmount';
                 dueDateId = 'editNonStandardDueDate';
                 notesId = 'editSettleNotes';
+                receiptFileId = 'editReceiptFile';
+                paymentModeId = 'editPaymentMode';
+                paidDateId = 'editPaidDate';
             } else if (modalType === 'fixed') {
                 statusId = 'editFixedStatus';
                 balanceId = 'fixedBalanceAmount';
                 dueDateId = 'editFixedDueDate';
                 notesId = 'editFixedSettleNotes';
+                receiptFileId = 'editFixedReceiptFile';
+                paymentModeId = 'editFixedPaymentMode';
+                paidDateId = 'editFixedPaidDate';
             } else if (modalType === 'editable') {
                 statusId = 'editEditableStatus';
                 balanceId = 'edittableBalanceAmount';
                 dueDateId = 'editEditableDueDate';
                 notesId = 'editEditableSettleNotes';
+                receiptFileId = 'editEditableReceiptFile';
+                paymentModeId = 'editEditablePaymentMode';
+                paidDateId = 'editEditablePaidDate';
             } else if (modalType === 'non-standard-add') {
                 statusId = 'payment_status';
                 balanceId = 'balance_amount';
                 dueDateId = 'add_due_date';
                 notesId = 'addSettleNotes';
+                receiptFileId = 'main_receipt';
+                paymentModeId = 'payment_mode';
+                paidDateId = 'payment_date';
             }
 
             const statusEl = document.getElementById(statusId);
@@ -3567,6 +3600,10 @@
             const dueDateEl = document.getElementById(dueDateId);
             const notesEl = typeof notesId !== 'undefined' ? document.getElementById(notesId) : null;
             const notesContainer = typeof notesId !== 'undefined' ? document.getElementById(notesId + 'Container') : null;
+
+            const receiptFileEl = receiptFileId ? document.getElementById(receiptFileId) : null;
+            const paymentModeEl = paymentModeId ? document.getElementById(paymentModeId) : null;
+            const paidDateEl = paidDateId ? document.getElementById(paidDateId) : null;
 
             if (!statusEl) return;
 
@@ -3637,6 +3674,31 @@
                     notesEl.required = false;
                     notesEl.removeAttribute('required');
                 }
+            }
+
+            // Toggling dynamic required attributes and asterisks on payment fields based on status
+            if (status === 'settle' || status === 'due' || !status) {
+                [receiptFileEl, paymentModeEl, paidDateEl].forEach(el => {
+                    if (el) {
+                        el.required = false;
+                        el.removeAttribute('required');
+                        const label = el.closest('.form-group') ? el.closest('.form-group').querySelector('.form-label') : (el.closest('[class*="col-"]') ? el.closest('[class*="col-"]').querySelector('.form-label') : null);
+                        if (label) {
+                            label.innerHTML = label.innerHTML.replace(' <span class="text-danger">*</span>', '');
+                        }
+                    }
+                });
+            } else if (status === 'paid' || status === 'upcoming' || status === 'pending' || status === 'overdue') {
+                [receiptFileEl, paymentModeEl, paidDateEl].forEach(el => {
+                    if (el) {
+                        el.required = true;
+                        el.setAttribute('required', 'required');
+                        const label = el.closest('.form-group') ? el.closest('.form-group').querySelector('.form-label') : (el.closest('[class*="col-"]') ? el.closest('[class*="col-"]').querySelector('.form-label') : null);
+                        if (label && !label.innerHTML.includes('*')) {
+                            label.innerHTML += ' <span class="text-danger">*</span>';
+                        }
+                    }
+                });
             }
 
             // Add receipt requirement check
@@ -3921,6 +3983,26 @@
 
                                                                                                                                                                                     </tr>
                                                                                                                                                                                 `;
+                            
+                            if (child.status === 'settle' || child.settle_notes) {
+                                let balanceAmt = parseFloat(child.balance_amount || 0).toFixed(2);
+                                let notes = child.settle_notes ? `(${child.settle_notes})` : '';
+                                if (parseFloat(balanceAmt) > 0) {
+                                    historyHTML += `
+                                        <tr class="table-light">
+                                            <td colspan="2"></td>
+                                            <td colspan="3">
+                                                <span class="fw-bold text-secondary">₹${balanceAmt}</span>
+                                                <div class="text-muted small mt-1">${notes}</div>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-secondary">Settled</span>
+                                            </td>
+                                            <td colspan="2"></td>
+                                        </tr>
+                                    `;
+                                }
+                            }
                         });
 
                         historyHTML += `

@@ -736,7 +736,7 @@
                             <div class="col-md-4 upi-details" style="display: none;">
                                 <label class="form-label fw-bold text-uppercase small text-muted">UPI Phone *</label>
                                 <input type="text" class="form-control" id="editEditableUpiNumber" name="upi_number"
-                                    placeholder="Number">
+                                    placeholder="Number" maxlength="10" pattern="[0-9]{10}" title="UPI phone number must be exactly 10 digits">
                             </div>
                         </div>
                         <!-- Status & Dates -->
@@ -1970,7 +1970,14 @@
                         document.getElementById('editPlannedAmount').value = grossAmount.toFixed(2);
                     }
 
-                    document.getElementById('editPaidAmount').value = income.received_amount || income.paid_amount || (isSplitPayment ? netAmount.toFixed(2) : (grossAmount.toFixed(2) - tdsAmountVal));
+                    let defaultPaidAmountVal = 0;
+                    if (income.status === 'received' || income.status === 'settle') {
+                        defaultPaidAmountVal = parseFloat(income.received_amount || income.paid_amount || netAmount);
+                    } else {
+                        const dbReceived = parseFloat(income.received_amount || income.paid_amount || 0);
+                        defaultPaidAmountVal = dbReceived < netAmount ? dbReceived : 0;
+                    }
+                    document.getElementById('editPaidAmount').value = defaultPaidAmountVal.toFixed(2);
                     document.getElementById('editOriginalAmount').value = income.actual_amount || 0;
                     document.getElementById('editOriginalAmount').dataset.originalTotal = income.amount || 0;
                     document.getElementById('editOriginalAmount').dataset.originalBase = document.getElementById('editPlannedAmount').value;
@@ -2028,7 +2035,7 @@
                     }
 
                     // Calculate and set balance for ALL incomes (Gross - TDS - Paid)
-                    const paid = parseFloat(income.received_amount || income.paid_amount || netAmount);
+                    const paid = defaultPaidAmountVal;
                     const tdsAmount = parseFloat(income.tds_amount || 0);
                     const balance = netAmount - paid;
 
@@ -2150,7 +2157,7 @@
                     console.log('Initializing tax calculation');
                     initializeEditTaxAndBalance();
                     if (typeof window.recalculateEditIncome === 'function') {
-                        window.recalculateEditIncome();
+                        window.recalculateEditIncome(true);
                     }
                     const modal = new bootstrap.Modal(document.getElementById('editIncomeModal'));
                     modal.show();
@@ -2160,38 +2167,6 @@
                         handleStatusBehavior('income-edit');
                         handleTdsStatusBehavior('editTdsStatus', 'editTdsReceipt');
                     }, 500);
-
-                    // Add listeners for status changes in edit modal
-                    const editStatus = document.getElementById('editStatus');
-                    if (editStatus) {
-                        editStatus.addEventListener('change', function () {
-                            handleStatusBehavior('income-edit');
-                            // If switching to 'due', recalculate to restore balance
-                            if (this.value !== 'settle') {
-                                if (typeof window.recalculateEditIncome === 'function') {
-                                    window.recalculateEditIncome();
-                                }
-                            }
-                        });
-                    }
-
-                    const editTdsStatus = document.getElementById('editTdsStatus');
-                    if (editTdsStatus) {
-                        editTdsStatus.addEventListener('change', function () {
-                            handleTdsStatusBehavior('editTdsStatus', 'editTdsReceipt');
-                        });
-                    }
-
-                    const editBalanceAmount = document.getElementById('editBalanceAmount');
-                    if (editBalanceAmount) {
-                        // We might need to watch for changes if it's updated via calculation
-                        const observer = new MutationObserver(() => handleStatusBehavior('income-edit'));
-                        observer.observe(editBalanceAmount, {
-                            attributes: true,
-                            attributeFilter: ['value']
-                        });
-                        // Also hook into the calculation function
-                    }
 
                 } else {
                     alert(data.message || 'Error loading income data');
@@ -2306,6 +2281,27 @@
                                         <td>${child.paid_date!='N/A'&& child.paid_date ? new Date(child.paid_date).toLocaleDateString() : '-'}</td>
                                     </tr>
                                 `;
+                            
+                            if (child.status === 'settle' || child.settle_notes) {
+                                let balanceAmt = parseFloat(child.balance_amount || 0).toFixed(2);
+                                let notes = child.settle_notes ? `(${child.settle_notes})` : '';
+                                if (parseFloat(balanceAmt) > 0) {
+                                    historyHTML += `
+                                        <tr class="table-light">
+                                            <td colspan="2"></td>
+                                            <td colspan="2">
+                                                <span class="fw-bold text-secondary">₹${balanceAmt}</span>
+                                                <div class="text-muted small mt-1">${notes}</div>
+                                            </td>
+                                            ${!isUSD ? `<td colspan="2"></td>` : ''}
+                                            <td>
+                                                <span class="badge bg-secondary">Settled</span>
+                                            </td>
+                                            <td colspan="3"></td>
+                                        </tr>
+                                    `;
+                                }
+                            }
                         });
 
                         historyHTML += `
@@ -2371,11 +2367,15 @@
             const tdsAmountInput = document.getElementById('editTdsAmount');
             const balanceAmountInput = document.getElementById('editBalanceAmount');
 
-            window.recalculateEditIncome = function () {
+            window.recalculateEditIncome = function (init = false) {
                 if (paidAmountInput) {
-                    paidAmountInput.dispatchEvent(new Event('input', {
-                        bubbles: true
-                    }));
+                    if (init && parseFloat(paidAmountInput.value) === 0) {
+                        calculateEditTaxAndBalance('init');
+                    } else {
+                        paidAmountInput.dispatchEvent(new Event('input', {
+                            bubbles: true
+                        }));
+                    }
                 }
             };
 
@@ -2424,16 +2424,14 @@
                 const plannedAmount = baseAmount + gstAmount;
                 let netPayable = plannedAmount - tdsAmount - conversionCost;
                 
-                // Fix rounding display in UI for split payments
-                const originalTotal = parseFloat(document.getElementById('editOriginalAmount').dataset.originalTotal || 0);
-                const originalBase = parseFloat(document.getElementById('editOriginalAmount').dataset.originalBase || document.getElementById('editOriginalAmount').value || 0);
-                if (originalTotal > 0 && Math.abs(netPayable - originalTotal) <= 1.00 && Math.abs(baseAmount - originalBase) <= 1.00) {
-                    netPayable = originalTotal;
-                }
+                // No more netPayable override. Let it be the exact calculated value.
                 
                 updateBreakdownText('incomePlannedBreakdown', baseAmount, gstAmount, tdsAmount, conversionCost, false);
 
-                if (source !== 'paid') {
+                if (source === 'init') {
+                    paidAmount = netPayable;
+                    if (paidAmountInput) paidAmountInput.value = paidAmount.toFixed(2);
+                } else if (source !== 'paid') {
                     const currentBalance = parseFloat(balanceAmountInput?.value) || 0;
                     paidAmount = Math.max(0, netPayable - currentBalance);
                     if (paidAmountInput) paidAmountInput.value = paidAmount.toFixed(2);
@@ -2525,6 +2523,37 @@
                 tdsPercentageInput.addEventListener('input', () => calculateEditTaxAndBalance('tds'));
             }
 
+            const editStatus = document.getElementById('editStatus');
+            if (editStatus) {
+                editStatus.addEventListener('change', function () {
+                    handleStatusBehavior('income-edit');
+                    if (this.value === 'settle') {
+                        // We don't auto-fill paid amount on settle anymore, to allow writing off balance
+                        // without changing the actual received amount.
+                    } else {
+                        // If switching to 'due', recalculate to restore balance
+                        if (typeof window.recalculateEditIncome === 'function') {
+                            window.recalculateEditIncome(false);
+                        }
+                    }
+                });
+            }
+
+            const editTdsStatus = document.getElementById('editTdsStatus');
+            if (editTdsStatus) {
+                editTdsStatus.addEventListener('change', function () {
+                    handleTdsStatusBehavior('editTdsStatus', 'editTdsReceipt');
+                });
+            }
+
+            if (balanceAmountInput) {
+                const observer = new MutationObserver(() => handleStatusBehavior('income-edit'));
+                observer.observe(balanceAmountInput, {
+                    attributes: true,
+                    attributeFilter: ['value']
+                });
+            }
+
             // Initial calculation - REMOVED to prevent overwriting saved values from DB
             // calculateEditTaxAndBalance();
             editIncomeListenersInitialized = true;
@@ -2562,6 +2591,11 @@
                 }
                 if (!upiNumber) {
                     alert('Please enter a UPI Phone number.');
+                    disabledElements.forEach(el => el.disabled = true);
+                    return;
+                }
+                if (!/^\d{10}$/.test(upiNumber)) {
+                    alert('UPI Phone number must be exactly 10 digits.');
                     disabledElements.forEach(el => el.disabled = true);
                     return;
                 }
@@ -3061,7 +3095,18 @@
                             <i class="bi bi-clock-history me-1"></i>View Full Split History
                         </button>
                     </div>
+                    </div>
                     ` : '';
+
+            // Calculate mathematical total
+            const mathematicalTotal = isSplit ? originalNetAmount : (
+                baseAmountForSplit 
+                + (parseFloat(invoice.original_gst_total) || gstTotal || 0) 
+                - (parseFloat(invoice.original_tds_total) || tdsTotal || 0) 
+                - (isUSD ? originalConversionCost : 0)
+            );
+            
+            const settledAmount = Math.max(0, mathematicalTotal - netPayable);
 
             // Format status badge
             const statusClass = getStatusBadgeClass(invoice.status);
@@ -3183,9 +3228,21 @@
                                         <tr class="total-row bg-light">
                                             <td colspan="3" class="text-end fs-5 fw-bold py-3">Total Receivable</td>
                                             <td class="text-end fs-5 fw-bold text-success py-3">
-                                                ${formatCurrency(isSplit ? originalNetAmount : netPayable, displayCurrency)}
+                                                ${formatCurrency(isSplit ? originalNetAmount : mathematicalTotal, displayCurrency)}
                                             </td>
                                         </tr>
+                                        ${(!isSplit && settledAmount > 0) ? `
+                                        <tr>
+                                            <td colspan="3" class="text-end text-muted fw-bold">Settled Amount / Written off</td>
+                                            <td class="text-end text-danger fw-bold">-${formatCurrency(settledAmount, displayCurrency)}</td>
+                                        </tr>
+                                        <tr class="total-row bg-light border-top border-secondary">
+                                            <td colspan="3" class="text-end fs-5 fw-bold py-3">Final Amount Received</td>
+                                            <td class="text-end fs-5 fw-bold text-success py-3">
+                                                ${formatCurrency(netPayable, displayCurrency)}
+                                            </td>
+                                        </tr>
+                                        ` : ''}
                                         ${isSplit ? `
                                         <tr>
                                             <td colspan="4" class="p-0 border-0">
@@ -3226,10 +3283,21 @@
                                     ` : ''}
                                     <hr class="my-2 border-secondary opacity-25">
                                 ` : ''}
-                                <div class="d-flex justify-content-between align-items-center">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
                                     <span class="fs-6 fw-bold">Total Receivable:</span>
-                                    <span class="fs-4 fw-bold text-success">${formatCurrency(isSplit ? originalNetAmount : netPayable, displayCurrency)}</span>
+                                    <span class="fs-4 fw-bold text-success">${formatCurrency(isSplit ? originalNetAmount : mathematicalTotal, displayCurrency)}</span>
                                 </div>
+                                ${(!isSplit && settledAmount > 0) ? `
+                                <div class="d-flex justify-content-between align-items-center mb-2 text-danger">
+                                    <span class="fw-bold">Settled Amount / Written off:</span>
+                                    <span class="fw-bold">-${formatCurrency(settledAmount, displayCurrency)}</span>
+                                </div>
+                                <hr class="my-2 border-secondary opacity-25">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="fs-6 fw-bold">Final Amount Received:</span>
+                                    <span class="fs-4 fw-bold text-success">${formatCurrency(netPayable, displayCurrency)}</span>
+                                </div>
+                                ` : ''}
                                 ${isSplit ? `
                                 <div class="mt-3 pt-2 border-top border-secondary border-opacity-25">
                                     ${currentSplitSummaryHtml}
@@ -3582,6 +3650,14 @@
                         });
                 });
             }
+
+            // Restrict UPI Phone Number inputs to 10 digits only
+            const upiInputs = document.querySelectorAll('input[name="upi_number"]');
+            upiInputs.forEach(input => {
+                input.addEventListener('input', function() {
+                    this.value = this.value.replace(/[^0-9]/g, '');
+                });
+            });
         });
     </script>
 

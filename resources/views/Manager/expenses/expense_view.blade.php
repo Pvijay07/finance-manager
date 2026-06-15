@@ -172,14 +172,18 @@
                                 <td class="ps-4 fw-medium">{{ $index + 1 }}</td>
                                 <td>#EXP-{{ $split->id }}</td>
                                 <td>{{ $itemSymbol }}{{ number_format($split->planned_amount, 2) }}</td>
-                                <td class="fw-bold text-danger">{{ $itemSymbol }}{{ number_format($split->actual_amount ?: $split->planned_amount, 2) }}</td>
+                                @php
+                                    $rowProportion = $displayTotal > 0 ? ($split->planned_amount / $displayTotal) : 1;
+                                    $rowBaseAmount = $displayBase * $rowProportion;
+                                @endphp
+                                <td class="fw-bold text-danger">{{ $itemSymbol }}{{ number_format($rowBaseAmount, 2) }}</td>
                                 <td>
                                     @php
                                         $splitStatusClass = match ($split->status) {
                                             'paid' => 'bg-success',
                                             'due' => 'bg-warning text-dark',
                                             'overdue' => 'bg-danger',
-                                            'settle' => 'bg-secondary',
+                                            'settle', 'settled' => 'bg-secondary',
                                             'convert to tds' => 'bg-info text-dark',
                                             default => 'bg-primary',
                                         };
@@ -190,7 +194,7 @@
                                 <td>{{ $split->due_date ? \Carbon\Carbon::parse($split->due_date)->format('d M Y') : 'N/A' }}</td>
                                 <td>{{ $split->paid_date ? \Carbon\Carbon::parse($split->paid_date)->format('d M Y') : 'N/A' }}</td>
                             </tr>
-                            @if($split->settle_notes)
+                            @if($split->status === 'settle' || $split->settle_notes)
                                 @php
                                     $showBalance = $loop->last ? $calculatedBalance : $split->balance_amount;
                                 @endphp

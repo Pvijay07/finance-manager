@@ -231,9 +231,21 @@ class ExpensesController extends Controller
   public function splitHistory($id)
   {
     try {
-      $expense = Expense::with(['parent', 'children' => function ($query) {
-        $query->orderBy('created_at', 'desc');
-      }])->findOrFail($id);
+      $expense = Expense::with(['parent', 'taxes', 'children' => function ($query) {
+        $query->orderBy('created_at', 'asc');
+      }, 'children.taxes'])->findOrFail($id);
+
+      // Helper to extract tax data from an expense
+      $getTaxData = function ($exp) {
+        $tdsTax = $exp->taxes->where('tax_type', 'tds')->first();
+        $gstTax = $exp->taxes->where('tax_type', 'gst')->first();
+        return [
+          'tds_amount' => $tdsTax ? $tdsTax->tax_amount : 0,
+          'tds_percentage' => $tdsTax ? $tdsTax->tax_percentage : 0,
+          'gst_amount' => $gstTax ? $gstTax->tax_amount : 0,
+          'gst_percentage' => $gstTax ? $gstTax->tax_percentage : 0,
+        ];
+      };
 
       $data = [
         'success' => true,
@@ -250,16 +262,26 @@ class ExpensesController extends Controller
 
       // If this expense has a parent, get parent details
       if ($expense->parent_id) {
-        $parent = $expense->parent()->with('children')->first();
+        $parent = $expense->parent()->with(['children.taxes', 'taxes'])->first();
         if ($parent) {
+          $parentTaxData = $getTaxData($parent);
+          // Calculate original base amount (before GST/TDS)
+          $originalTotal = $parent->schedule_amount ?? $parent->actual_amount ?? $parent->planned_amount;
+
           $data['parent_expense'] = [
             'id' => $parent->id,
             'expense_name' => $parent->expense_name,
             'planned_amount' => $parent->planned_amount,
+            'original_total' => $originalTotal,
             'created_at' => $parent->created_at->format('Y-m-d H:i:s'),
             'is_split' => $parent->is_split,
+            'tds_amount' => $parentTaxData['tds_amount'],
+            'tds_percentage' => $parentTaxData['tds_percentage'],
+            'gst_amount' => $parentTaxData['gst_amount'],
+            'gst_percentage' => $parentTaxData['gst_percentage'],
           ];
-          $data['children'] = $parent->children->map(function ($child) {
+          $data['children'] = $parent->children->map(function ($child) use ($getTaxData) {
+            $childTaxData = $getTaxData($child);
             return [
               'id' => $child->id,
               'expense_name' => $child->expense_name,
@@ -268,12 +290,31 @@ class ExpensesController extends Controller
               'paid_date' => $child->paid_date,
               'created_at' => $child->created_at->format('Y-m-d H:i:s'),
               'due_date' => $child->due_date,
+              'tds_amount' => $childTaxData['tds_amount'],
+              'gst_amount' => $childTaxData['gst_amount'],
             ];
           });
         }
       } else if ($expense->is_split && $expense->children->count() > 0) {
         // If this is a parent expense with children
-        $data['children'] = $expense->children->map(function ($child) {
+        $parentTaxData = $getTaxData($expense);
+        $originalTotal = $expense->schedule_amount ?? $expense->actual_amount ?? $expense->planned_amount;
+
+        $data['parent_expense'] = [
+          'id' => $expense->id,
+          'expense_name' => $expense->expense_name,
+          'planned_amount' => $expense->planned_amount,
+          'original_total' => $originalTotal,
+          'is_split' => $expense->is_split,
+          'created_at' => $expense->created_at->format('Y-m-d H:i:s'),
+          'tds_amount' => $parentTaxData['tds_amount'],
+          'tds_percentage' => $parentTaxData['tds_percentage'],
+          'gst_amount' => $parentTaxData['gst_amount'],
+          'gst_percentage' => $parentTaxData['gst_percentage'],
+        ];
+
+        $data['children'] = $expense->children->map(function ($child) use ($getTaxData) {
+          $childTaxData = $getTaxData($child);
           return [
             'id' => $child->id,
             'expense_name' => $child->expense_name,
@@ -282,22 +323,27 @@ class ExpensesController extends Controller
             'paid_date' => $child->paid_date,
             'created_at' => $child->created_at->format('Y-m-d H:i:s'),
             'due_date' => $child->due_date,
+            'tds_amount' => $childTaxData['tds_amount'],
+            'gst_amount' => $childTaxData['gst_amount'],
           ];
         });
       }
 
       // Calculate summary
-      $originalAmount = $expense->parent_id ?
-        ($data['parent_expense']['planned_amount'] ?? $expense->planned_amount) :
-        $expense->planned_amount;
+      $rootExpense = $expense->parent_id ? ($parent ?? $expense) : $expense;
+      $originalAmount = $rootExpense->planned_amount;
 
       $totalPaid = collect($data['children'])->where('status', 'paid')->sum('planned_amount');
       $totalBalance = collect($data['children'])->where('status', '!=', 'paid')->sum('planned_amount');
+
+      // Calculate TDS balance from unpaid splits
+      $tdsBalance = collect($data['children'])->where('status', '!=', 'paid')->sum('tds_amount');
 
       $data['summary'] = [
         'original_amount' => $originalAmount,
         'total_paid' => $totalPaid,
         'total_balance' => $totalBalance,
+        'tds_balance' => $tdsBalance,
         'split_count' => count($data['children']),
       ];
 
@@ -619,7 +665,7 @@ class ExpensesController extends Controller
       'payment_mode'   => 'nullable|in:cash,bank_transfer,cheque,upi,online',
       'bank_name'      => 'nullable|string|max:255',
       'upi_type'       => 'nullable|string|max:255',
-      'upi_number'     => 'nullable|string|max:20',
+      'upi_number'     => 'nullable|required_if:payment_mode,upi|string|max:10|regex:/^\d{1,10}$/',
       'party_name'     => 'nullable|string|max:255',
       'mobile_number'  => 'nullable|string|max:20',
       'notes'          => 'nullable|string',
@@ -755,9 +801,14 @@ class ExpensesController extends Controller
 
         // Calculate TDS proportion for split payment
         $tdsAmount = $request->tds_amount ?? 0;
+        $tdsPercentage = $request->tds_percentage ?? 0;
         if ($isSplitPayment && $tdsAmount > 0 && $plannedAmount > 0) {
-          // Pro-rate TDS based on paid amount
-          $tdsAmount = ($paidAmount / $plannedAmount) * $tdsAmount;
+          // Calculate TDS directly from percentage for accurate per-split values
+          if ($tdsPercentage > 0) {
+            $tdsAmount = ($paidAmount * $tdsPercentage) / 100;
+          } else {
+            $tdsAmount = ($paidAmount / $plannedAmount) * $tdsAmount;
+          }
         }
 
         if (method_exists($this, 'saveTax')) {
@@ -1091,7 +1142,7 @@ class ExpensesController extends Controller
       'payment_mode'           => 'nullable|string|in:cash,bank_transfer,cheque,upi,online',
       'bank_name'              => 'nullable|string|max:255',
       'upi_type'               => 'nullable|string|max:255',
-      'upi_number'             => 'nullable|string|max:20',
+      'upi_number'             => 'nullable|required_if:payment_mode,upi|string|max:10|regex:/^\d{1,10}$/',
       'split_payment'          => 'nullable|boolean',
       'create_new_for_balance' => 'nullable|boolean',
       'new_due_date'           => 'nullable|date',
@@ -1142,7 +1193,13 @@ class ExpensesController extends Controller
       $originalGstAmount = $request->gst_amount ?? 0;
       $originalTdsAmount = $request->tds_amount ?? 0;
 
-      $netPayableAmount = $originalPlannedAmount - $originalTdsAmount;
+      // For split child expenses, planned_amount is already net of TDS (payable),
+      // so we should NOT subtract TDS again. For original parent expenses,
+      // planned_amount = base + GST (gross), so we need to subtract TDS.
+      $isSplitChild = $expense->is_split || $expense->parent_id;
+      $netPayableAmount = $isSplitChild
+        ? $originalPlannedAmount
+        : ($originalPlannedAmount - $originalTdsAmount);
 
       // Check if this is a split payment
       $isSplitPayment = $request->status === 'due' &&
@@ -1153,12 +1210,19 @@ class ExpensesController extends Controller
       // If split payment, calculate proportional taxes
       $gstAmountForCurrent = $originalGstAmount;
       $tdsAmountForCurrent = $originalTdsAmount;
+      $tdsPercentage = $request->tds_percentage ?? 0;
+      $gstPercentage = $request->gst_percentage ?? 0;
 
-      if ($isSplitPayment && $originalPlannedAmount > 0) {
-        // Calculate proportion for taxes
-        $proportion = $paidAmount / $originalPlannedAmount;
+      if ($isSplitPayment && $netPayableAmount > 0) {
+        // Calculate proportion based on net payable
+        $proportion = $paidAmount / $netPayableAmount;
         $gstAmountForCurrent = $originalGstAmount * $proportion;
-        $tdsAmountForCurrent = $originalTdsAmount * $proportion;
+        // Calculate TDS directly from percentage for accurate per-split values
+        if ($tdsPercentage > 0) {
+          $tdsAmountForCurrent = ($paidAmount * $tdsPercentage) / 100;
+        } else {
+          $tdsAmountForCurrent = $originalTdsAmount * $proportion;
+        }
       }
 
       if ($isSplitPayment) {

@@ -74,6 +74,10 @@
                             <label class="text-muted small fw-bold mb-1">Due Date</label>
                             <div class="fw-medium text-dark">{{ $income->due_date ? \Carbon\Carbon::parse($income->due_date)->format('d M Y') : 'N/A' }}</div>
                         </div>
+                        <div class="col-sm-6 mt-4">
+                            <label class="text-muted small fw-bold mb-1">Paid Date</label>
+                            <div class="fw-medium text-dark">{{ $income->paid_date ? \Carbon\Carbon::parse($income->paid_date)->format('d M Y') : (($income->status === 'received' || $income->status === 'settle') && $income->income_date ? \Carbon\Carbon::parse($income->income_date)->format('d M Y') : 'N/A') }}</div>
+                        </div>
                         @if($income->notes)
                         <div class="col-12">
                             <label class="text-muted small fw-bold mb-1">Notes</label>
@@ -112,10 +116,15 @@
                                 }
                             }
                         }
+                        
+                        // Deduct conversion cost if it exists
+                        if(isset($original_conversion_cost) && $original_conversion_cost > 0) {
+                            $displayTotal -= $original_conversion_cost;
+                        }
                     @endphp
                     <div class="d-flex justify-content-between mb-3 border-bottom pb-2">
                         <span class="text-muted">Base Amount:</span>
-                        <span class="fw-bold">{{ $itemSymbol }}{{ fmod($displayBase, 1) == 0 ? number_format($displayBase, 0, '.', '') : number_format($displayBase, 2) }}</span>
+                        <span class="fw-bold">₹{{ fmod($displayBase, 1) == 0 ? number_format($displayBase, 0, '.', '') : number_format($displayBase, 2) }}</span>
                     </div>
                     
                     @if($rootIncome->taxes && $rootIncome->taxes->count() > 0)
@@ -126,15 +135,24 @@
                             <div class="d-flex justify-content-between mb-2">
                                 <span class="text-muted text-uppercase">{{ $tax->tax_type }} ({{ $tax->tax_percentage }}%):</span>
                                 <span class="fw-medium text-{{ $tax->tax_type == 'tds' ? 'danger' : 'primary' }}">
-                                    {{ $tax->tax_type == 'tds' ? '-' : '+' }}{{ $itemSymbol }}{{ fmod($originalTaxAmount, 1) == 0 ? number_format($originalTaxAmount, 0, '.', '') : number_format($originalTaxAmount, 2) }}
+                                    {{ $tax->tax_type == 'tds' ? '-' : '+' }}₹{{ fmod($originalTaxAmount, 1) == 0 ? number_format($originalTaxAmount, 0, '.', '') : number_format($originalTaxAmount, 2) }}
                                 </span>
                             </div>
                         @endforeach
                     @endif
+                    
+                    @if(isset($original_conversion_cost) && $original_conversion_cost > 0)
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Conversion Cost:</span>
+                            <span class="fw-medium text-danger">
+                                -₹{{ fmod($original_conversion_cost, 1) == 0 ? number_format($original_conversion_cost, 0, '.', '') : number_format($original_conversion_cost, 2) }}
+                            </span>
+                        </div>
+                    @endif
 
                     <div class="d-flex justify-content-between mt-4 pt-3 border-top border-dark">
                         <span class="text-dark fw-bold h5 mb-0">Total Amount:</span>
-                        <span class="text-success fw-bold h5 mb-0">{{ $itemSymbol }}{{ fmod($displayTotal, 1) == 0 ? number_format($displayTotal, 0, '.', '') : number_format($displayTotal, 2) }}</span>
+                        <span class="text-success fw-bold h5 mb-0">₹{{ fmod($displayTotal, 1) == 0 ? number_format($displayTotal, 0, '.', '') : number_format($displayTotal, 2) }}</span>
                     </div>
                 </div>
             </div>
@@ -166,7 +184,7 @@
                             <tr>
                                 <td class="ps-4 fw-medium">{{ $index + 1 }}</td>
                                 <td>#{{ $split->invoice_number ?? ('INC-' . $split->id) }}</td>
-                                <td class="fw-bold text-success">{{ $itemSymbol }}{{ fmod($split->amount, 1) == 0 ? number_format($split->amount, 0, '.', '') : number_format($split->amount, 2) }}</td>
+                                <td class="fw-bold text-success">₹{{ fmod($split->amount, 1) == 0 ? number_format($split->amount, 0, '.', '') : number_format($split->amount, 2) }}</td>
                                 <td>{{ $itemSymbol }}{{ fmod($split->actual_amount, 1) == 0 ? number_format($split->actual_amount, 0, '.', '') : number_format($split->actual_amount, 2) }}</td>
                                 <td>
                                     @php
@@ -183,13 +201,17 @@
                                 </td>
                                 <td>{{ \Carbon\Carbon::parse($split->created_at)->format('d M Y') }}</td>
                                 <td>{{ $split->due_date ? \Carbon\Carbon::parse($split->due_date)->format('d M Y') : 'N/A' }}</td>
-                                <td>{{ $split->paid_date ? \Carbon\Carbon::parse($split->paid_date)->format('d M Y') : 'N/A' }}</td>
+                                <td>{{ $split->paid_date ? \Carbon\Carbon::parse($split->paid_date)->format('d M Y') : (($split->status === 'received' || $split->status === 'settle') && $split->income_date ? \Carbon\Carbon::parse($split->income_date)->format('d M Y') : 'N/A') }}</td>
                             </tr>
-                            @if($split->balance_amount > 0 && $split->settle_notes)
+                            @if($split->status === 'settle' || $split->settle_notes)
+                                @php
+                                    $showBalance = $loop->last ? max(0, $displayTotal - $uniqueFamily->sum('amount')) : $split->balance_amount;
+                                @endphp
+                                @if($showBalance > 0)
                                 <tr class="table-light">
                                     <td colspan="2"></td>
                                     <td colspan="2">
-                                        <span class="fw-bold text-secondary">{{ $itemSymbol }}{{ fmod($split->balance_amount, 1) == 0 ? number_format($split->balance_amount, 0, '.', '') : number_format($split->balance_amount, 2) }}</span>
+                                        <span class="fw-bold text-secondary">₹{{ fmod($showBalance, 1) == 0 ? number_format($showBalance, 0, '.', '') : number_format($showBalance, 2) }}</span>
                                         <div class="text-muted small mt-1">({{ $split->settle_notes }})</div>
                                     </td>
                                     <td>
@@ -197,6 +219,7 @@
                                     </td>
                                     <td colspan="3"></td>
                                 </tr>
+                                @endif
                             @endif
                         @empty
                             <tr>
