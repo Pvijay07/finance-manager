@@ -45,7 +45,10 @@ class Expense extends Model
         'bank_name',
         'upi_type',
         'upi_number',
-        'original_amount'
+        'original_amount',
+        'schedule_amount',
+        'paid_amount',
+        'balance_amount'
     ];
 
     protected $casts = [

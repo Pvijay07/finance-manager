@@ -21,9 +21,13 @@ class Kernel extends ConsoleKernel
         $schedule->command('payments:check-overdue')
                  ->dailyAt('00:00');
 
-        // Generate compliance tasks monthly
-        $schedule->command('compliance:generate-tasks')
-                 ->monthlyOn(1, '00:10');
+        // Compliance tasks module is not implemented yet
+        // $schedule->command('compliance:generate-tasks')
+        //          ->monthlyOn(1, '00:10');
+
+        // Generate recurring incomes daily based on reminders
+        $schedule->command('income:generate-recurring')
+                 ->dailyAt('00:15');
     }
 
     protected function commands()

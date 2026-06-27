@@ -420,13 +420,23 @@
                                         {{ $type->due_day ?? 1 }}
                                     </td>
                                     <td style="padding: 14px 16px; text-align: center;">
+                                        @php
+                                            $statusColor = '#94a3b8'; // default gray
+                                            if (in_array($type->status, ['paid', 'settle', 'settled'])) {
+                                                $statusColor = '#10b981'; // green
+                                            } elseif ($type->status == 'upcoming') {
+                                                $statusColor = '#3b82f6'; // blue
+                                            } elseif ($type->status == 'pending') {
+                                                $statusColor = '#f59e0b'; // orange
+                                            }
+                                        @endphp
                                         <span
-                                            style="display: inline-block; padding: 4px 12px; background: {{ $type->status == 'upcoming' ? '#22c55e' : '#94a3b8' }}; color: white; border-radius: 12px; font-size: 12px; font-weight: 500;">
+                                            style="display: inline-block; padding: 4px 12px; background: {{ $statusColor }}; color: white; border-radius: 12px; font-size: 12px; font-weight: 500; text-transform: capitalize;">
                                             {{ $type->status }}
                                         </span>
                                     </td>
                                     <td style="padding: 14px 16px; text-align: center;">
-                                        @if ($type->status != 'paid' && !$type->is_split)
+                                        @if (!in_array($type->status, ['paid', 'settle', 'settled']) && !$type->is_split)
                                             <button class="btn-edit" onclick="editTemplate({{ $type->id }})"
                                                 style="padding: 6px 16px; background: white; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; font-size: 13px; color: #2563eb;">
                                                 Edit

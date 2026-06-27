@@ -298,7 +298,7 @@
                                     </td>
                                     <td>
                                         <div class="btn-group btn-group-sm">
-                                            @if ($income->status != 'received')
+                                            @if (!in_array($income->status, ['received', 'settle']))
 
                                                 <button class="btn btn-sm btn-outline-primary"
                                                     onclick="openEditIncomeModal({{ $income->id }})">
@@ -585,6 +585,7 @@
                                     onchange="handleStatusChange(this, 'dueDateContainer', 'dueDate')">
                                     <option value="due" selected>Due</option>
                                     <option value="settle">Settle</option>
+                                    <option value="paid" class="text-success" style="display:none;">Paid</option>
                                     <!-- <option value="convert_to_tds" id="addConvertToTdsOption">Convert to TDS</option> -->
                                 </select>
                             </div>
@@ -756,6 +757,7 @@
                                     <option value="" disabled>Select Status</option>
                                     <option value="due" selected>Due</option>
                                     <option value="settle">Settle</option>
+                                    <option value="paid" class="text-success" style="display:none;">Paid</option>
                                     <!-- <option value="convert_to_tds" id="convertToTdsOption">Convert to TDS</option> -->
                                 </select>
                             </div>
@@ -1713,7 +1715,7 @@
             }
         }
 
-        function calculateBalance() {
+        function calculateBalance(isReceivedAmountTrigger = false) {
             try {
                 console.log('Calculating balance...');
 
@@ -1728,11 +1730,27 @@
                 }
 
                 const grandTotal = parseFloat(grandTotalField.value) || 0;
-                const receivedAmount = parseFloat(receivedAmountField.value) || 0;
+                let receivedAmount = parseFloat(receivedAmountField.value) || 0;
                 const tdsAmount = parseFloat(tdsAmountField ? tdsAmountField.value : 0) || 0;
 
-                // Fixed logic: balance = (Grand Total - tds amount) - paid amount
-                const balance = (grandTotal - tdsAmount) - receivedAmount;
+                const netPayable = grandTotal - tdsAmount;
+
+                if (window.oldIncomeNetPayable === undefined) {
+                    window.oldIncomeNetPayable = 0;
+                }
+
+                // Only auto-fill if this calculation was NOT triggered by the user typing in received_amount
+                if (!isReceivedAmountTrigger) {
+                    if (Math.abs(receivedAmount - window.oldIncomeNetPayable) < 0.01 || receivedAmountField.value === "" || receivedAmountField.value === "0.00") {
+                        receivedAmount = Math.max(0, netPayable);
+                        receivedAmountField.value = receivedAmount.toFixed(2);
+                    }
+                }
+
+                window.oldIncomeNetPayable = netPayable;
+
+                // Fixed logic: balance = netPayable - paid amount
+                const balance = netPayable - receivedAmount;
                 const balanceVal = Math.max(0, balance);
 
                 console.log('Grand Total:', grandTotal, 'TDS:', tdsAmount, 'Received:', receivedAmount, 'Balance:', balanceVal);
@@ -1742,13 +1760,21 @@
                 const statusSelect = document.getElementById('status');
                 if (statusSelect) {
                     const statusContainer = statusSelect.closest('div[class^="col-"]');
-                    if (balanceVal <= 0.01) {
-                        if (statusContainer) statusContainer.style.display = 'none';
-                        statusSelect.value = 'settle';
-                        handleStatusChange(statusSelect, 'dueDateContainer', 'dueDate');
-                    } else {
+                    statusSelect.disabled = false;
+                    if (balanceVal > 0.01) {
                         if (statusContainer) statusContainer.style.display = 'block';
+                        if ((receivedAmount <= 0 && statusSelect.value !== 'settle') || !statusSelect.value || statusSelect.value === 'paid') {
+                            statusSelect.value = 'due';
+                        }
+                        statusSelect.required = true;
+                        statusSelect.setAttribute('required', 'required');
+                    } else {
+                        if (statusContainer) statusContainer.style.display = 'none';
+                        statusSelect.value = 'paid';
+                        statusSelect.required = false;
+                        statusSelect.removeAttribute('required');
                     }
+                    handleStatusChange(statusSelect, 'dueDateContainer', 'dueDate');
                 }
 
             } catch (error) {
@@ -1767,13 +1793,13 @@
                 const input = document.getElementById(id);
                 if (input) {
                     console.log('Adding listener to:', id);
-                    input.addEventListener('input', function () {
+                    input.addEventListener('input', function (event) {
                         if (id === 'received_amount') {
                             // When Amount Received changes, ONLY calculate balance
-                            calculateBalance();
+                            calculateBalance(true);
                         } else {
                             // When other fields change, calculate tax and then balance
-                            calculateTax();
+                            calculateTax(event);
                         }
                     });
                 } else {
@@ -1831,17 +1857,23 @@
         });
 
         function handleStatusBehavior(modalType) {
-            let statusId, balanceId, dueDateId;
+            let statusId, balanceId, dueDateId, paidDateId, paymentModeId, receiptsId;
 
             if (modalType === 'income-edit') {
                 statusId = 'editStatus';
                 balanceId = 'editBalanceAmount';
                 dueDateId = 'editDueDate';
+                paidDateId = 'editPaidDate';
+                paymentModeId = 'editPaymentMode';
+                receiptsId = 'editReceipts';
             }
 
             const statusEl = document.getElementById(statusId);
             const balanceEl = document.getElementById(balanceId);
             const dueDateEl = document.getElementById(dueDateId);
+            const paidDateEl = document.getElementById(paidDateId);
+            const paymentModeEl = document.getElementById(paymentModeId);
+            const receiptsEl = document.getElementById(receiptsId);
 
             if (!statusEl) return;
 
@@ -1850,6 +1882,24 @@
             if (balanceEl) {
                 balance = parseFloat(balanceEl.value) || 0;
             }
+
+            const togglePaymentFields = (isRequired) => {
+                if (paidDateEl) {
+                    paidDateEl.required = isRequired;
+                    if (isRequired) paidDateEl.setAttribute('required', 'required');
+                    else paidDateEl.removeAttribute('required');
+                }
+                if (paymentModeEl) {
+                    paymentModeEl.required = isRequired;
+                    if (isRequired) paymentModeEl.setAttribute('required', 'required');
+                    else paymentModeEl.removeAttribute('required');
+                }
+                if (receiptsEl) {
+                    receiptsEl.required = isRequired;
+                    if (isRequired) receiptsEl.setAttribute('required', 'required');
+                    else receiptsEl.removeAttribute('required');
+                }
+            };
 
             if (status === 'settle') {
                 if (balanceEl) {
@@ -1864,6 +1914,7 @@
                     dueDateEl.required = false;
                     dueDateEl.value = '';
                 }
+                togglePaymentFields(false);
             } else if (status === 'due' || status === 'pending' || status === 'overdue') {
                 if (dueDateEl) {
                     dueDateEl.disabled = false;
@@ -1873,11 +1924,13 @@
                         dueDateEl.required = false;
                     }
                 }
+                togglePaymentFields(false);
             } else {
                 if (dueDateEl) {
                     dueDateEl.disabled = false;
                     dueDateEl.required = false;
                 }
+                togglePaymentFields(true);
             }
         }
 
@@ -1982,6 +2035,8 @@
                     document.getElementById('editOriginalAmount').dataset.originalTotal = income.amount || 0;
                     document.getElementById('editOriginalAmount').dataset.originalBase = document.getElementById('editPlannedAmount').value;
                     document.getElementById('editOriginalAmount').dataset.conversionCost = income.conversion_cost || 0;
+                    document.getElementById('editOriginalAmount').dataset.originalGst = income.gst_amount || 0;
+                    document.getElementById('editOriginalAmount').dataset.originalTds = income.tds_amount || 0;
 
                     // Format dates
                     if (income.paid_date) {
@@ -2087,11 +2142,12 @@
 
                     if (gstCheckbox) {
                         gstCheckbox.checked = hasGst;
-                        gstCheckbox.disabled = isStandardIncome;
+                        gstCheckbox.style.pointerEvents = 'none';
+                        gstCheckbox.onclick = function() { return false; };
                     }
                     if (gstPercentageInput) {
                         gstPercentageInput.value = income.gst_percentage || 18;
-                        gstPercentageInput.disabled = isStandardIncome || !hasGst;
+                        gstPercentageInput.readOnly = true;
                     }
                     if (gstAmountInput) {
                         gstAmountInput.value = income.gst_amount || 0;
@@ -2105,11 +2161,12 @@
 
                     if (tdsCheckbox) {
                         tdsCheckbox.checked = hasTds;
-                        tdsCheckbox.disabled = isStandardIncome;
+                        tdsCheckbox.style.pointerEvents = 'none';
+                        tdsCheckbox.onclick = function() { return false; };
                     }
                     if (tdsPercentageInput) {
                         tdsPercentageInput.value = income.tds_percentage || 10;
-                        tdsPercentageInput.disabled = isStandardIncome || !hasTds;
+                        tdsPercentageInput.readOnly = true;
                     }
                     if (tdsAmountInput) {
                         tdsAmountInput.value = income.tds_amount || 0;
@@ -2266,7 +2323,10 @@
                                                 #${child.id}
                                             </span>
                                         </td>
-                                        <td>₹${parseFloat(child.planned_amount).toFixed(2)}</td>
+                                        <td>
+                                            ₹${parseFloat(child.planned_amount).toFixed(2)}
+                                            ${child.status === 'settle' && child.settle_notes ? `<div class="text-muted small mt-1">(${child.settle_notes})</div>` : ''}
+                                        </td>
                                         ${!isUSD ? `
                                         <td>₹${parseFloat(child.gst_amount || 0).toFixed(2)}</td>
                                         <td>₹${parseFloat(child.tds_amount || 0).toFixed(2)}</td>
@@ -2282,26 +2342,7 @@
                                     </tr>
                                 `;
                             
-                            if (child.status === 'settle' || child.settle_notes) {
-                                let balanceAmt = parseFloat(child.balance_amount || 0).toFixed(2);
-                                let notes = child.settle_notes ? `(${child.settle_notes})` : '';
-                                if (parseFloat(balanceAmt) > 0) {
-                                    historyHTML += `
-                                        <tr class="table-light">
-                                            <td colspan="2"></td>
-                                            <td colspan="2">
-                                                <span class="fw-bold text-secondary">₹${balanceAmt}</span>
-                                                <div class="text-muted small mt-1">${notes}</div>
-                                            </td>
-                                            ${!isUSD ? `<td colspan="2"></td>` : ''}
-                                            <td>
-                                                <span class="badge bg-secondary">Settled</span>
-                                            </td>
-                                            <td colspan="3"></td>
-                                        </tr>
-                                    `;
-                                }
-                            }
+
                         });
 
                         historyHTML += `
@@ -2424,7 +2465,19 @@
                 const plannedAmount = baseAmount + gstAmount;
                 let netPayable = plannedAmount - tdsAmount - conversionCost;
                 
-                // No more netPayable override. Let it be the exact calculated value.
+                // Use original exact net amount if base hasn't been manually altered and taxes haven't changed, 
+                // to prevent floating point/rounding issues from conversion_cost
+                const originalBase = parseFloat(document.getElementById('editOriginalAmount').dataset.originalBase || 0);
+                const originalNet = parseFloat(document.getElementById('editOriginalAmount').dataset.originalTotal || 0);
+                const originalGst = parseFloat(document.getElementById('editOriginalAmount').dataset.originalGst || 0);
+                const originalTds = parseFloat(document.getElementById('editOriginalAmount').dataset.originalTds || 0);
+                
+                if (Math.abs(baseAmount - originalBase) < 0.01 && 
+                    Math.abs(gstAmount - originalGst) < 0.01 && 
+                    Math.abs(tdsAmount - originalTds) < 0.01 && 
+                    originalNet > 0) {
+                    netPayable = originalNet;
+                }
                 
                 updateBreakdownText('incomePlannedBreakdown', baseAmount, gstAmount, tdsAmount, conversionCost, false);
 
@@ -2467,17 +2520,21 @@
                     const statusSelect = document.getElementById('editStatus');
                     if (statusSelect) {
                         const statusContainer = statusSelect.closest('div[class^="col-"]');
-                        if (balanceVal <= 0.01) {
-                            if (statusContainer) statusContainer.style.display = 'none';
-                            statusSelect.value = 'settle';
-                            handleStatusChange(statusSelect, 'editDueDateContainer', 'editDueDate');
-                        } else {
+                        statusSelect.disabled = false;
+                        if (balanceVal > 0.01) {
                             if (statusContainer) statusContainer.style.display = 'block';
-                            if (statusSelect.value === 'settle') {
+                            if ((paidAmount <= 0 && statusSelect.value !== 'settle') || !statusSelect.value || statusSelect.value === 'paid') {
                                 statusSelect.value = 'due';
                             }
-                            handleStatusChange(statusSelect, 'editDueDateContainer', 'editDueDate');
+                            statusSelect.required = true;
+                            statusSelect.setAttribute('required', 'required');
+                        } else {
+                            if (statusContainer) statusContainer.style.display = 'none';
+                            statusSelect.value = 'paid';
+                            statusSelect.required = false;
+                            statusSelect.removeAttribute('required');
                         }
+                        handleStatusChange(statusSelect, 'editDueDateContainer', 'editDueDate');
                     }
 
                     handleStatusBehavior('income-edit');
@@ -3041,7 +3098,8 @@
                 ? parseFloat(invoice.original_total_amount) 
                 : (baseAmountForSplit + (parseFloat(invoice.original_gst_total) || 0) - (parseFloat(invoice.original_tds_total) || 0) - (isUSD ? originalConversionCost : 0));
                 
-            const pendingAmount = originalNetAmount - (parseFloat(invoice.total_paid_amount) || 0);
+            const totalSettledOverall = parseFloat(invoice.total_settled_amount) || 0;
+            const pendingAmount = originalNetAmount - (parseFloat(invoice.total_paid_amount) || 0) - totalSettledOverall;
 
             const currentSplitBase = parseFloat(invoice.actual_amount) || subtotal;
             const actualConversionRate = (invoice.currency === 'USD' && parseFloat(invoice.original_currency_amount || 0) > 0) 
@@ -3086,6 +3144,12 @@
                         <span class="small text-muted">Total Paid Overall:</span>
                         <span class="small fw-bold text-success">${formatCurrency(invoice.total_paid_amount, displayCurrency)}</span>
                     </div>
+                    ${(totalSettledOverall > 0) ? `
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="small text-muted">Total Settled Overall:</span>
+                        <span class="small fw-bold text-danger">-${formatCurrency(totalSettledOverall, displayCurrency)}</span>
+                    </div>
+                    ` : ''}
                     <div class="d-flex justify-content-between mb-2">
                         <span class="small text-muted">Total Pending Overall:</span>
                         <span class="small fw-bold text-danger">${formatCurrency(parseFloat(pendingAmount), displayCurrency)}</span>

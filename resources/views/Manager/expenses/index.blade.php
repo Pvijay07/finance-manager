@@ -430,12 +430,12 @@
                                                         ? 'standard_editable'
                                                         : 'non-standard');
                                             @endphp
-                                            @if ($expense->status != 'paid')
-                                                <button class="btn btn-outline-primary"
-                                                    onclick="editExpense({{ $expense->id }}, '{{ $expenseType }}')">
-                                                    <i class="fas fa-edit"></i>
-                                                </button>
-                                            @endif
+                                           @if (!in_array($expense->status, ['paid', 'settle']))
+    <button class="btn btn-outline-primary"
+        onclick="editExpense({{ $expense->id }}, '{{ $expenseType }}')">
+        <i class="fas fa-edit"></i>
+    </button>
+@endif
 
                                             @if (count($expense->receipts ?? []) > 0)
                                                 <button class="btn btn-outline-info" onclick="viewReceipts({{ $expense->id }})">
@@ -594,6 +594,7 @@
                                         <option value="" selected disabled>Select Status</option>
                                         <option value="due" class="text-warning" selected>Due</option>
                                         <option value="settle" class="text-info">Settle</option>
+                                        <option value="paid" class="text-success" style="display:none;">Paid</option>
                                         <!-- <option value="convert_to_tds">Convert to TDS</option> -->
                                     </select>
                                 </div>
@@ -617,7 +618,7 @@
                                 <div class="col-auto">
                                     <div class="form-check" style="margin-top: 32px;">
                                         <input class="form-check-input" type="checkbox" id="editApplyGst" name="apply_gst"
-                                            value="1" checked>
+                                            value="1" checked style="pointer-events: none;" onclick="return false;">
                                         <label class="form-check-label" for="editApplyGst">GST</label>
                                     </div>
                                 </div>
@@ -625,7 +626,7 @@
                                     <label class="form-label">GST %</label>
                                     <div class="input-group">
                                         <input type="number" class="form-control" id="editGstPercentage"
-                                            name="gst_percentage" value="18" min="0" max="100" step="0.01">
+                                            name="gst_percentage" value="18" min="0" max="100" step="0.01" readonly>
                                         <span class="input-group-text">%</span>
                                     </div>
                                 </div>
@@ -643,7 +644,7 @@
                                 <div class="col-auto">
                                     <div class="form-check" style="margin-top: 32px;">
                                         <input class="form-check-input" type="checkbox" id="editApplyTds" name="apply_tds"
-                                            value="1" checked>
+                                            value="1" checked style="pointer-events: none;" onclick="return false;">
                                         <label class="form-check-label" for="editApplyTds">TDS</label>
                                     </div>
                                 </div>
@@ -651,7 +652,7 @@
                                     <label class="form-label">TDS %</label>
                                     <div class="input-group">
                                         <input type="number" class="form-control" id="editTdsPercentage"
-                                            name="tds_percentage" value="10" min="0" max="100" step="0.01">
+                                            name="tds_percentage" value="10" min="0" max="100" step="0.01" readonly>
                                         <span class="input-group-text">%</span>
                                     </div>
                                 </div>
@@ -968,20 +969,6 @@
                         <!-- Add these hidden inputs for split payment in your form -->
                         <input type="hidden" name="split_payment" id="split_payment" value="0">
                         <input type="hidden" name="create_new_for_balance" id="create_new_for_balance" value="0">
-
-                        <!-- Add this section after the Status & Payment Date section -->
-                        <div class="row g-3 mb-3" id="splitPaymentSection" style="display: none;">
-                            <div class="col-md-6">
-                                <label class="form-label">New Due Date for Balance</label>
-                                <input type="date" class="form-control" name="new_due_date"
-                                    value="{{ date('Y-m-d', strtotime('+30 days')) }}">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Balance Expense Notes</label>
-                                <textarea class="form-control" name="balance_notes" rows="2"
-                                    placeholder="Notes for balance expense..."></textarea>
-                            </div>
-                        </div>
                         <!-- Status & Payment Date -->
                         <div class="row g-3 mb-3">
                             <div class="col-md-3">
@@ -995,6 +982,7 @@
                                     <option value="" selected disabled>Select Status</option>
                                     <option value="due" class="text-warning">Due</option>
                                     <option value="settle" class="text-info">Settle</option>
+                                    <option value="paid" class="text-success" style="display:none;">Paid</option>
                                 </select>
                             </div>
                             <div class="col-md-3" id="addSettleNotesContainer" style="display:none;">
@@ -1167,6 +1155,7 @@
                                     <option value="" selected disabled>Select Status</option>
                                     <option value="due" class="text-warning">Due</option>
                                     <option value="settle" class="text-info">Settle</option>
+                                    <option value="paid" class="text-success" style="display:none;">Paid</option>
                                     <!-- <option value="convert_to_tds">Convert to TDS</option> -->
                                 </select>
                             </div>
@@ -1206,7 +1195,7 @@
                                 <div class="col-auto">
                                     <div class="form-check" style="margin-top: 32px;">
                                         <input class="form-check-input" type="checkbox" id="fixedApplyGst" name="apply_gst"
-                                            value="1" checked>
+                                            value="1" checked style="pointer-events: none;" onclick="return false;">
                                         <label class="form-check-label" for="fixedApplyGst">GST <i
                                                 class="fas fa-lock ms-1 small text-muted"></i></label>
                                     </div>
@@ -1233,7 +1222,7 @@
                                 <div class="col-auto">
                                     <div class="form-check" style="margin-top: 32px;">
                                         <input class="form-check-input" type="checkbox" id="fixedApplyTds" name="apply_tds"
-                                            value="1" checked>
+                                            value="1" checked style="pointer-events: none;" onclick="return false;">
                                         <label class="form-check-label" for="fixedApplyTds">TDS <i
                                                 class="fas fa-lock ms-1 small text-muted"></i></label>
                                     </div>
@@ -1420,6 +1409,7 @@
                                         <option value="" selected disabled>Select Status</option>
                                         <option value="due" class="text-warning">Due</option>
                                         <option value="settle" class="text-info">Settle</option>
+                                        <option value="paid" class="text-success" style="display:none;">Paid</option>
                                         <!-- <option value="convert_to_tds">Convert to TDS</option> -->
                                     </select>
                                 </div>
@@ -1442,7 +1432,7 @@
                                 <div class="col-auto">
                                     <div class="form-check" style="margin-top: 32px;">
                                         <input class="form-check-input" type="checkbox" id="editableApplyGst"
-                                            name="apply_gst" value="1" checked>
+                                            name="apply_gst" value="1" checked style="pointer-events: none;" onclick="return false;">
                                         <label class="form-check-label" for="editableApplyGst">GST</label>
                                     </div>
                                 </div>
@@ -1450,7 +1440,7 @@
                                     <label class="form-label">GST %</label>
                                     <div class="input-group">
                                         <input type="number" class="form-control" id="editableGstPercentage"
-                                            name="gst_percentage" value="18" min="0" max="100" step="0.01">
+                                            name="gst_percentage" value="18" min="0" max="100" step="0.01" readonly>
                                         <span class="input-group-text">%</span>
                                     </div>
                                 </div>
@@ -1468,7 +1458,7 @@
                                 <div class="col-auto">
                                     <div class="form-check" style="margin-top: 32px;">
                                         <input class="form-check-input" type="checkbox" id="editableApplyTds"
-                                            name="apply_tds" value="1" checked>
+                                            name="apply_tds" value="1" checked style="pointer-events: none;" onclick="return false;">
                                         <label class="form-check-label" for="editableApplyTds">TDS</label>
                                     </div>
                                 </div>
@@ -1476,7 +1466,7 @@
                                     <label class="form-label">TDS %</label>
                                     <div class="input-group">
                                         <input type="number" class="form-control" id="editableTdsPercentage"
-                                            name="tds_percentage" value="10" min="0" max="100" step="0.01">
+                                            name="tds_percentage" value="10" min="0" max="100" step="0.01" readonly>
                                         <span class="input-group-text">%</span>
                                     </div>
                                 </div>
@@ -2025,7 +2015,7 @@
                 const statusContainer = statusField.closest('div[class^="col-"]');
                 if (balance > 0.01) {
                     if (statusContainer) statusContainer.style.display = 'block';
-                    if (finalPaid <= 0 || !statusField.value || statusField.value === 'settle') {
+                    if (statusField.value === 'paid' || !statusField.value || (finalPaid <= 0 && statusField.value !== 'settle')) {
                         statusField.value = 'due';
                     }
                     statusField.required = true;
@@ -2034,6 +2024,7 @@
                     if (label && !label.innerHTML.includes('*')) label.innerHTML += ' <span class="text-danger">*</span>';
                 } else {
                     if (statusContainer) statusContainer.style.display = 'none';
+                    statusField.value = 'paid';
                     statusField.required = false;
                     statusField.removeAttribute('required');
                     const label = statusField.previousElementSibling;
@@ -2155,13 +2146,14 @@
                 const statusContainer = statusField.closest('div[class^="col-"]');
                 if (balance > 0.01) {
                     if (statusContainer) statusContainer.style.display = 'block';
-                    if (paidAmount <= 0 || !statusField.value || statusField.value === 'settle') {
+                    if ((paidAmount <= 0 && statusField.value !== 'settle') || !statusField.value) {
                         statusField.value = 'due';
                     }
                     statusField.required = true;
                     statusField.setAttribute('required', 'required');
                 } else {
                     if (statusContainer) statusContainer.style.display = 'none';
+                    statusField.value = 'paid';
                     statusField.required = false;
                     statusField.removeAttribute('required');
                 }
@@ -2291,13 +2283,14 @@
                 const statusContainer = statusField.closest('div[class^="col-"]');
                 if (balanceAmount > 0.01) {
                     if (statusContainer) statusContainer.style.display = 'block';
-                    if (actualAmount <= 0 || !statusField.value || statusField.value === 'settle') {
+                    if ((actualAmount <= 0 && statusField.value !== 'settle') || !statusField.value) {
                         statusField.value = 'due';
                     }
                     statusField.required = true;
                     statusField.setAttribute('required', 'required');
                 } else {
                     if (statusContainer) statusContainer.style.display = 'none';
+                    statusField.value = 'paid';
                     statusField.required = false;
                     statusField.removeAttribute('required');
                 }
@@ -2351,13 +2344,14 @@
                     statusDropdown.disabled = false;
                     if (balance > 0.01) {
                         if (statusContainer) statusContainer.style.display = 'block';
-                        if (paidAmount <= 0 || !statusDropdown.value) {
+                        if (statusDropdown.value === 'paid' || !statusDropdown.value || (paidAmount <= 0 && statusDropdown.value !== 'settle')) {
                             statusDropdown.value = 'due';
                         }
                         statusDropdown.required = true;
                         statusDropdown.setAttribute('required', 'required');
                     } else {
                         if (statusContainer) statusContainer.style.display = 'none';
+                        statusDropdown.value = 'paid';
                         statusDropdown.required = false;
                         statusDropdown.removeAttribute('required');
                     }
@@ -2802,8 +2796,8 @@
                     document.getElementById('editFixedApplyGstHidden').value = "0";
                 }
                 if (fixedGstPercentage) {
-                    fixedGstPercentage.value = 0;
-                    fixedGstPercentage.disabled = false;
+                    fixedGstPercentage.value = 18; // Set default so checking box calculates
+                    fixedGstPercentage.readOnly = true;
                 }
                 if (fixedGstAmount) {
                     fixedGstAmount.value = '0.00';
@@ -2851,8 +2845,8 @@
                     document.getElementById('editFixedApplyTdsHidden').value = "0";
                 }
                 if (fixedTdsPercentage) {
-                    fixedTdsPercentage.value = 0;
-                    fixedTdsPercentage.disabled = false;
+                    fixedTdsPercentage.value = 10;
+                    fixedTdsPercentage.readOnly = true;
                 }
                 if (fixedTdsAmount) {
                     fixedTdsAmount.value = '0.00';
@@ -3067,11 +3061,11 @@
                 if (editableApplyGst) {
                     editableApplyGst.checked = false;
                     editableApplyGst.disabled = false;
-                    editableApplyGst.style.pointerEvents = 'auto'; // Re-enable interaction
+                    editableApplyGst.style.pointerEvents = 'none'; // Prevent interaction
                 }
                 if (editableGstPercentage) {
                     editableGstPercentage.value = 18; // Set default so checking box calculates
-                    editableGstPercentage.readOnly = false; // Allow interaction
+                    editableGstPercentage.readOnly = true; // Prevent interaction
                 }
                 if (editableGstAmount) {
                     editableGstAmount.value = '0.00';
@@ -3111,11 +3105,11 @@
                 if (editableApplyTds) {
                     editableApplyTds.checked = false;
                     editableApplyTds.disabled = false;
-                    editableApplyTds.style.pointerEvents = 'auto'; // Re-enable interaction
+                    editableApplyTds.style.pointerEvents = 'none'; // Prevent interaction
                 }
                 if (editableTdsPercentage) {
                     editableTdsPercentage.value = 10; // Set default so checking box calculates
-                    editableTdsPercentage.readOnly = false; // Allow interaction
+                    editableTdsPercentage.readOnly = true; // Prevent interaction
                 }
                 if (editableTdsAmount) {
                     editableTdsAmount.value = '0.00';
@@ -3676,8 +3670,30 @@
                 }
             }
 
-            // Toggling dynamic required attributes and asterisks on payment fields based on status
-            if (status === 'settle' || status === 'due' || !status) {
+            let paidAmount = 0;
+            let paidAmountInputId;
+            if (modalType === 'non-standard') paidAmountInputId = 'editPaidAmount';
+            else if (modalType === 'fixed') paidAmountInputId = 'editFixedActualAmount';
+            else if (modalType === 'editable') paidAmountInputId = 'editEditableActualAmount';
+            else if (modalType === 'non-standard-add') paidAmountInputId = 'paid_amount';
+
+            if (paidAmountInputId) {
+                const paidAmountInput = document.getElementById(paidAmountInputId);
+                if (paidAmountInput) paidAmount = parseFloat(paidAmountInput.value) || 0;
+            }
+
+            let hasReceipts = false;
+            if (modalType !== 'non-standard-add') {
+                const receiptsSection = document.getElementById('existingReceiptsSection');
+                if (receiptsSection && receiptsSection.style.display !== 'none') {
+                    hasReceipts = true;
+                }
+            }
+
+            const isPaymentRequired = (status === 'paid' || status === 'upcoming' || status === 'pending' || status === 'overdue' || paidAmount > 0);
+
+            // Toggling dynamic required attributes and asterisks on payment fields based on status or paid amount
+            if (!isPaymentRequired) {
                 [receiptFileEl, paymentModeEl, paidDateEl].forEach(el => {
                     if (el) {
                         el.required = false;
@@ -3688,8 +3704,8 @@
                         }
                     }
                 });
-            } else if (status === 'paid' || status === 'upcoming' || status === 'pending' || status === 'overdue') {
-                [receiptFileEl, paymentModeEl, paidDateEl].forEach(el => {
+            } else {
+                [paymentModeEl, paidDateEl].forEach(el => {
                     if (el) {
                         el.required = true;
                         el.setAttribute('required', 'required');
@@ -3699,6 +3715,24 @@
                         }
                     }
                 });
+                
+                if (receiptFileEl) {
+                    if (!hasReceipts) {
+                        receiptFileEl.required = true;
+                        receiptFileEl.setAttribute('required', 'required');
+                        const label = receiptFileEl.closest('.form-group') ? receiptFileEl.closest('.form-group').querySelector('.form-label') : (receiptFileEl.closest('[class*="col-"]') ? receiptFileEl.closest('[class*="col-"]').querySelector('.form-label') : null);
+                        if (label && !label.innerHTML.includes('*')) {
+                            label.innerHTML += ' <span class="text-danger">*</span>';
+                        }
+                    } else {
+                        receiptFileEl.required = false;
+                        receiptFileEl.removeAttribute('required');
+                        const label = receiptFileEl.closest('.form-group') ? receiptFileEl.closest('.form-group').querySelector('.form-label') : (receiptFileEl.closest('[class*="col-"]') ? receiptFileEl.closest('[class*="col-"]').querySelector('.form-label') : null);
+                        if (label) {
+                            label.innerHTML = label.innerHTML.replace(' <span class="text-danger">*</span>', '');
+                        }
+                    }
+                }
             }
 
             // Add receipt requirement check
@@ -3856,41 +3890,7 @@
             }
         }
 
-        document.addEventListener('DOMContentLoaded', function () {
-            const statusSelect = document.getElementById('payment_status');
-            const paidAmountInput = document.getElementById('paid_amount');
-            const grandTotalInput = document.getElementById('grand_total');
-            const splitPaymentSection = document.getElementById('splitPaymentSection');
 
-            function checkSplitPayment() {
-                const status = statusSelect.value;
-                const paidAmount = parseFloat(paidAmountInput.value) || 0;
-                const grandTotal = parseFloat(grandTotalInput.value) || 0;
-
-                console.log(status === 'paid' && paidAmount > 0 && paidAmount < grandTotal)
-                console.log(paidAmount)
-                console.log(grandTotal)
-                console.log(status)
-                if (status === 'paid' && paidAmount > 0 && paidAmount < grandTotal) {
-                    splitPaymentSection.style.display = 'block';
-                    document.getElementById('split_payment').value = '1';
-                    document.getElementById('create_new_for_balance').value = '1';
-                } else {
-                    splitPaymentSection.style.display = 'none';
-                    document.getElementById('split_payment').value = '0';
-                    document.getElementById('create_new_for_balance').value = '0';
-                }
-            }
-
-            // Add event listeners with null checks
-            if (statusSelect) statusSelect.addEventListener('change', checkSplitPayment);
-            if (paidAmountInput) paidAmountInput.addEventListener('input', checkSplitPayment);
-
-            // Initial check
-            if (statusSelect && paidAmountInput && grandTotalInput) {
-                checkSplitPayment();
-            }
-        });
         // View split history
         async function viewSplitHistory(expenseId) {
             try {
@@ -3970,9 +3970,12 @@
                                                                                                                                                                                                 #${child.id}
                                                                                                                                                                                             </span>
                                                                                                                                                                                         </td>
-                                                                                                                                                                                        <td>₹${parseFloat(child.planned_amount).toFixed(2)}</td>
-                                                                                                                                                                                        <td>₹${parseFloat(child.gst_amount || 0).toFixed(2)}</td>
-                                                                                                                                                                                        <td>₹${parseFloat(child.tds_amount || 0).toFixed(2)}</td>
+                                                                                                                                                                                        <td>
+                                                                                                                                                                                            ₹${parseFloat(child.planned_amount).toFixed(2)}
+                                                                                                                                                                                            ${child.status === 'settle' && child.settle_notes ? `<div class="text-muted small mt-1">(${child.settle_notes})</div>` : ''}
+                                                                                                                                                                                        </td>
+                                                                                                                                                                                        <td>${child.status === 'settle' ? '-' : '₹' + parseFloat(child.gst_amount || 0).toFixed(2)}</td>
+                                                                                                                                                                                        <td>${child.status === 'settle' ? '-' : '₹' + parseFloat(child.tds_amount || 0).toFixed(2)}</td>
                                                                                                                                                                                         <td>
                                                                                                                                                                                             <span class="badge bg-${statusClass}">
                                                                                                                                                                                                 ${child.status}
@@ -3984,25 +3987,7 @@
                                                                                                                                                                                     </tr>
                                                                                                                                                                                 `;
                             
-                            if (child.status === 'settle' || child.settle_notes) {
-                                let balanceAmt = parseFloat(child.balance_amount || 0).toFixed(2);
-                                let notes = child.settle_notes ? `(${child.settle_notes})` : '';
-                                if (parseFloat(balanceAmt) > 0) {
-                                    historyHTML += `
-                                        <tr class="table-light">
-                                            <td colspan="2"></td>
-                                            <td colspan="3">
-                                                <span class="fw-bold text-secondary">₹${balanceAmt}</span>
-                                                <div class="text-muted small mt-1">${notes}</div>
-                                            </td>
-                                            <td>
-                                                <span class="badge bg-secondary">Settled</span>
-                                            </td>
-                                            <td colspan="2"></td>
-                                        </tr>
-                                    `;
-                                }
-                            }
+
                         });
 
                         historyHTML += `

@@ -50,8 +50,12 @@ class StandardExpensesController extends Controller
     $templates->getCollection()->transform(function($item) {
         $today = Carbon::today();
         $dueDate = Carbon::parse($item->due_date);
-        if ($item->source === 'standard' && $dueDate->isPast()) {
-            $item->status = 'upcoming';
+        if ($item->source === 'standard' && !in_array($item->status, ['paid', 'settle', 'settled'])) {
+            if ($dueDate->isPast()) {
+                $item->status = 'pending';
+            } else {
+                $item->status = 'upcoming';
+            }
         }
         return $item;
     });
@@ -372,6 +376,7 @@ class StandardExpensesController extends Controller
 
     ]);
   }
+
   public function edit($id)
   {
     try {
@@ -437,8 +442,7 @@ class StandardExpensesController extends Controller
       'gst_amount'     => 'nullable|numeric|min:0',
       'tds_amount'     => 'nullable|numeric|min:0',
     ]);
-    // echo $request->is_active;
-    // die;
+   ;
     try {
       DB::beginTransaction();
 
@@ -473,7 +477,9 @@ class StandardExpensesController extends Controller
         'status'         => 'upcoming',
         'due_date'       => Carbon::now()->day((int)$request->due_day < Carbon::now()->day ? Carbon::now()->addMonth()->day : Carbon::now()->day)
           ->day(min((int)$request->due_day, Carbon::now()->daysInMonth))
-          ->format('Y-m-d')
+          ->format('Y-m-d'),
+        'original_amount'=> $request->actual_amount,
+
       ]);
 
       // Handle GST Tax
@@ -669,6 +675,7 @@ class StandardExpensesController extends Controller
       return 'upcoming';
     }
   }
+
   public function getReceipts($id)
   {
     try {
@@ -785,4 +792,5 @@ class StandardExpensesController extends Controller
       ], 500);
     }
   }
+  
 }

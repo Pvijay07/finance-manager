@@ -279,7 +279,7 @@ class TDSController extends Controller
         // Apply vendor filter
         if ($vendorId !== 'all') {
             $query->whereHas('taxable', function ($q) use ($vendorId) {
-                $q->where('vendor_id', $vendorId);
+                $q->where('party_name', $vendorId);
             });
         }
 
@@ -314,7 +314,7 @@ class TDSController extends Controller
 
         // Apply vendor filter
         if ($vendorId !== 'all') {
-            $purchaseQuery->where('vendor_id', $vendorId);
+            $purchaseQuery->where('party_name', $vendorId);
         }
 
         // Apply status filter to purchase invoices
@@ -382,7 +382,13 @@ class TDSController extends Controller
 
             // Dropdowns
             'companies' => $this->getUserCompanies(),
-            'vendors' => [],
+            'vendors' => Expense::whereNotNull('party_name')
+                ->where('party_name', '!=', '')
+                ->whereIn('company_id', $companyIds)
+                ->select('party_name as id', 'party_name as name')
+                ->distinct()
+                ->orderBy('party_name')
+                ->get(),
         ]);
 
         return view('Manager.tds_expense', $data);

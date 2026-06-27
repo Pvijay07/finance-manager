@@ -171,9 +171,17 @@
                             <tr>
                                 <td class="ps-4 fw-medium">{{ $index + 1 }}</td>
                                 <td>#EXP-{{ $split->id }}</td>
-                                <td>{{ $itemSymbol }}{{ number_format($split->planned_amount, 2) }}</td>
                                 @php
-                                    $rowProportion = $displayTotal > 0 ? ($split->planned_amount / $displayTotal) : 1;
+                                    $displayAmount = ($split->is_split || $split->parent_id) ? $split->planned_amount : $displayTotal;
+                                @endphp
+                                <td class="fw-bold text-dark">
+                                    {{ $itemSymbol }}{{ fmod($displayAmount, 1) == 0 ? number_format($displayAmount, 0, '.', '') : number_format($displayAmount, 2) }}
+                                    @if($split->status === 'settle' && $split->settle_notes)
+                                        <div class="text-muted small mt-1">({{ $split->settle_notes }})</div>
+                                    @endif
+                                </td>
+                                @php
+                                    $rowProportion = $displayTotal > 0 ? ($displayAmount / $displayTotal) : 1;
                                     $rowBaseAmount = $displayBase * $rowProportion;
                                 @endphp
                                 <td class="fw-bold text-danger">{{ $itemSymbol }}{{ number_format($rowBaseAmount, 2) }}</td>
@@ -194,24 +202,7 @@
                                 <td>{{ $split->due_date ? \Carbon\Carbon::parse($split->due_date)->format('d M Y') : 'N/A' }}</td>
                                 <td>{{ $split->paid_date ? \Carbon\Carbon::parse($split->paid_date)->format('d M Y') : 'N/A' }}</td>
                             </tr>
-                            @if($split->status === 'settle' || $split->settle_notes)
-                                @php
-                                    $showBalance = $loop->last ? $calculatedBalance : $split->balance_amount;
-                                @endphp
-                                @if($showBalance > 0)
-                                <tr class="table-light">
-                                    <td colspan="2"></td>
-                                    <td colspan="2">
-                                        <span class="fw-bold text-secondary">{{ $itemSymbol }}{{ fmod($showBalance, 1) == 0 ? number_format($showBalance, 0, '.', '') : number_format($showBalance, 2) }}</span>
-                                        <div class="text-muted small mt-1">({{ $split->settle_notes }})</div>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-secondary">settled</span>
-                                    </td>
-                                    <td colspan="3"></td>
-                                </tr>
-                                @endif
-                            @endif
+
                         @empty
                             <tr>
                                 <td colspan="8" class="text-center py-4 text-muted">No split history available.</td>

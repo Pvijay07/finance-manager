@@ -243,7 +243,7 @@
                                 <td>
                                     <div class="fw-medium text-dark">{{ $expense->company->name ?? 'N/A' }}</div>
                                 </td>
-                                <td>{{ $expense->vendor->name ?? 'N/A' }}</td>
+                                <td>{{ $expense->party_name ?? 'N/A' }}</td>
                                 <td>{{ date('d M Y', strtotime($expense->date ?? ($expense->bill_date ?? ($expense->created_at ?? 'N/A')))) }}</td>
                                 <td class="text-end">{{ number_format($tdsTax->taxable_amount ?? ($expense->planned_amount ?? 0), 2) }}</td>
                                 <td class="text-end fw-semibold">

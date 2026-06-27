@@ -105,22 +105,7 @@
                         $rootIncome = $uniqueFamily->sortBy('created_at')->first();
                         $displayBase = $rootIncome->original_amount > 0 ? $rootIncome->original_amount : ($rootIncome->actual_amount > 0 ? $rootIncome->actual_amount : $rootIncome->amount);
                         
-                        $displayTotal = $displayBase;
-                        if($rootIncome->taxes && $rootIncome->taxes->count() > 0) {
-                            foreach($rootIncome->taxes as $tax) {
-                                $originalTaxAmount = $displayBase * ($tax->tax_percentage / 100);
-                                if ($tax->tax_type == 'tds') {
-                                    $displayTotal -= $originalTaxAmount;
-                                } else {
-                                    $displayTotal += $originalTaxAmount;
-                                }
-                            }
-                        }
-                        
-                        // Deduct conversion cost if it exists
-                        if(isset($original_conversion_cost) && $original_conversion_cost > 0) {
-                            $displayTotal -= $original_conversion_cost;
-                        }
+                        $displayTotal = $uniqueFamily->sum('amount');
                     @endphp
                     <div class="d-flex justify-content-between mb-3 border-bottom pb-2">
                         <span class="text-muted">Base Amount:</span>
@@ -184,8 +169,20 @@
                             <tr>
                                 <td class="ps-4 fw-medium">{{ $index + 1 }}</td>
                                 <td>#{{ $split->invoice_number ?? ('INC-' . $split->id) }}</td>
-                                <td class="fw-bold text-success">₹{{ fmod($split->amount, 1) == 0 ? number_format($split->amount, 0, '.', '') : number_format($split->amount, 2) }}</td>
-                                <td>{{ $itemSymbol }}{{ fmod($split->actual_amount, 1) == 0 ? number_format($split->actual_amount, 0, '.', '') : number_format($split->actual_amount, 2) }}</td>
+                                @php
+                                    $displayAmount = $split->amount;
+                                @endphp
+                                <td class="fw-bold text-success">
+                                    ₹{{ fmod($displayAmount, 1) == 0 ? number_format($displayAmount, 0, '.', '') : number_format($displayAmount, 2) }}
+                                    @if($split->status === 'settle' && $split->settle_notes)
+                                        <div class="text-muted small mt-1">({{ $split->settle_notes }})</div>
+                                    @endif
+                                </td>
+                                @php
+                                    $rowProportion = $displayTotal > 0 ? ($displayAmount / $displayTotal) : 1;
+                                    $rowBaseAmount = $displayBase * $rowProportion;
+                                @endphp
+                                <td>₹{{ number_format($rowBaseAmount, 2) }}</td>
                                 <td>
                                     @php
                                         $splitStatusClass = match ($split->status) {
@@ -203,24 +200,7 @@
                                 <td>{{ $split->due_date ? \Carbon\Carbon::parse($split->due_date)->format('d M Y') : 'N/A' }}</td>
                                 <td>{{ $split->paid_date ? \Carbon\Carbon::parse($split->paid_date)->format('d M Y') : (($split->status === 'received' || $split->status === 'settle') && $split->income_date ? \Carbon\Carbon::parse($split->income_date)->format('d M Y') : 'N/A') }}</td>
                             </tr>
-                            @if($split->status === 'settle' || $split->settle_notes)
-                                @php
-                                    $showBalance = $loop->last ? max(0, $displayTotal - $uniqueFamily->sum('amount')) : $split->balance_amount;
-                                @endphp
-                                @if($showBalance > 0)
-                                <tr class="table-light">
-                                    <td colspan="2"></td>
-                                    <td colspan="2">
-                                        <span class="fw-bold text-secondary">₹{{ fmod($showBalance, 1) == 0 ? number_format($showBalance, 0, '.', '') : number_format($showBalance, 2) }}</span>
-                                        <div class="text-muted small mt-1">({{ $split->settle_notes }})</div>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-secondary">Settled</span>
-                                    </td>
-                                    <td colspan="3"></td>
-                                </tr>
-                                @endif
-                            @endif
+
                         @empty
                             <tr>
                                 <td colspan="8" class="text-center py-4 text-muted">No split history available.</td>

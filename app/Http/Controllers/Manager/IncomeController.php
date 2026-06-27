@@ -452,12 +452,12 @@ class IncomeController extends Controller
       'balance_amount' => 'nullable|numeric|min:0',
       'tds_status' => 'nullable|string|in:received,not_received',
       'due_date' => 'required_if:status,due|nullable|date',
-      'status' => 'required|in:settle,due,convert_to_tds',
+      'status' => 'required|in:settle,due,convert_to_tds,paid,received',
       'income_date' => 'nullable|date',
       'received_date' => 'nullable|date',
       'mail_status' => 'nullable|in:1,0',
       'notes' => 'nullable|string',
-      'settle_notes' => 'required_if:status,settle,paid|nullable|string',
+      'settle_notes' => 'required_if:status,settle|nullable|string',
       'receipts.*' => 'nullable|file|max:5120|mimes:jpg,jpeg,png,pdf,doc,docx',
       'tds_receipt' => 'nullable|file|max:5120|mimes:jpg,jpeg,png,pdf,doc,docx',
     ]);
@@ -475,11 +475,11 @@ class IncomeController extends Controller
       $receivedAmount = $request->received_amount ?? 0;
 
       // Check if this should be a split payment
-      $isSplitPayment = $request->status === 'due' &&
+      $isSplitPayment = ($request->status === 'due' || $request->status === 'settle') &&
         $receivedAmount > 0 &&
         $receivedAmount < $payableAmountTotal;
 
-      if (($isSplitPayment || $request->status === 'settle') && $payableAmountTotal > 0) {
+      if ($isSplitPayment && $payableAmountTotal > 0) {
         $proportion = $receivedAmount / $payableAmountTotal;
         $gstAmountForCurrent = $gstAmountTotal * $proportion;
         $tdsAmountForCurrent = $tdsAmountTotal * $proportion;
@@ -502,7 +502,7 @@ class IncomeController extends Controller
       $income = Income::create([
         'company_id' => $data['company_id'],
         'party_name' => $data['client_name'],
-        'amount' => ($isSplitPayment || $request->status === 'settle') ? $receivedAmount : $payableAmountTotal,
+        'amount' => $isSplitPayment ? $receivedAmount : $payableAmountTotal,
         'received_amount' => $receivedAmount,
         'planned_amount' => $paidPlannedAmount,
         'actual_amount' => $paidBaseAmount,
@@ -510,7 +510,7 @@ class IncomeController extends Controller
         'schedule_amount' => $plannedAmountTotal,
         'balance_amount' => $isSplitPayment ? 0 : max(0, $balanceAmount),
         'due_date' => $data['due_date'] ?? null,
-        'status' => ($isSplitPayment || $data['status'] === 'settle') ? 'received' : 'pending',
+        'status' => $isSplitPayment ? 'received' : ($data['status'] === 'settle' ? 'settle' : (($balanceAmount <= 0.01 && $receivedAmount > 0) || in_array($data['status'] ?? '', ['paid', 'received']) ? 'received' : 'pending')),
         'income_date' => $data['received_date'] ?? now()->format('Y-m-d'),
         'paid_date' => ($isSplitPayment || $data['status'] === 'settle') ? ($request->received_date ?? now()->format('Y-m-d')) : null,
         'mail_status' => $data['mail_status'] ?? 0,
@@ -524,50 +524,49 @@ class IncomeController extends Controller
       ]);
 
       // Handle taxes (always for the first shard in non-standard income)
-      if (true) {
-        // Handle GST tax
-        if ($request->boolean('apply_gst')) {
-          $income->taxes()->create([
-            'taxable_type' => Income::class,
-            'taxable_id' => $income->id,
-            'tax_type' => 'gst',
-            'tax_percentage' => $data['gst_percentage'] ?? 0,
-            'tax_amount' => $gstAmountForCurrent,
-            'payment_status' => ($isSplitPayment || $request->status === 'settle') ? 'received' : 'not_received',
-            'direction' => 'income',
-            'taxable_amount' => $paidBaseAmount
-          ]);
-        }
+      // Handle GST tax
+      $skipMainTaxes = ($request->status === 'settle' && !$isSplitPayment);
+      if ($request->boolean('apply_gst') && !$skipMainTaxes) {
+        $income->taxes()->create([
+          'taxable_type' => Income::class,
+          'taxable_id' => $income->id,
+          'tax_type' => 'gst',
+          'tax_percentage' => $data['gst_percentage'] ?? 0,
+          'tax_amount' => $gstAmountForCurrent,
+          'payment_status' => ($isSplitPayment || $request->status === 'settle') ? 'received' : 'not_received',
+          'direction' => 'income',
+          'taxable_amount' => $paidBaseAmount
+        ]);
+      }
 
-        // Handle TDS tax
-        if ($request->boolean('apply_tds')) {
-          $path = '';
-          if ($request->hasFile('tds_receipt')) {
-            $tdsReceipt = $request->file('tds_receipt');
-            $filename = 'tds_receipt_' . time() . '_' . uniqid() . '.' . $tdsReceipt->getClientOriginalExtension();
+      // Handle TDS tax
+      if ($request->boolean('apply_tds') && !$skipMainTaxes) {
+        $path = '';
+        if ($request->hasFile('tds_receipt')) {
+          $tdsReceipt = $request->file('tds_receipt');
+          $filename = 'tds_receipt_' . time() . '_' . uniqid() . '.' . $tdsReceipt->getClientOriginalExtension();
 
-            $destinationPath = public_path('uploads/receipts');
-            if (!file_exists($destinationPath)) {
-              mkdir($destinationPath, 0755, true);
-            }
-
-            $tdsReceipt->move($destinationPath, $filename);
-            $path = 'uploads/receipts/' . $filename;
+          $destinationPath = public_path('uploads/receipts');
+          if (!file_exists($destinationPath)) {
+            mkdir($destinationPath, 0755, true);
           }
 
-          $income->taxes()->create([
-            'taxable_type' => Income::class,
-            'taxable_id' => $income->id,
-            'tax_type' => 'tds',
-            'tax_percentage' => $data['tds_percentage'] ?? 0,
-            'tax_amount' => $tdsAmountForCurrent,
-            'payment_status' => $data['tds_status'] ?? 'not_received',
-            'amount_after_tds' => $data['amount_after_tds'] ?? 0,
-            'tds_proof_path' => $path,
-            'direction' => 'income',
-            'taxable_amount' => $paidBaseAmount
-          ]);
+          $tdsReceipt->move($destinationPath, $filename);
+          $path = 'uploads/receipts/' . $filename;
         }
+
+        $income->taxes()->create([
+          'taxable_type' => Income::class,
+          'taxable_id' => $income->id,
+          'tax_type' => 'tds',
+          'tax_percentage' => $data['tds_percentage'] ?? 0,
+          'tax_amount' => $tdsAmountForCurrent,
+          'payment_status' => $data['tds_status'] ?? 'not_received',
+          'amount_after_tds' => $data['amount_after_tds'] ?? 0,
+          'tds_proof_path' => $path,
+          'direction' => 'income',
+          'taxable_amount' => $paidBaseAmount
+        ]);
       }
 
       // Create new income for balance if this is a split payment
@@ -580,7 +579,7 @@ class IncomeController extends Controller
         $newIncome->planned_amount = $balancePlannedAmount;
         $newIncome->actual_amount = $balanceBaseAmount;
         $newIncome->balance_amount = $balanceAmount;
-        $newIncome->status = 'pending';
+        $newIncome->status = $request->status === 'settle' ? 'settle' : 'pending';
         $newIncome->income_date = $request->new_due_date ?? now()->addDays(30)->format('Y-m-d');
         $newIncome->is_partial = true;
         $newIncome->parent_id = $income->id;
@@ -595,7 +594,7 @@ class IncomeController extends Controller
         $newIncomeId = $newIncome->id;
 
         // Create taxes for the balance income
-        if ($request->boolean('apply_gst')) {
+        if ($request->boolean('apply_gst') && $request->status !== 'settle') {
           $newGstAmount = $gstAmountTotal - $gstAmountForCurrent;
           if ($newGstAmount > 0) {
             $newIncome->taxes()->create([
@@ -611,7 +610,7 @@ class IncomeController extends Controller
           }
         }
 
-        if ($request->boolean('apply_tds')) {
+        if ($request->boolean('apply_tds') && $request->status !== 'settle') {
           $newTdsAmount = $tdsAmountTotal - $tdsAmountForCurrent;
           if ($newTdsAmount > 0) {
             $newIncome->taxes()->create([
@@ -857,9 +856,8 @@ class IncomeController extends Controller
 
       $allSplits = $allSplits->unique('id')->sortBy('created_at')->values();
 
-      $paidStatuses = ['received', 'settle', 'paid'];
-      $totalPaid = $allSplits->whereIn('status', $paidStatuses)->sum('amount');
-      $totalBalance = $allSplits->whereNotIn('status', $paidStatuses)->sum('amount');
+      $totalPaid = $allSplits->whereIn('status', ['received', 'paid'])->sum('amount');
+      $totalBalance = $allSplits->whereNotIn('status', ['received', 'settle', 'paid'])->sum('amount');
       $originalSum = $allSplits->sum('amount');
 
       $rate = 1;
@@ -878,6 +876,23 @@ class IncomeController extends Controller
       $currencyCode = $rootIncome->invoice ? $rootIncome->invoice->currency : ($rootIncome->currency ?? 'INR');
       $currencySymbol = $currencySymbols[strtoupper($currencyCode)] ?? '₹';
 
+      $displayBase = $rootIncome->original_amount > 0 ? $rootIncome->original_amount : $rootIncome->actual_amount;
+      $displayTotal = $displayBase;
+      $calculatedOriginalGst = 0;
+      $calculatedOriginalTds = 0;
+      if ($rootIncome->taxes && $rootIncome->taxes->count() > 0) {
+          foreach ($rootIncome->taxes as $tax) {
+              $originalTaxAmount = $displayBase * ($tax->tax_percentage / 100);
+              if ($tax->tax_type == 'tds') {
+                  $displayTotal -= $originalTaxAmount;
+                  $calculatedOriginalTds = $originalTaxAmount;
+              } else {
+                  $displayTotal += $originalTaxAmount;
+                  $calculatedOriginalGst = $originalTaxAmount;
+              }
+          }
+      }
+
       return response()->json([
         'success' => true,
         'currency_symbol' => $currencySymbol,
@@ -893,15 +908,15 @@ class IncomeController extends Controller
           'original_total' => $rootIncome->original_amount ?? $rootIncome->actual_amount ?? $originalSum,
           'status' => $rootIncome->status,
           'created_at' => $rootIncome->created_at->toIso8601String(),
-          'gst_amount' => $allSplits->sum(function ($split) { return $split->taxes->where('tax_type', 'gst')->sum('tax_amount'); }) / $rate,
-          'tds_amount' => $allSplits->sum(function ($split) { return $split->taxes->where('tax_type', 'tds')->sum('tax_amount'); }) / $rate,
+          'gst_amount' => $calculatedOriginalGst > 0 ? ($calculatedOriginalGst / $rate) : ($allSplits->sum(function ($split) { return $split->taxes->where('tax_type', 'gst')->sum('tax_amount'); }) / $rate),
+          'tds_amount' => $calculatedOriginalTds > 0 ? ($calculatedOriginalTds / $rate) : ($allSplits->sum(function ($split) { return $split->taxes->where('tax_type', 'tds')->sum('tax_amount'); }) / $rate),
           'gst_percentage' => $gstPercentage,
           'tds_percentage' => $tdsPercentage
         ] : null,
-        'children' => $allSplits->map(function ($split) use ($rate) {
+        'children' => $allSplits->map(function ($split) use ($rate, $displayTotal) {
           return [
             'id' => $split->id,
-            'planned_amount' => $split->amount,
+            'planned_amount' => ($split->is_partial || $split->parent_id) ? $split->amount : $displayTotal,
             'actual_amount' => $split->actual_amount ?? 0,
             'status' => $split->status,
             'created_at' => $split->created_at->toIso8601String(),
@@ -941,9 +956,9 @@ class IncomeController extends Controller
         'company_id' => 'required|exists:companies,id',
         'client_name' => 'required|string|max:255',
         'amount' => 'required|numeric|min:0',
-        'status' => 'required|in:settle,due,convert_to_tds',
+        'status' => 'required|in:settle,due,convert_to_tds,paid,received',
         'notes' => 'nullable|string',
-        'settle_notes' => 'required_if:status,settle,paid|nullable|string',
+        'settle_notes' => 'required_if:status,settle|nullable|string',
         // Tax fields
         'apply_gst' => 'nullable|boolean',
         'gst_percentage' => 'nullable|numeric|min:0|max:100',
@@ -1020,14 +1035,14 @@ class IncomeController extends Controller
       
       $receivedAmount = $validated['received_amount'] ?? $income->received_amount ?? 0;
 
-      $isSplitPayment = $validated['status'] === 'due' &&
+      $isSplitPayment = ($validated['status'] === 'due' || $validated['status'] === 'settle') &&
         $receivedAmount > 0 &&
         $receivedAmount < $payableAmountTotal;
 
       $originalActualAmount = floatval($income->actual_amount);
       $isForeignCurrency = ($income->invoice && $income->invoice->currency != 'INR') || ($income->currency && $income->currency != 'INR');
 
-      if (($isSplitPayment || $validated['status'] === 'settle') && $payableAmountTotal > 0) {
+      if ($isSplitPayment && $payableAmountTotal > 0) {
         $proportion = $receivedAmount / $payableAmountTotal;
         $gstAmountForCurrent = $gstAmountTotal * $proportion;
         $tdsAmountForCurrent = $tdsAmountTotal * $proportion;
@@ -1066,14 +1081,14 @@ class IncomeController extends Controller
 
       $incomeData = [
         'party_name' => $validated['client_name'] ?? $income->party_name,
-        'amount' => ($isSplitPayment || $validated['status'] === 'settle') ? $receivedAmount : $payableAmountTotal,
+        'amount' => $isSplitPayment ? $receivedAmount : $payableAmountTotal,
         'received_amount' => $receivedAmount,
         'planned_amount' => $paidPlannedAmount,
         'actual_amount' => $paidBaseAmountToSave,
         'original_amount' => $actualTotalBase,
         'schedule_amount' => $plannedAmountTotal,
         'balance_amount' => $isSplitPayment ? 0 : max(0, $balanceAmount),
-        'status' => $isSplitPayment ? 'received' : ($balanceAmount <= 0 ? 'received' : ($receivedAmount > 0 ? 'received' : 'pending')),
+        'status' => $isSplitPayment ? 'received' : ($validated['status'] === 'settle' ? 'settle' : (round($balanceAmount, 2) <= 0.01 && $receivedAmount > 0 ? 'received' : (($validated['status'] === 'paid' || $validated['status'] === 'received') ? 'received' : ($validated['status'] ?? 'pending')))),
         'income_date' => $isSplitPayment ? $income->income_date : ($validated['received_date'] ?? $income->income_date),
         'paid_date' => ($isSplitPayment || $receivedAmount > 0) ? ($validated['received_date'] ?? now()->format('Y-m-d')) : $income->paid_date,
         'payment_mode' => $validated['payment_mode'] ?? $income->payment_mode,
@@ -1094,7 +1109,8 @@ class IncomeController extends Controller
       $income->update($incomeData);
 
       // Handle GST tax
-      if ($request->boolean('apply_gst')) {
+      $skipMainTaxes = ($validated['status'] === 'settle' && !$isSplitPayment);
+      if ($request->boolean('apply_gst') && !$skipMainTaxes) {
         $gstPercentage = $validated['gst_percentage'] ?? 0;
         Tax::updateOrCreate(
           [
@@ -1119,7 +1135,7 @@ class IncomeController extends Controller
       }
 
       // Handle TDS tax
-      if ($request->boolean('apply_tds')) {
+      if ($request->boolean('apply_tds') && !$skipMainTaxes) {
         $tdsPercentage = $validated['tds_percentage'] ?? 0;
         $filePath = null;
         if ($request->hasFile('tds_receipt')) {
@@ -1171,7 +1187,7 @@ class IncomeController extends Controller
         $newIncome->actual_amount = $balanceBaseAmountToSave;
         $newIncome->planned_amount = $balancePlannedAmount;
         $newIncome->balance_amount = $balanceAmount;
-        $newIncome->status = 'pending';
+        $newIncome->status = $validated['status'] === 'settle' ? 'settle' : 'pending';
         $newIncome->due_date = $request->new_due_date ?? $request->due_date ?? now()->addDays(30)->format('Y-m-d');
         $newIncome->income_date = $income->income_date;
         $newIncome->is_partial = true;
@@ -1188,7 +1204,7 @@ class IncomeController extends Controller
         $newIncomeId = $newIncome->id;
 
         // Create GST tax for new income if applicable
-        if ($request->boolean('apply_gst') && $gstAmountTotal > 0) {
+        if ($request->boolean('apply_gst') && $gstAmountTotal > 0 && $validated['status'] !== 'settle') {
           $newGstAmount = $gstAmountTotal - $gstAmountForCurrent;
           if ($newGstAmount > 0) {
             Tax::create([
@@ -1206,7 +1222,7 @@ class IncomeController extends Controller
         }
 
         // Create TDS tax for new income if applicable
-        if ($request->boolean('apply_tds') && $tdsAmountTotal > 0) {
+        if ($request->boolean('apply_tds') && $tdsAmountTotal > 0 && $validated['status'] !== 'settle') {
           $newTdsAmount = $tdsAmountTotal - $tdsAmountForCurrent;
           if ($newTdsAmount > 0) {
             Tax::create([
@@ -1330,11 +1346,14 @@ class IncomeController extends Controller
         $originalTdsTotal = 0;
         $originalBaseTotal = 0;
         $totalPaidAmount = 0;
+        $totalSettledAmount = 0;
 
         // Calculate paid amount from all splits
         foreach ($allSplits as $split) {
           if ($split->status === 'received' || $split->status === 'paid') {
             $totalPaidAmount += floatval($split->amount);
+          } else if ($split->status === 'settle') {
+            $totalSettledAmount += floatval($split->amount);
           }
         }
 
@@ -1421,6 +1440,7 @@ class IncomeController extends Controller
         'original_tds_total' => $originalTdsTotal,
         'original_base_amount' => $originalBaseTotal,
         'total_paid_amount' => $totalPaidAmount,
+        'total_settled_amount' => $totalSettledAmount ?? 0,
 
         'subtotal' => floatval($income->original_amount ?? $income->actual_amount ?? $income->amount),
         'actual_amount' => floatval($income->actual_amount ?? $income->amount),
