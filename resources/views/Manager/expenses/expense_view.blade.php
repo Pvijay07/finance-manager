@@ -102,7 +102,21 @@
                 <div class="card-body">
                     @php
                         $rootExpense = $uniqueFamily->sortBy('created_at')->first();
-                        $displayBase = $rootExpense->original_amount > 0 ? $rootExpense->original_amount : $rootExpense->actual_amount;
+                        
+                        $originalSum = $uniqueFamily->sum('planned_amount');
+                        $displayBase = $rootExpense->original_amount > 0 ? $rootExpense->original_amount : $rootExpense->schedule_amount;
+                        
+                        $rootGst = $rootExpense->taxes->where('tax_type', 'gst')->first();
+                        $rootTds = $rootExpense->taxes->where('tax_type', 'tds')->first();
+                        $gstPercentage = $rootGst ? $rootGst->tax_percentage : 0;
+                        $tdsPercentage = $rootTds ? $rootTds->tax_percentage : 0;
+
+                        if (!$displayBase || $displayBase <= 0) {
+                            $displayBase = $originalSum;
+                            if ($gstPercentage > 0 || $tdsPercentage > 0) {
+                                $displayBase = $originalSum / (1 + ($gstPercentage - $tdsPercentage) / 100);
+                            }
+                        }
                         
                         $displayTotal = $displayBase;
                         if($rootExpense->taxes && $rootExpense->taxes->count() > 0) {

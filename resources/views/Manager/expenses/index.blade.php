@@ -443,7 +443,7 @@
                                                 </button>
                                             @endif
 
-                                            @if ($expense->source == 'manual')
+                                            @if ($expense->source == 'manual' && !in_array($expense->status, ['paid', 'settle']) && (!$expense->is_split || !$expense->parent_id))
                                                 <button class="btn btn-outline-danger" onclick="deleteExpense({{ $expense->id }})">
                                                     <i class="fas fa-trash"></i>
                                                 </button>
@@ -497,8 +497,6 @@
                     <input type="hidden" id="editTaxPercentage" name="tax_percentage" value="0">
                     <input type="hidden" id="editTdsTaxId" name="tds_tax_id" value="0">
                     <input type="hidden" id="editGstTaxId" name="gst_tax_id" value="0">
-                    <input type="hidden" id="editCurrentBaseAmount" value="0">
-
                     <div class="modal-body">
                         <!-- Header Section -->
                         <div class="row mb-4">
@@ -507,12 +505,18 @@
                                 <input type="text" readonly id="editExpenseNameDisplay" name="expense_name"
                                     class="form-control">
                             </div>
-                            <div class="col-md-8">
-                                <label class="form-label fw-bold text-uppercase small text-muted">Planned Amount
-                                    (₹) <span id="nonStandardPlannedBreakdown" class="text-primary ms-2"
-                                        style="text-transform: none;"></span></label>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold text-uppercase small text-muted">Base Amount (₹)</label>
+                                <input type="number" id="editCurrentBaseAmount" name="base_amount" step="0.01"
+                                    class="form-control" placeholder="Enter base amount">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold text-uppercase small text-muted">Planned Amount (₹)</label>
                                 <input type="number" readonly id="editPlannedAmountDisplay" name="planned_amount"
-                                    class="form-control">
+                                    class="form-control bg-light">
+                            </div>
+                            <div class="col-12 mt-2">
+                                <span id="nonStandardPlannedBreakdown" class="text-primary ms-2" style="text-transform: none;"></span>
                             </div>
                             <div class="col-md-4">
                                 <!-- <label class="form-label fw-bold text-uppercase small text-muted">Original Bill Total (Base)
@@ -1332,7 +1336,7 @@
                                         style="text-transform: none;"></span></label>
                                 <div class="d-flex align-items-start">
                                     <div class="flex-grow-1"></div>
-                                    <input type="number" class="form-control" id="editEditablePlannedAmount"
+                                    <input type="number" class="form-control bg-light" readonly id="editEditablePlannedAmount"
                                         name="planned_amount" step="0.01" required>
                                 </div>
                                 <div id="editTaxSummary" class="ms-3">
@@ -1891,7 +1895,7 @@
             if (scheduleAmountInput) scheduleAmountInput.value = netPayable.toFixed(2);
 
             // Auto-populate Paid Amount only if it hasn't been manually changed by the user
-            if (paidAmountInput && (Math.abs(currentPaidAmount - oldScheduleAmount) < 0.01 || paidAmountInput.value === "" || paidAmountInput.value === "0.00")) {
+            if (paidAmountInput && (Math.abs(currentPaidAmount - oldScheduleAmount) < 0.01)) {
                 paidAmountInput.value = netPayable.toFixed(2);
             }
 
@@ -1982,12 +1986,17 @@
                 }
             }
 
-            const isTaxChange = event && event.target && ['editGstPercentage', 'editApplyGst', 'editTdsPercentage', 'editApplyTds'].includes(event.target.id);
-            if (isTaxChange && !window.isNonStandardLoading) {
-                const balanceField = document.getElementById('editBalanceAmount');
-                const currentBalance = parseFloat(balanceField?.value) || 0;
-                finalPaid = Math.max(0, netPayable - currentBalance);
-                if (paidAmountInput) paidAmountInput.value = finalPaid.toFixed(2);
+            const isBaseOrTaxChange = event && event.target && ['editGstPercentage', 'editApplyGst', 'editTdsPercentage', 'editApplyTds', 'editCurrentBaseAmount'].includes(event.target.id);
+            if (isBaseOrTaxChange && !window.isNonStandardLoading) {
+                if (statusField && statusField.value === 'paid') {
+                    finalPaid = isSplit ? plannedAmount : netPayable;
+                    if (paidAmountInput) paidAmountInput.value = finalPaid.toFixed(2);
+                } else {
+                    const balanceField = document.getElementById('editBalanceAmount');
+                    const currentBalance = parseFloat(balanceField?.value) || 0;
+                    finalPaid = Math.max(0, netPayable - currentBalance);
+                    if (paidAmountInput) paidAmountInput.value = finalPaid.toFixed(2);
+                }
             }
 
             if (finalPaid > netPayable + 0.01) {
@@ -2402,7 +2411,9 @@
             const tdsPercentage = editForm.querySelector('#editTdsPercentage');
             const paidAmountInput = document.getElementById('editPaidAmount');
             const statusField = document.getElementById('editStatus');
+            const baseAmountInput = document.getElementById('editCurrentBaseAmount');
 
+            if (baseAmountInput) baseAmountInput.oninput = calculateTaxNonStandardEdit;
             if (applyGst) applyGst.onchange = calculateTaxNonStandardEdit;
             if (applyTds) {
                 applyTds.onchange = function (event) {
@@ -2960,12 +2971,19 @@
             const tdsAmountVal = parseFloat(expense.tds_amount) || 0;
             const plannedAmount = parseFloat(expense.planned_amount) || 0;
 
+            const isSplitPayment = expense.is_split == 1 || (expense.parent_id && expense.parent_id > 0);
+            
             // True Base = Planned Amount - GST (For Split: Planned Amount + TDS - GST)
             const trueBase = expense.is_split ? (plannedAmount + tdsAmountVal - gstAmountVal) : (plannedAmount - gstAmountVal);
             document.getElementById('editEditableBaseAmount').value = trueBase.toFixed(2);
 
             // Display Planned Amount as Gross (Base + GST)
-            document.getElementById('editEditablePlannedAmount').value = plannedAmount.toFixed(2);
+            const plannedAmountInput = document.getElementById('editEditablePlannedAmount');
+            if (plannedAmountInput) {
+                plannedAmountInput.value = plannedAmount.toFixed(2);
+                plannedAmountInput.readOnly = true;
+                plannedAmountInput.classList.add('bg-light');
+            }
             updateBreakdownText('editablePlannedBreakdown', trueBase, gstAmountVal, tdsAmountVal, expense.is_split || expense.parent_id);
             // Paid amount display = Actual + GST - TDS (Wait, user says this is the entry field)
             // If it's an existing record, show actual_amount. If new/reset, show Net Payable.
@@ -3174,7 +3192,15 @@
             const plannedAmount = parseFloat(expense.planned_amount) || 0;
             const currentBase = (expense.is_split || expense.parent_id) ? (plannedAmount - gstAmountVal + tdsAmountVal) : (plannedAmount - gstAmountVal);
             document.getElementById('editCurrentBaseAmount').value = currentBase.toFixed(2);
-            document.getElementById('editPlannedAmountDisplay').value = plannedAmount.toFixed(2);
+            
+            const isSplitPayment = expense.is_split == 1 || (expense.parent_id && expense.parent_id > 0);
+            const plannedAmountDisplay = document.getElementById('editPlannedAmountDisplay');
+            if (plannedAmountDisplay) {
+                plannedAmountDisplay.value = plannedAmount.toFixed(2);
+                plannedAmountDisplay.readOnly = true;
+                plannedAmountDisplay.classList.add('bg-light');
+            }
+            
             updateBreakdownText('nonStandardPlannedBreakdown', currentBase, gstAmountVal, tdsAmountVal, expense.is_split || expense.parent_id);
 
             document.getElementById('editOriginalAmountDisplay').value = parseFloat(expense.original_total_base || currentBase).toFixed(2);

@@ -310,8 +310,8 @@ class ExpensesController extends Controller
           'original_total' => $rootExpense->original_amount ?? $rootExpense->schedule_amount ?? $originalSum,
           'status' => $rootExpense->status,
           'created_at' => $rootExpense->created_at->toIso8601String(),
-          'gst_amount' => $originalGstAmount > 0 ? $originalGstAmount : ($calculatedOriginalGst > 0 ? $calculatedOriginalGst : 0),
-          'tds_amount' => $originalTdsAmount > 0 ? $originalTdsAmount : ($calculatedOriginalTds > 0 ? $calculatedOriginalTds : 0),
+          'gst_amount' => $calculatedOriginalGst,
+          'tds_amount' => $calculatedOriginalTds,
           'gst_percentage' => $gstPercentage,
           'tds_percentage' => $tdsPercentage
         ] : null,
@@ -746,6 +746,12 @@ class ExpensesController extends Controller
         $paidAmount > 0 &&
         $paidAmount < $netPayableAmount;
 
+      if ($request->status === 'settle' && !$isSplitPayment) {
+          $plannedAmount = $actualTotalBase;
+          $netPayableAmount = $actualTotalBase;
+          $request->merge(['apply_gst' => 0, 'apply_tds' => 0, 'gst_amount' => 0, 'tds_amount' => 0, 'grand_total' => $actualTotalBase]);
+      }
+
       $balanceAmount = $netPayableAmount - $paidAmount;
 
       $gstAmountForCurrent = $request->gst_amount ?? 0;
@@ -780,6 +786,8 @@ class ExpensesController extends Controller
         'category_id' => $request->category_id,
         'actual_amount' => $isSplitPayment ? $paidBaseAmount : $actualTotalBase,
         'planned_amount' => $isSplitPayment ? $paidAmount : $plannedAmount,
+        'original_amount' => $actualTotalBase,
+        'schedule_amount' => $plannedAmount,
         'status' => ($isSplitPayment || $request->status === 'paid')
           ? 'paid'
           : ($request->status === 'settle'
@@ -1215,6 +1223,7 @@ class ExpensesController extends Controller
   public function update(Request $request, $id)
   {
     $request->validate([
+      'base_amount' => 'nullable|numeric|min:0',
       'actual_amount' => 'nullable|numeric|min:0',
       'planned_amount' => 'nullable|numeric|min:0',
       'status' => 'required|in:settle,due,convert_to_tds,paid,received',
@@ -1298,6 +1307,14 @@ class ExpensesController extends Controller
 
       // Check if this is a split payment
       $isSplitPayment = $paidAmount > 0 && !$isFullyPaid;
+      
+      if ($request->status === 'settle' && !$isSplitPayment) {
+          $plannedAmount = $paidAmount;
+          $netPayableAmount = $paidAmount;
+          $request->merge(['apply_gst' => 0, 'apply_tds' => 0, 'gst_amount' => 0, 'tds_amount' => 0, 'grand_total' => $paidAmount]);
+          $originalGstAmount = 0;
+          $originalTdsAmount = 0;
+      }
 
       // If split payment, calculate proportional taxes and base amounts
       $gstAmountForCurrent = $originalGstAmount;
@@ -1308,7 +1325,11 @@ class ExpensesController extends Controller
       $dbGstAmount = $expense->taxes->where('tax_type', 'gst')->first()->tax_amount ?? 0;
       $expectedBase = $expense->planned_amount + $dbTdsAmount - $dbGstAmount;
 
-      $originalBaseAmount = $expense->actual_amount > 0 ? $expense->actual_amount : $expectedBase;
+      if ($request->has('base_amount') && !is_null($request->input('base_amount'))) {
+          $originalBaseAmount = floatval($request->input('base_amount'));
+      } else {
+          $originalBaseAmount = $expense->actual_amount > 0 ? $expense->actual_amount : $expectedBase;
+      }
 
       $proportion = $netPayableAmount > 0 ? ($paidAmount / $netPayableAmount) : 1;
       
@@ -1336,6 +1357,7 @@ class ExpensesController extends Controller
           'planned_amount' => $paidAmount,
           'actual_amount' => $paidBaseAmount,
           'original_amount' => $originalBaseAmount,
+          'schedule_amount' => $originalPlannedAmount,
           'status' => 'paid',
           'party_name' => $request->party_name ?? $expense->party_name,
           'mobile_number' => $request->mobile_number ?? $expense->mobile_number,
@@ -1354,6 +1376,8 @@ class ExpensesController extends Controller
           'expense_name' => $request->expense_name ?? $expense->expense_name,
           'planned_amount' => $originalPlannedAmount,
           'actual_amount' => $paidBaseAmount,
+          'original_amount' => $originalBaseAmount,
+          'schedule_amount' => $originalPlannedAmount,
           'status' => ($actualStatus === 'due') ? 'upcoming' : $actualStatus,
           'party_name' => $request->party_name ?? $expense->party_name,
           'mobile_number' => $request->mobile_number ?? $expense->mobile_number,

@@ -519,6 +519,7 @@
                                 </div>
 
                                 <!-- TDS Section -->
+                                <div id="addTdsSectionWrapper">
                                 <div class="d-flex justify-content-between mb-2">
                                     <div class="form-check form-check-inline">
                                         <input class="form-check-input" type="checkbox" name="apply_tds" id="applyTds"
@@ -556,6 +557,7 @@
                                         <input type="file" id="addTdsReceipt" name="tds_receipt" class="form-control"
                                             accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
                                     </div>
+                                </div>
                                 </div>
 
                             </div>
@@ -688,8 +690,8 @@
                                     <input type="date" class="form-control" id="editPaidDate" name="received_date" max="{{ date('Y-m-d') }}" required>
                                 </div>
                                 <div class="col-md-4 mb-3">
-                                    <label class="form-label">Payment Mode</label>
-                                    <select class="form-select" id="editPaymentMode" name="payment_mode" required
+                                    <label class="form-label" id="editPaymentModeLabel">Payment Mode</label>
+                                    <select class="form-select" id="editPaymentMode" name="payment_mode"
                                         onchange="togglePaymentModeDetails(this)">
                                         <option value="">Select Mode</option>
                                         <option value="cash">Cash</option>
@@ -1112,6 +1114,19 @@
                 input.required = false;
                 input.value = ''; // Clear if not due
             }
+
+            // Handle TDS Section Visibility
+            const tdsSectionEl = form.querySelector('#addTdsSectionWrapper') || form.querySelector('#tdsSection');
+            const receivedAmountEl = form.querySelector('[name="received_amount"]');
+            
+            if (tdsSectionEl) {
+                const receivedAmount = receivedAmountEl ? (parseFloat(receivedAmountEl.value) || 0) : 0;
+                if (selectElement.value === 'settle' && receivedAmount <= 0) {
+                    tdsSectionEl.style.display = 'none';
+                } else {
+                    tdsSectionEl.style.display = 'block';
+                }
+            }
         }
 
         // Open add income modal
@@ -1193,6 +1208,18 @@
                 const isSplitIncome = document.getElementById('editIncomeIsSplit')?.value == '1' || document.getElementById('editIncomeParentId')?.value != '0' && document.getElementById('editIncomeParentId')?.value != '';
                 const balance = Math.max(0, (isSplitIncome ? grandTotal : (grandTotal - tdsAmount)) - receivedAmount);
                 document.getElementById('balance_amount').value = balance.toFixed(2);
+
+                const receivedDateInput = document.getElementById('received_date');
+                if (receivedDateInput) {
+                    const receivedDateContainer = receivedDateInput.closest('.col-md-6');
+                    if (receivedDateContainer) {
+                        if (receivedAmount > 0) {
+                            receivedDateContainer.style.display = 'block';
+                        } else {
+                            receivedDateContainer.style.display = 'none';
+                        }
+                    }
+                }
 
                 // Enable/disable percentage inputs based on checkbox state
                 gstPercentageInput.disabled = !applyGst;
@@ -1278,8 +1305,8 @@
                         });
 
                         // Determine if GST/TDS should be checked
-                        const hasGst = income.gstTax !== null || parseFloat(income.gst_amount) > 0 || parseFloat(income.gst_percentage) > 0;
-                        const hasTds = income.tdsTax !== null || parseFloat(income.tds_amount) > 0 || parseFloat(income.tds_percentage) > 0;
+                        const hasGst = (income.gstTax !== undefined && income.gstTax !== null) || parseFloat(income.gst_amount) > 0 || parseFloat(income.gst_percentage) > 0;
+                        const hasTds = (income.tdsTax !== undefined && income.tdsTax !== null) || parseFloat(income.tds_amount) > 0 || parseFloat(income.tds_percentage) > 0;
 
                         // Show/hide "Convert to TDS" option in add/edit modal
                         const addConvertToTdsOption = document.getElementById('addConvertToTdsOption');
@@ -1343,6 +1370,8 @@
         // Update the form submission handler
         document.getElementById('incomeForm').addEventListener('submit', async function (e) {
             e.preventDefault();
+            if (this.dataset.submitting === 'true') return;
+            this.dataset.submitting = 'true';
 
             const formData = new FormData(this);
             const incomeId = document.getElementById('incomeId').value;
@@ -1403,6 +1432,7 @@
                     // Reset button
                     submitBtn.innerHTML = originalText;
                     submitBtn.disabled = false;
+                    this.dataset.submitting = 'false';
 
                     // Show validation errors if any
                     if (data.errors) {
@@ -1435,6 +1465,7 @@
                 // Reset button
                 submitBtn.innerHTML = originalText;
                 submitBtn.disabled = false;
+                this.dataset.submitting = 'false';
             }
         });
         // Open receive payment modal
@@ -1538,6 +1569,7 @@
         // Handle receive payment form submission
         document.getElementById('receivePaymentForm').addEventListener('submit', function (e) {
             e.preventDefault();
+            if (this.dataset.submitting === 'true') return;
 
             const originalAmount = parseFloat(document.getElementById('originalAmount').value) || 0;
             const receivedAmount = parseFloat(document.getElementById('receivedAmount').value);
@@ -1560,6 +1592,13 @@
                 'Are you sure you want to record this partial payment? This action cannot be undone.'
             )) {
                 return;
+            }
+            
+            this.dataset.submitting = 'true';
+            const submitBtn = this.querySelector('button[type="submit"]');
+            if(submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
             }
 
             const formData = new FormData(this);
@@ -1586,6 +1625,13 @@
                         $('#receivePaymentModal').modal('hide');
                         location.reload();
                     } else {
+                        document.getElementById('receivePaymentForm').dataset.submitting = 'false';
+                        const formSubmitBtn = document.getElementById('receivePaymentForm').querySelector('button[type="submit"]');
+                        if(formSubmitBtn) {
+                            formSubmitBtn.disabled = false;
+                            formSubmitBtn.innerHTML = 'Confirm Payment';
+                        }
+                        
                         alert(data.message || 'Error recording payment');
                         // Show validation errors if any
                         if (data.errors) {
@@ -1605,6 +1651,12 @@
                     }
                 })
                 .catch(error => {
+                    document.getElementById('receivePaymentForm').dataset.submitting = 'false';
+                    const formSubmitBtn = document.getElementById('receivePaymentForm').querySelector('button[type="submit"]');
+                    if(formSubmitBtn) {
+                        formSubmitBtn.disabled = false;
+                        formSubmitBtn.innerHTML = 'Confirm Payment';
+                    }
                     console.error('Error:', error);
                     alert('Error recording payment');
                 });
@@ -1741,10 +1793,29 @@
 
                 // Only auto-fill if this calculation was NOT triggered by the user typing in received_amount
                 if (!isReceivedAmountTrigger) {
-                    if (Math.abs(receivedAmount - window.oldIncomeNetPayable) < 0.01 || receivedAmountField.value === "" || receivedAmountField.value === "0.00") {
+                    if (Math.abs(receivedAmount - window.oldIncomeNetPayable) < 0.01) {
                         receivedAmount = Math.max(0, netPayable);
                         receivedAmountField.value = receivedAmount.toFixed(2);
                     }
+                }
+
+                if (receivedAmount > netPayable) {
+                    receivedAmountField.classList.add('is-invalid');
+                    if (!document.getElementById('receivedAmountError')) {
+                        const error = document.createElement('div');
+                        error.id = 'receivedAmountError';
+                        error.className = 'invalid-feedback';
+                        error.textContent = 'Received amount cannot exceed net payable amount (' + netPayable.toFixed(2) + ')';
+                        receivedAmountField.parentNode.appendChild(error);
+                    } else {
+                        document.getElementById('receivedAmountError').textContent = 'Received amount cannot exceed net payable amount (' + netPayable.toFixed(2) + ')';
+                    }
+                    if (document.getElementById('submitBtn')) document.getElementById('submitBtn').disabled = true;
+                } else {
+                    receivedAmountField.classList.remove('is-invalid');
+                    if (document.getElementById('submitBtn')) document.getElementById('submitBtn').disabled = false;
+                    const error = document.getElementById('receivedAmountError');
+                    if (error) error.remove();
                 }
 
                 window.oldIncomeNetPayable = netPayable;
@@ -1756,6 +1827,18 @@
                 console.log('Grand Total:', grandTotal, 'TDS:', tdsAmount, 'Received:', receivedAmount, 'Balance:', balanceVal);
 
                 balanceField.value = balanceVal.toFixed(2);
+
+                const receivedDateInput = document.getElementById('received_date');
+                if (receivedDateInput) {
+                    const receivedDateContainer = receivedDateInput.closest('.col-md-6');
+                    if (receivedDateContainer) {
+                        if (receivedAmount > 0) {
+                            receivedDateContainer.style.display = 'block';
+                        } else {
+                            receivedDateContainer.style.display = 'none';
+                        }
+                    }
+                }
 
                 const statusSelect = document.getElementById('status');
                 if (statusSelect) {
@@ -2078,11 +2161,11 @@
                         }
                     }
 
-                    // Make base amount readonly for standard income
+                    // Make base amount readonly for standard income or split payments
                     const plannedAmountInput = document.getElementById('editPlannedAmount');
                     if (plannedAmountInput) {
-                        plannedAmountInput.readOnly = isStandardIncome;
-                        if (isStandardIncome) {
+                        plannedAmountInput.readOnly = isStandardIncome || isSplitPayment;
+                        if (isStandardIncome || isSplitPayment) {
                             plannedAmountInput.classList.add('bg-light');
                         } else {
                             plannedAmountInput.classList.remove('bg-light');
@@ -2127,7 +2210,7 @@
                     // GST handling
                     const hasGst = parseFloat(income.gst_amount) > 0 || parseFloat(income.gst_percentage) > 0;
                     // TDS handling
-                    const hasTds = income.tdsTax !== null || parseFloat(income.tds_amount) > 0 || parseFloat(income.tds_percentage) > 0;
+                    const hasTds = (income.tdsTax !== undefined && income.tdsTax !== null) || parseFloat(income.tds_amount) > 0 || parseFloat(income.tds_percentage) > 0;
 
                     // Toggle whole tax block based on currency (hide for USD) or if standard and no taxes
                     const editTaxInfoContainer = document.getElementById('editTaxInfoContainer');
@@ -2537,6 +2620,21 @@
                         handleStatusChange(statusSelect, 'editDueDateContainer', 'editDueDate');
                     }
 
+                    // Make Payment Mode mandatory if Paid Amount > 0
+                    const editPaymentMode = document.getElementById('editPaymentMode');
+                    const editPaymentModeLabel = document.getElementById('editPaymentModeLabel');
+                    if (editPaymentMode && editPaymentModeLabel) {
+                        if (paidAmount > 0) {
+                            editPaymentMode.required = true;
+                            editPaymentMode.setAttribute('required', 'required');
+                            editPaymentModeLabel.classList.add('required');
+                        } else {
+                            editPaymentMode.required = false;
+                            editPaymentMode.removeAttribute('required');
+                            editPaymentModeLabel.classList.remove('required');
+                        }
+                    }
+
                     handleStatusBehavior('income-edit');
                 }
             }
@@ -2547,8 +2645,22 @@
             }
 
             if (paidAmountInput) {
+                const toggleRequiredFields = () => {
+                    const hasPaidAmount = parseFloat(paidAmountInput.value) > 0;
+                    const paidDate = document.getElementById('editPaidDate');
+                    const receipts = document.getElementById('editReceipts');
+                    if (paidDate) paidDate.required = hasPaidAmount;
+                    if (receipts) receipts.required = hasPaidAmount;
+                };
+
                 // Changing paid amount should only update balance, not recalculate taxes
-                paidAmountInput.addEventListener('input', () => calculateEditTaxAndBalance('paid'));
+                paidAmountInput.addEventListener('input', () => {
+                    calculateEditTaxAndBalance('paid');
+                    toggleRequiredFields();
+                });
+                
+                // Trigger once on init
+                toggleRequiredFields();
             }
 
 
@@ -2625,6 +2737,8 @@
         // Handle edit form submission
         document.getElementById('editIncomeForm')?.addEventListener('submit', async function (e) {
             e.preventDefault();
+            if (this.dataset.submitting === 'true') return;
+            this.dataset.submitting = 'true';
 
             // Enable disabled fields temporarily for submission
             const disabledElements = this.querySelectorAll(':disabled');
@@ -2709,6 +2823,7 @@
                     // Reset button
                     submitBtn.innerHTML = originalText;
                     submitBtn.disabled = false;
+                    this.dataset.submitting = 'false';
 
                     // Show validation errors
                     if (data.errors) {
@@ -2731,6 +2846,7 @@
                 // Reset button
                 submitBtn.innerHTML = originalText;
                 submitBtn.disabled = false;
+                this.dataset.submitting = 'false';
             }
         });
 

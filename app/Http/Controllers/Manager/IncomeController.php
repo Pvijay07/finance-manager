@@ -473,11 +473,21 @@ class IncomeController extends Controller
       $payableAmountTotal = $plannedAmountTotal - $tdsAmountTotal;
       
       $receivedAmount = $request->received_amount ?? 0;
+      
+      if ($receivedAmount > $payableAmountTotal && $payableAmountTotal > 0) {
+          return response()->json([
+              'success' => false,
+              'message' => 'Received amount cannot exceed net payable amount.',
+              'errors' => ['received_amount' => ['Received amount cannot exceed net payable amount.']]
+          ], 422);
+      }
 
       // Check if this should be a split payment
       $isSplitPayment = ($request->status === 'due' || $request->status === 'settle') &&
         $receivedAmount > 0 &&
         $receivedAmount < $payableAmountTotal;
+        
+
 
       if ($isSplitPayment && $payableAmountTotal > 0) {
         $proportion = $receivedAmount / $payableAmountTotal;
@@ -525,7 +535,7 @@ class IncomeController extends Controller
 
       // Handle taxes (always for the first shard in non-standard income)
       // Handle GST tax
-      $skipMainTaxes = ($request->status === 'settle' && !$isSplitPayment);
+      $skipMainTaxes = ($request->status === 'settle' && $receivedAmount <= 0);
       if ($request->boolean('apply_gst') && !$skipMainTaxes) {
         $income->taxes()->create([
           'taxable_type' => Income::class,
@@ -533,7 +543,7 @@ class IncomeController extends Controller
           'tax_type' => 'gst',
           'tax_percentage' => $data['gst_percentage'] ?? 0,
           'tax_amount' => $gstAmountForCurrent,
-          'payment_status' => ($isSplitPayment || $request->status === 'settle') ? 'received' : 'not_received',
+          'payment_status' => ($isSplitPayment || in_array($request->status, ['settle', 'paid'])) ? 'received' : 'not_received',
           'direction' => 'income',
           'taxable_amount' => $paidBaseAmount
         ]);
@@ -594,7 +604,7 @@ class IncomeController extends Controller
         $newIncomeId = $newIncome->id;
 
         // Create taxes for the balance income
-        if ($request->boolean('apply_gst') && $request->status !== 'settle') {
+        if ($request->boolean('apply_gst')) {
           $newGstAmount = $gstAmountTotal - $gstAmountForCurrent;
           if ($newGstAmount > 0) {
             $newIncome->taxes()->create([
@@ -610,7 +620,7 @@ class IncomeController extends Controller
           }
         }
 
-        if ($request->boolean('apply_tds') && $request->status !== 'settle') {
+        if ($request->boolean('apply_tds')) {
           $newTdsAmount = $tdsAmountTotal - $tdsAmountForCurrent;
           if ($newTdsAmount > 0) {
             $newIncome->taxes()->create([
@@ -908,8 +918,8 @@ class IncomeController extends Controller
           'original_total' => $rootIncome->original_amount ?? $rootIncome->actual_amount ?? $originalSum,
           'status' => $rootIncome->status,
           'created_at' => $rootIncome->created_at->toIso8601String(),
-          'gst_amount' => $calculatedOriginalGst > 0 ? ($calculatedOriginalGst / $rate) : ($allSplits->sum(function ($split) { return $split->taxes->where('tax_type', 'gst')->sum('tax_amount'); }) / $rate),
-          'tds_amount' => $calculatedOriginalTds > 0 ? ($calculatedOriginalTds / $rate) : ($allSplits->sum(function ($split) { return $split->taxes->where('tax_type', 'tds')->sum('tax_amount'); }) / $rate),
+          'gst_amount' => $calculatedOriginalGst / $rate,
+          'tds_amount' => $calculatedOriginalTds / $rate,
           'gst_percentage' => $gstPercentage,
           'tds_percentage' => $tdsPercentage
         ] : null,
@@ -976,7 +986,16 @@ class IncomeController extends Controller
         'balance_amount' => 'nullable|numeric',
 
         // Payment Mode Validation
-        'payment_mode' => 'nullable|string',
+        'payment_mode' => [
+            function ($attribute, $value, $fail) use ($request) {
+                $receivedAmount = $request->input('received_amount', 0);
+                if ($receivedAmount > 0 && empty($value)) {
+                    $fail('The payment mode field is required when there is a paid amount.');
+                }
+            },
+            'nullable',
+            'string'
+        ],
         'bank_name' => 'nullable|required_if:payment_mode,bank_transfer,cheque|string',
         'upi_type' => 'nullable|required_if:payment_mode,upi|string',
         'upi_number' => 'nullable|required_if:payment_mode,upi|digits:10',
@@ -1035,9 +1054,19 @@ class IncomeController extends Controller
       
       $receivedAmount = $validated['received_amount'] ?? $income->received_amount ?? 0;
 
+      if ($receivedAmount > $payableAmountTotal && $payableAmountTotal > 0) {
+          return response()->json([
+              'success' => false,
+              'message' => 'Received amount cannot exceed net payable amount.',
+              'errors' => ['received_amount' => ['Received amount cannot exceed net payable amount.']]
+          ], 422);
+      }
+
       $isSplitPayment = ($validated['status'] === 'due' || $validated['status'] === 'settle') &&
         $receivedAmount > 0 &&
         $receivedAmount < $payableAmountTotal;
+        
+
 
       $originalActualAmount = floatval($income->actual_amount);
       $isForeignCurrency = ($income->invoice && $income->invoice->currency != 'INR') || ($income->currency && $income->currency != 'INR');
@@ -1109,7 +1138,7 @@ class IncomeController extends Controller
       $income->update($incomeData);
 
       // Handle GST tax
-      $skipMainTaxes = ($validated['status'] === 'settle' && !$isSplitPayment);
+      $skipMainTaxes = ($validated['status'] === 'settle' && $receivedAmount <= 0);
       if ($request->boolean('apply_gst') && !$skipMainTaxes) {
         $gstPercentage = $validated['gst_percentage'] ?? 0;
         Tax::updateOrCreate(

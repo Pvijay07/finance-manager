@@ -103,13 +103,44 @@
                 <div class="card-body">
                     @php
                         $rootIncome = $uniqueFamily->sortBy('created_at')->first();
-                        $displayBase = $rootIncome->original_amount > 0 ? $rootIncome->original_amount : ($rootIncome->actual_amount > 0 ? $rootIncome->actual_amount : $rootIncome->amount);
                         
-                        $displayTotal = $uniqueFamily->sum('amount');
+                        $originalSum = $uniqueFamily->sum('amount');
+                        $displayBase = $rootIncome->original_amount > 0 ? $rootIncome->original_amount : $rootIncome->schedule_amount;
+                        
+                        $rootGst = $rootIncome->taxes->where('tax_type', 'gst')->first();
+                        $rootTds = $rootIncome->taxes->where('tax_type', 'tds')->first();
+                        $gstPercentage = $rootGst ? $rootGst->tax_percentage : 0;
+                        $tdsPercentage = $rootTds ? $rootTds->tax_percentage : 0;
+
+                        if (!$displayBase || $displayBase <= 0) {
+                            $displayBase = $originalSum;
+                            if ($gstPercentage > 0 || $tdsPercentage > 0) {
+                                $displayBase = $originalSum / (1 + ($gstPercentage - $tdsPercentage) / 100);
+                            }
+                        }
+                        
+                        $displayTotal = $displayBase;
+                        if($rootIncome->taxes && $rootIncome->taxes->count() > 0) {
+                            foreach($rootIncome->taxes as $tax) {
+                                $originalTaxAmount = $displayBase * ($tax->tax_percentage / 100);
+                                if ($tax->tax_type == 'tds') {
+                                    $displayTotal -= $originalTaxAmount;
+                                } else {
+                                    $displayTotal += $originalTaxAmount;
+                                }
+                            }
+                        }
+                        if($itemCurrency === 'USD') {
+                            $exactConversionCost = $displayBase * 0.015;
+                            $displayTotal -= $exactConversionCost;
+                            $original_conversion_cost = $exactConversionCost;
+                        } elseif(isset($original_conversion_cost) && $original_conversion_cost > 0) {
+                            $displayTotal -= $original_conversion_cost;
+                        }
                     @endphp
                     <div class="d-flex justify-content-between mb-3 border-bottom pb-2">
                         <span class="text-muted">Base Amount:</span>
-                        <span class="fw-bold">₹{{ fmod($displayBase, 1) == 0 ? number_format($displayBase, 0, '.', '') : number_format($displayBase, 2) }}</span>
+                        <span class="fw-bold">₹{{ number_format($displayBase, 2) }}</span>
                     </div>
                     
                     @if($rootIncome->taxes && $rootIncome->taxes->count() > 0)
@@ -120,7 +151,7 @@
                             <div class="d-flex justify-content-between mb-2">
                                 <span class="text-muted text-uppercase">{{ $tax->tax_type }} ({{ $tax->tax_percentage }}%):</span>
                                 <span class="fw-medium text-{{ $tax->tax_type == 'tds' ? 'danger' : 'primary' }}">
-                                    {{ $tax->tax_type == 'tds' ? '-' : '+' }}₹{{ fmod($originalTaxAmount, 1) == 0 ? number_format($originalTaxAmount, 0, '.', '') : number_format($originalTaxAmount, 2) }}
+                                    {{ $tax->tax_type == 'tds' ? '-' : '+' }}₹{{ number_format($originalTaxAmount, 2) }}
                                 </span>
                             </div>
                         @endforeach
@@ -130,14 +161,14 @@
                         <div class="d-flex justify-content-between mb-2">
                             <span class="text-muted">Conversion Cost:</span>
                             <span class="fw-medium text-danger">
-                                -₹{{ fmod($original_conversion_cost, 1) == 0 ? number_format($original_conversion_cost, 0, '.', '') : number_format($original_conversion_cost, 2) }}
+                                -₹{{ number_format($original_conversion_cost, 2) }}
                             </span>
                         </div>
                     @endif
 
                     <div class="d-flex justify-content-between mt-4 pt-3 border-top border-dark">
                         <span class="text-dark fw-bold h5 mb-0">Total Amount:</span>
-                        <span class="text-success fw-bold h5 mb-0">₹{{ fmod($displayTotal, 1) == 0 ? number_format($displayTotal, 0, '.', '') : number_format($displayTotal, 2) }}</span>
+                        <span class="text-success fw-bold h5 mb-0">₹{{ number_format($displayTotal, 2) }}</span>
                     </div>
                 </div>
             </div>
@@ -170,10 +201,10 @@
                                 <td class="ps-4 fw-medium">{{ $index + 1 }}</td>
                                 <td>#{{ $split->invoice_number ?? ('INC-' . $split->id) }}</td>
                                 @php
-                                    $displayAmount = $split->amount;
+                                    $displayAmount = ($split->is_partial || $split->parent_id) ? $split->amount : $displayTotal;
                                 @endphp
                                 <td class="fw-bold text-success">
-                                    ₹{{ fmod($displayAmount, 1) == 0 ? number_format($displayAmount, 0, '.', '') : number_format($displayAmount, 2) }}
+                                    ₹{{ number_format($displayAmount, 2) }}
                                     @if($split->status === 'settle' && $split->settle_notes)
                                         <div class="text-muted small mt-1">({{ $split->settle_notes }})</div>
                                     @endif
