@@ -305,7 +305,14 @@ class SystemSettingsController extends Controller
         'tax_calculation_method' => 'exclusive',
         'tax_rates' => '[{"name":"GST","rate":18}]',
         'company_gstin' => '',
-        'company_pan' => ''
+        'company_pan' => '',
+        
+        'bank_name' => '',
+        'bank_account_name' => '',
+        'bank_account_number' => '',
+        'bank_ifsc_code' => '',
+        'bank_swift_code' => '',
+        'bank_branch' => ''
       ];
 
       return array_merge($defaults, $settings);
@@ -398,7 +405,13 @@ class SystemSettingsController extends Controller
       'tax_calculation_method' => 'Tax calculation method',
       'tax_rates' => 'Additional tax rates in JSON format',
       'company_gstin' => 'Company GSTIN number',
-      'company_pan' => 'Company PAN number'
+      'company_pan' => 'Company PAN number',
+      'bank_name' => 'Name of the bank',
+      'bank_account_name' => 'Name on the bank account',
+      'bank_account_number' => 'Bank account number',
+      'bank_ifsc_code' => 'IFSC Code for the bank branch',
+      'bank_swift_code' => 'SWIFT Code for international transfers',
+      'bank_branch' => 'Bank branch name or location'
     ];
 
     return $descriptions[$key] ?? null;

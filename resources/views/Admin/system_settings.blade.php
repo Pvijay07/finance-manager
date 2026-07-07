@@ -34,6 +34,11 @@
                 <i class="fas fa-percentage me-2"></i> Tax Settings
             </button>
         </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="bank-tab" data-bs-toggle="tab" data-bs-target="#bank" type="button">
+                <i class="fas fa-university me-2"></i> Bank Details
+            </button>
+        </li>
     </ul>
 
     <div class="tab-content" id="settingsTabsContent">
@@ -832,6 +837,58 @@
                 </form>
             </div>
         </div>
+
+        <!-- Bank Details Tab -->
+        <div class="tab-pane fade" id="bank" role="tabpanel">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">Bank Details</div>
+                </div>
+                <form id="bankSettingsForm" method="POST" action="{{ route('admin.settings.save') }}">
+                    @csrf
+                    <input type="hidden" name="group" value="bank">
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Bank Name</label>
+                                <input type="text" class="form-control" name="bank_name"
+                                    value="{{ $settings['bank_name'] ?? '' }}" placeholder="e.g., State Bank of India">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Account Name</label>
+                                <input type="text" class="form-control" name="bank_account_name"
+                                    value="{{ $settings['bank_account_name'] ?? '' }}" placeholder="e.g., John Doe">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Account Number</label>
+                                <input type="text" class="form-control" name="bank_account_number"
+                                    value="{{ $settings['bank_account_number'] ?? '' }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">IFSC Code</label>
+                                <input type="text" class="form-control" name="bank_ifsc_code"
+                                    value="{{ $settings['bank_ifsc_code'] ?? '' }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">SWIFT Code</label>
+                                <input type="text" class="form-control" name="bank_swift_code"
+                                    value="{{ $settings['bank_swift_code'] ?? '' }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Branch Name / Location</label>
+                                <input type="text" class="form-control" name="bank_branch"
+                                    value="{{ $settings['bank_branch'] ?? '' }}">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i> Save Bank Details
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -936,26 +993,10 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        let taxRateCount = {
-            {
-                count($taxRates)
-            }
-        };
-        let fixedExpenseCount = {
-            {
-                count($fixedExpenses ?? [])
-            }
-        };
-        let editableExpenseCount = {
-            {
-                count($editableExpenses ?? [])
-            }
-        };
-        let variableCategoryCount = {
-            {
-                count($variableCategories ?? [])
-            }
-        };
+        let taxRateCount = {{ count($taxRates) }};
+        let fixedExpenseCount = {{ count($fixedExpenses ?? []) }};
+        let editableExpenseCount = {{ count($editableExpenses ?? []) }};
+        let variableCategoryCount = {{ count($variableCategories ?? []) }};
 
         // Test Email Function
         window.testEmail = function() {

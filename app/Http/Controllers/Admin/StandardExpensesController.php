@@ -51,7 +51,7 @@ class StandardExpensesController extends Controller
         $today = Carbon::today();
         $dueDate = Carbon::parse($item->due_date);
         if ($item->source === 'standard' && !in_array($item->status, ['paid', 'settle', 'settled'])) {
-            if ($dueDate->isPast()) {
+            if ($dueDate->startOfDay()->isPast() && !$dueDate->isToday()) {
                 $item->status = 'pending';
             } else {
                 $item->status = 'upcoming';
@@ -161,6 +161,7 @@ class StandardExpensesController extends Controller
         $message = 'Template updated successfully';
       } else {
         $expenseData['created_by'] = auth()->id();
+        $expenseData['expense_number'] = Expense::generateNewExpenseNumber();
         $expense                   = Expense::create($expenseData);
         $message                   = 'Template created successfully';
       }
@@ -461,6 +462,13 @@ class StandardExpensesController extends Controller
         ->where('source', 'standard')
         ->firstOrFail();
 
+      $today = \Carbon\Carbon::now();
+      $baseMonth = ((int)$request->due_day < $today->day)
+        ? $today->copy()->addMonth()
+        : $today->copy();
+
+      $dueDate = $baseMonth->day(min((int)$request->due_day, $baseMonth->daysInMonth))->format('Y-m-d');
+
       $expense->update([
         'expense_name'   => $request->expense_name,
         'company_id'     => $request->company_id,
@@ -475,9 +483,7 @@ class StandardExpensesController extends Controller
         'is_active'      => $request->is_active,
         'tax_type'       => $taxType ?: null,
         'status'         => 'upcoming',
-        'due_date'       => Carbon::now()->day((int)$request->due_day < Carbon::now()->day ? Carbon::now()->addMonth()->day : Carbon::now()->day)
-          ->day(min((int)$request->due_day, Carbon::now()->daysInMonth))
-          ->format('Y-m-d'),
+        'due_date'       => $dueDate,
         'original_amount'=> $request->actual_amount,
 
       ]);
@@ -591,6 +597,7 @@ class StandardExpensesController extends Controller
 
           // Create actual expense from template
           Expense::create([
+            'expense_number'     => Expense::generateNewExpenseNumber(),
             'company_id'         => $template->company_id,
             'expense_name'       => $template->template_name,
             'type'               => 'standard',
@@ -667,10 +674,8 @@ class StandardExpensesController extends Controller
     $dueDateCarbon = \Carbon\Carbon::parse($dueDate);
     $today         = \Carbon\Carbon::today();
 
-    if ($dueDateCarbon->isPast()) {
+    if ($dueDateCarbon->startOfDay()->isPast() && !$dueDateCarbon->isToday()) {
       return 'pending';
-    } elseif ($dueDateCarbon->isToday()) {
-      return 'upcoming';
     } else {
       return 'upcoming';
     }

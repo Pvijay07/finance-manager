@@ -179,4 +179,22 @@ class Income extends Model
 
     return '';
   }
+
+  public function getRootParentId()
+  {
+      $rootId = $this->id;
+      if ($this->parent_id) {
+          $current = $this;
+          while ($current->parent_id) {
+              $rootId = $current->parent_id;
+              if ($current->relationLoaded('parent') && $current->parent) {
+                  $current = $current->parent;
+              } else {
+                  $current = self::find($rootId);
+                  if (!$current) break;
+              }
+          }
+      }
+      return $rootId;
+  }
 }

@@ -141,7 +141,7 @@
                                         <tr>
                                             <td>
                                                 <a href="{{ route('manager.income.view', $income->id) }}" class="fw-bold text-primary text-decoration-none">
-                                                    {{ $income->invoice_number ?? ('#INC-' . $income->id) }}
+                                                    {{ $income->invoice_number ?? ('#INC-' . $income->getRootParentId()) }}
                                                 </a>
                                             </td>
                                             <td>{{ date('d-m-Y', strtotime($income->income_date)) }}</td>

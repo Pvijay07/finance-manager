@@ -365,7 +365,7 @@
                     <table class="table table-hover">
                         <thead>
                             <tr>
-                                <th>Bill No</th>
+                                <th>Expense No</th>
                                 <th>Expense Name</th>
                                 <th>Company</th>
                                 <th>Category</th>
@@ -382,7 +382,7 @@
                                 <tr data-status="{{ $expense->status }}" data-type="{{ $expense->source }}">
                                     <td>
                                         <a href="{{ route('manager.expense.view', $expense->id) }}" class="fw-bold text-primary text-decoration-none">
-                                            #EXP-{{ $expense->id }}
+                                            {{ $expense->expense_number }}
                                         </a>
                                     </td>
                                     <td>{{ $expense->expense_name }}</td>
@@ -450,12 +450,12 @@
                                             @endif
                                         </div>
                                         <!-- In your actions column, add this button: -->
-                                        @if ($expense->is_split || $expense->parent_id)
+                                        <!-- @if ($expense->is_split || $expense->parent_id)
                                             <button class="btn btn-outline-info btn-sm ms-1"
                                                 onclick="viewSplitHistory({{ $expense->id }})" title="View Split History">
                                                 <i class="fas fa-code-branch"></i>
                                             </button>
-                                        @endif
+                                        @endif -->
                                     </td>
                                 </tr>
                             @endforeach
@@ -500,27 +500,25 @@
                     <div class="modal-body">
                         <!-- Header Section -->
                         <div class="row mb-4">
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <label class="form-label fw-bold text-uppercase small text-muted">Expenses Name</label>
                                 <input type="text" readonly id="editExpenseNameDisplay" name="expense_name"
                                     class="form-control">
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <label class="form-label fw-bold text-uppercase small text-muted">Base Amount (₹)</label>
                                 <input type="number" id="editCurrentBaseAmount" name="base_amount" step="0.01"
                                     class="form-control" placeholder="Enter base amount">
+                                <div id="editPlannedBreakdownContainer">
+                                    <span id="nonStandardPlannedBreakdown" class="text-primary" style="text-transform: none;"></span>
+                                </div>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-4 d-none" id="editPlannedAmountContainer">
                                 <label class="form-label fw-bold text-uppercase small text-muted">Planned Amount (₹)</label>
-                                <input type="number" readonly id="editPlannedAmountDisplay" name="planned_amount"
+                                <input type="number" readonly id="editPlannedAmountDisplay" 
                                     class="form-control bg-light">
                             </div>
-                            <div class="col-12 mt-2">
-                                <span id="nonStandardPlannedBreakdown" class="text-primary ms-2" style="text-transform: none;"></span>
-                            </div>
                             <div class="col-md-4">
-                                <!-- <label class="form-label fw-bold text-uppercase small text-muted">Original Bill Total (Base)
-                                            (₹)</label> -->
                                 <input type="hidden" readonly id="editOriginalAmountDisplay" name="original_amount"
                                     class="form-control bg-light">
                             </div>
@@ -528,17 +526,17 @@
 
                         <!-- Payment Section -->
                         <div class="row mb-4">
-                            <div class="col-md-3">
+                            <div class="col-md-4">
                                 <label class="form-label fw-bold text-uppercase small text-muted">Paid Amount (₹)</label>
                                 <input type="number" class="form-control" id="editPaidAmount" name="actual_amount"
                                     step="0.01" placeholder="Enter paid amount">
                                 <small class="text-muted" id="paidBreakdown"></small>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-4">
                                 <label class="form-label fw-bold text-uppercase small text-muted">Paid On</label>
                                 <input type="date" class="form-control" id="editPaidDate" name="paid_date" max="{{ date('Y-m-d') }}" required>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-4">
                                 <label class="form-label fw-bold text-uppercase small text-muted">Payment Mode</label>
                                 <select class="form-select" id="editPaymentMode" name="payment_mode"
                                     onchange="togglePaymentModeDetails(this)">
@@ -547,11 +545,6 @@
                                     <option value="cheque">Cheque</option>
                                     <option value="upi">UPI</option>
                                 </select>
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label fw-bold text-uppercase small text-muted">Upload Receipts</label>
-                                <input type="file" class="form-control" id="editReceiptFile" name="receipts[]"
-                                    accept=".jpg,.jpeg,.png,.pdf,.doc,.docx" required>
                             </div>
                         </div>
 
@@ -591,25 +584,31 @@
                                 <small class="text-muted" id="pendingBreakdown"></small>
                             </div>
                             <div class="col-md-4">
+                                <label class="form-label fw-bold text-uppercase small text-muted">Upload Receipts</label>
+                                <input type="file" class="form-control" id="editReceiptFile" name="receipts[]"
+                                    accept=".jpg,.jpeg,.png,.pdf,.doc,.docx" required>
+                            </div>
+                            <div class="col-md-4">
                                 <div class="form-group">
-
                                     <label class="form-label fw-bold text-uppercase small text-muted">Status</label>
                                     <select class="form-control form-select-lg" id="editStatus" name="status" required>
                                         <option value="" selected disabled>Select Status</option>
-                                        <option value="due" class="text-warning" selected>Due</option>
+                                        <option value="due" class="text-warning">Due</option>
                                         <option value="settle" class="text-info">Settle</option>
-                                        <option value="paid" class="text-success" style="display:none;">Paid</option>
-                                        <!-- <option value="convert_to_tds">Convert to TDS</option> -->
                                     </select>
                                 </div>
-
                             </div>
-                            <div class="col-md-4" id="editSettleNotesContainer" style="display:none;">
+                        </div>
+                        
+                        <div class="row mb-4" id="editSettleNotesContainer" style="display:none;">
+                            <div class="col-md-12">
                                 <div class="form-group">
                                     <label class="form-label fw-bold text-uppercase small text-muted" for="editSettleNotes">Settle Notes <span class="text-danger">*</span></label>
-                                    <textarea class="form-control" id="editSettleNotes" name="settle_notes" rows="1" placeholder="Enter notes..."></textarea>
+                                    <textarea class="form-control" id="editSettleNotes" name="settle_notes" rows="2" placeholder="Enter notes..."></textarea>
                                 </div>
                             </div>
+                        </div>
+                        <div class="row">
                             <div class="col-md-4" style="display: none;">
                                 <label class="form-label fw-bold text-uppercase small text-muted">Due Date</label>
                                 <input type="date" class="form-control" id="editNonStandardDueDate" name="due_date"
@@ -623,11 +622,11 @@
                                     <div class="form-check" style="margin-top: 32px;">
                                         <input class="form-check-input" type="checkbox" id="editApplyGst" name="apply_gst"
                                             value="1" checked style="pointer-events: none;" onclick="return false;">
-                                        <label class="form-check-label" for="editApplyGst">GST</label>
+                                        <label class="form-check-label fw-bold text-uppercase small text-muted" for="editApplyGst">GST</label>
                                     </div>
                                 </div>
                                 <div class="col">
-                                    <label class="form-label">GST %</label>
+                                    <label class="form-label fw-bold text-uppercase small text-muted">GST %</label>
                                     <div class="input-group">
                                         <input type="number" class="form-control" id="editGstPercentage"
                                             name="gst_percentage" value="18" min="0" max="100" step="0.01" readonly>
@@ -635,7 +634,7 @@
                                     </div>
                                 </div>
                                 <div class="col">
-                                    <label class="form-label">GST Amount</label>
+                                    <label class="form-label fw-bold text-uppercase small text-muted">GST Amount</label>
                                     <input type="number" class="form-control" id="editGstAmount" name="gst_amount"
                                         value="0.00" readonly>
                                 </div>
@@ -649,11 +648,11 @@
                                     <div class="form-check" style="margin-top: 32px;">
                                         <input class="form-check-input" type="checkbox" id="editApplyTds" name="apply_tds"
                                             value="1" checked style="pointer-events: none;" onclick="return false;">
-                                        <label class="form-check-label" for="editApplyTds">TDS</label>
+                                        <label class="form-check-label fw-bold text-uppercase small text-muted" for="editApplyTds">TDS</label>
                                     </div>
                                 </div>
                                 <div class="col">
-                                    <label class="form-label">TDS %</label>
+                                    <label class="form-label fw-bold text-uppercase small text-muted">TDS %</label>
                                     <div class="input-group">
                                         <input type="number" class="form-control" id="editTdsPercentage"
                                             name="tds_percentage" value="10" min="0" max="100" step="0.01" readonly>
@@ -661,7 +660,7 @@
                                     </div>
                                 </div>
                                 <div class="col">
-                                    <label class="form-label">TDS Amount</label>
+                                    <label class="form-label fw-bold text-uppercase small text-muted">TDS Amount</label>
                                     <input type="number" class="form-control" id="editTdsAmount" name="tds_amount"
                                         value="0.00" readonly>
                                 </div>
@@ -670,18 +669,17 @@
 
                         <!-- TDS Status Section -->
                         <div class="row mb-3" id="nonstTdsStatusSection">
-                            <div class="col-md-4">
-                                <label class="form-label small fw-bold text-uppercase small text-muted">TDS Status</label>
-                                <select class="form-select form-select-sm" id="editTdsStatus" name="tds_status">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold text-uppercase small text-muted">TDS Status</label>
+                                <select class="form-select" id="editTdsStatus" name="tds_status">
                                     <option value="" selected disabled>Select Status</option>
                                     <option value="received">Paid</option>
                                     <option value="not_received">Not Paid</option>
                                 </select>
                             </div>
-                            <div class="col-md-4">
-                                <label class="form-label small fw-bold text-uppercase small text-muted">TDS
-                                    Certificate/Receipt</label>
-                                <div class="input-group input-group-sm">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold text-uppercase small text-muted">TDS Certificate/Receipt</label>
+                                <div class="input-group">
                                     <input type="file" class="form-control" id="editTdsFile" name="tds_file"
                                         accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
                                     <button type="button" class="btn btn-outline-secondary" onclick="viewTdsFile()"
@@ -828,11 +826,11 @@
                                     <div class="form-check" style="margin-top: 32px;">
                                         <input class="form-check-input" type="checkbox" id="apply_gst" name="apply_gst"
                                             value="1" checked>
-                                        <label class="form-check-label" for="apply_gst">GST</label>
+                                        <label class="form-check-label fw-bold text-uppercase small text-muted" for="apply_gst">GST</label>
                                     </div>
                                 </div>
                                 <div class="col">
-                                    <label class="form-label">GST %</label>
+                                    <label class="form-label fw-bold text-uppercase small text-muted">GST %</label>
                                     <div class="input-group">
                                         <input type="number" class="form-control" id="gst_percentage" name="gst_percentage"
                                             value="18" min="0" max="100" step="0.01">
@@ -840,7 +838,7 @@
                                     </div>
                                 </div>
                                 <div class="col">
-                                    <label class="form-label">GST Amount</label>
+                                    <label class="form-label fw-bold text-uppercase small text-muted">GST Amount</label>
                                     <input type="number" class="form-control" id="gst_amount" name="gst_amount" value="0.00"
                                         readonly>
                                 </div>
@@ -854,11 +852,11 @@
                                     <div class="form-check" style="margin-top: 32px;">
                                         <input class="form-check-input" type="checkbox" id="apply_tds" name="apply_tds"
                                             value="1" checked>
-                                        <label class="form-check-label" for="apply_tds">TDS</label>
+                                        <label class="form-check-label fw-bold text-uppercase small text-muted" for="apply_tds">TDS</label>
                                     </div>
                                 </div>
                                 <div class="col">
-                                    <label class="form-label">TDS %</label>
+                                    <label class="form-label fw-bold text-uppercase small text-muted">TDS %</label>
                                     <div class="input-group">
                                         <input type="number" class="form-control" id="tds_percentage" name="tds_percentage"
                                             value="10" min="0" max="100" step="0.01">
@@ -866,7 +864,7 @@
                                     </div>
                                 </div>
                                 <div class="col">
-                                    <label class="form-label">TDS Amount</label>
+                                    <label class="form-label fw-bold text-uppercase small text-muted">TDS Amount</label>
                                     <input type="number" class="form-control" id="tds_amount" name="tds_amount" value="0.00"
                                         readonly>
                                 </div>
@@ -881,7 +879,7 @@
                                 value="0.00" readonly>
                             <!-- </div> -->
                             <div class="col-md-4 tds-status-field">
-                                <label class="form-label">TDS Status</label>
+                                <label class="form-label fw-bold text-uppercase small text-muted">TDS Status</label>
                                 <select class="form-select" id="addTdsStatus" name="tds_status">
                                     <option value="" selected disabled>Select Status</option>
                                     <option value="received">Paid</option>
@@ -889,7 +887,7 @@
                                 </select>
                             </div>
                             <div class="col-md-4 tds-receipt-field">
-                                <label class="form-label">Receipt</label>
+                                <label class="form-label fw-bold text-uppercase small text-muted">TDS Certificate/Receipt</label>
                                 <input type="file" id="addTdsReceipt" name="tds_receipt" class="form-control"
                                     accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
                             </div>
@@ -986,7 +984,7 @@
                                     <option value="" selected disabled>Select Status</option>
                                     <option value="due" class="text-warning">Due</option>
                                     <option value="settle" class="text-info">Settle</option>
-                                    <option value="paid" class="text-success" style="display:none;">Paid</option>
+
                                 </select>
                             </div>
                             <div class="col-md-3" id="addSettleNotesContainer" style="display:none;">
@@ -1049,14 +1047,13 @@
                     <input type="hidden" name="source" value="standard">
                     <input type="hidden" id="editFixedTdsTaxId" name="tds_tax_id" value="0">
                     <input type="hidden" id="editFixedGstTaxId" name="gst_tax_id" value="0">
-                    <input type="hidden" id="editFixedBaseAmount" value="0">
                     <input type="hidden" id="editFixedApplyGstHidden" name="apply_gst" value="0">
                     <input type="hidden" id="editFixedApplyTdsHidden" name="apply_tds" value="0">
 
                     <div class="modal-body">
                         <!-- Expense Name and Amounts Row -->
                         <div class="row g-3 mb-4">
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <div class="form-group">
                                     <label class="form-label fw-bold text-uppercase small text-muted">Expense Name</label>
                                     <p class="form-control-plaintext fw-semibold fs-6 mb-0"
@@ -1064,11 +1061,19 @@
                                     <input type="hidden" id="editFixedExpenseName" name="expense_name">
                                 </div>
                             </div>
-                            <div class="col-md-8">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="form-label fw-bold text-uppercase small text-muted">Base Amount (₹)</label>
+                                    <input type="number" id="editFixedBaseAmount" name="base_amount" step="0.01" class="form-control" placeholder="Enter base amount">
+                                    <div id="editFixedPlannedBreakdownContainer">
+                                        <span id="fixedPlannedBreakdown" class="text-primary" style="text-transform: none;"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 d-none">
                                 <div class="form-group">
                                     <label class="form-label fw-bold text-uppercase small text-muted">Planned Amount
-                                        (₹)<i class="fas fa-lock me-1"></i> <span id="fixedPlannedBreakdown"
-                                            class="text-primary ms-2" style="text-transform: none;"></span></label>
+                                        (₹)<i class="fas fa-lock me-1"></i></label>
 
                                     <div class="d-flex align-items-start">
                                         <div class="flex-grow-1">
@@ -1089,20 +1094,20 @@
 
                         <!-- Payment Details Row -->
                         <div class="row g-3 mb-4">
-                            <div class="col-md-3">
+                            <div class="col-md-4">
                                 <div class="form-group">
                                     <label class="form-label fw-bold text-uppercase small text-muted">Paid Amount(₹)</label>
                                     <input type="number" class="form-control" id="editFixedActualAmount"
                                         name="actual_amount" step="0.01">
                                 </div>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-4">
                                 <div class="form-group">
                                     <label class="form-label fw-bold text-uppercase small text-muted">Paid On</label>
                                     <input type="date" class="form-control" id="editFixedPaidDate" name="paid_date" max="{{ date('Y-m-d') }}" required>
                                 </div>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-4">
                                 <div class="form-group">
                                     <label class="form-label fw-bold text-uppercase small text-muted">Payment Mode</label>
                                     <select class="form-select" id="editFixedPaymentMode" name="payment_mode"
@@ -1113,11 +1118,6 @@
                                         <option value="upi">UPI</option>
                                     </select>
                                 </div>
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label fw-bold text-uppercase small text-muted">Balance (₹)</label>
-                                <input type="number" class="form-control bg-light" id="fixedBalanceAmount"
-                                    name="balance_amount" step="0.01" readonly>
                             </div>
                         </div>
 
@@ -1150,6 +1150,11 @@
 
                         <div class="row g-3 mb-4">
                             <div class="col-md-4">
+                                <label class="form-label fw-bold text-uppercase small text-muted">Balance (₹)</label>
+                                <input type="number" class="form-control bg-light" id="fixedBalanceAmount"
+                                    name="balance_amount" step="0.01" readonly>
+                            </div>
+                            <div class="col-md-4">
                                 <label class="form-label fw-bold text-uppercase small text-muted">Upload Receipts <span class="text-danger">*</span></label>
                                 <input type="file" class="form-control" id="editFixedReceiptFile" name="receipts[]" required>
                             </div>
@@ -1159,14 +1164,18 @@
                                     <option value="" selected disabled>Select Status</option>
                                     <option value="due" class="text-warning">Due</option>
                                     <option value="settle" class="text-info">Settle</option>
-                                    <option value="paid" class="text-success" style="display:none;">Paid</option>
-                                    <!-- <option value="convert_to_tds">Convert to TDS</option> -->
                                 </select>
                             </div>
-                            <div class="col-md-4" id="editFixedSettleNotesContainer" style="display:none;">
+                        </div>
+                        
+                        <div class="row mb-4" id="editFixedSettleNotesContainer" style="display:none;">
+                            <div class="col-md-12">
                                 <label class="form-label fw-bold text-uppercase small text-muted" for="editFixedSettleNotes">Settle Notes <span class="text-danger">*</span></label>
-                                <textarea class="form-control" id="editFixedSettleNotes" name="settle_notes" rows="1" placeholder="Enter notes..."></textarea>
+                                <textarea class="form-control" id="editFixedSettleNotes" name="settle_notes" rows="2" placeholder="Enter notes..."></textarea>
                             </div>
+                        </div>
+                        
+                        <div class="row">
                             <div class="col-md-4" style="display: none;">
                                 <label class="form-label fw-bold text-uppercase small text-muted">Due Date</label>
                                 <input type="date" class="form-control" id="editFixedDueDate" name="due_date"
@@ -1178,7 +1187,7 @@
                         <hr class="my-4">
                         <!-- Vendor and Date Row -->
                         <div class="row g-3 mb-4">
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <div class="form-group">
                                     <label class="form-label fw-bold text-uppercase small text-muted">Vendor/ Party
                                         Name</label>
@@ -1200,12 +1209,12 @@
                                     <div class="form-check" style="margin-top: 32px;">
                                         <input class="form-check-input" type="checkbox" id="fixedApplyGst" name="apply_gst"
                                             value="1" checked style="pointer-events: none;" onclick="return false;">
-                                        <label class="form-check-label" for="fixedApplyGst">GST <i
+                                        <label class="form-check-label fw-bold text-uppercase small text-muted" for="fixedApplyGst">GST <i
                                                 class="fas fa-lock ms-1 small text-muted"></i></label>
                                     </div>
                                 </div>
                                 <div class="col">
-                                    <label class="form-label">GST %</label>
+                                    <label class="form-label fw-bold text-uppercase small text-muted">GST %</label>
                                     <div class="input-group">
                                         <input type="number" class="form-control" id="fixedGstPercentage"
                                             name="gst_percentage" value="18" min="0" max="100" step="0.01" readonly>
@@ -1213,7 +1222,7 @@
                                     </div>
                                 </div>
                                 <div class="col">
-                                    <label class="form-label">GST Amount</label>
+                                    <label class="form-label fw-bold text-uppercase small text-muted">GST Amount</label>
                                     <input type="number" class="form-control" id="fixedGstAmount" name="gst_amount"
                                         value="0.00" readonly>
                                 </div>
@@ -1227,12 +1236,12 @@
                                     <div class="form-check" style="margin-top: 32px;">
                                         <input class="form-check-input" type="checkbox" id="fixedApplyTds" name="apply_tds"
                                             value="1" checked style="pointer-events: none;" onclick="return false;">
-                                        <label class="form-check-label" for="fixedApplyTds">TDS <i
+                                        <label class="form-check-label fw-bold text-uppercase small text-muted" for="fixedApplyTds">TDS <i
                                                 class="fas fa-lock ms-1 small text-muted"></i></label>
                                     </div>
                                 </div>
                                 <div class="col">
-                                    <label class="form-label">TDS %</label>
+                                    <label class="form-label fw-bold text-uppercase small text-muted">TDS %</label>
                                     <div class="input-group">
                                         <input type="number" class="form-control" id="fixedTdsPercentage"
                                             name="tds_percentage" value="10" min="0" max="100" step="0.01" readonly>
@@ -1240,7 +1249,7 @@
                                     </div>
                                 </div>
                                 <div class="col">
-                                    <label class="form-label">TDS Amount</label>
+                                    <label class="form-label fw-bold text-uppercase small text-muted">TDS Amount</label>
                                     <input type="number" class="form-control" id="fixedTdsAmount" name="tds_amount"
                                         value="0.00" readonly>
                                 </div>
@@ -1249,17 +1258,16 @@
 
                         <!-- TDS Section -->
                         <div class="row mb-3" id="fixedTdsExtraSection">
-                            <div class="col-md-4">
-                                <label class="form-label small fw-bold text-uppercase small text-muted">TDS Status</label>
-                                <select class="form-select form-select-sm" id="editFixedTdsStatus" name="tds_status">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold text-uppercase small text-muted">TDS Status</label>
+                                <select class="form-select" id="editFixedTdsStatus" name="tds_status">
                                     <option value="received">Paid</option>
                                     <option value="not_received" selected>Not Paid</option>
                                 </select>
                             </div>
-                            <div class="col-md-4">
-                                <label class="form-label small fw-bold text-uppercase small text-muted">TDS
-                                    Certificate/Receipt</label>
-                                <div class="input-group input-group-sm">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold text-uppercase small text-muted">TDS Certificate/Receipt</label>
+                                <div class="input-group">
                                     <input type="file" class="form-control" id="editFixedTdsFile" name="tds_file"
                                         accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
                                     <button type="button" class="btn btn-outline-secondary" onclick="viewTdsFile()"
@@ -1309,8 +1317,8 @@
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Edit Standard Expense</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <h5 class="modal-title"><i class="fas fa-pen me-2" style="color:#6c7ae0;"></i>Edit Standard Editable Expense</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <form id="editStandardEditableForm">
                     @csrf
@@ -1319,221 +1327,215 @@
                     <input type="hidden" id="editEditableParentId" name="parent_id" value="0">
                     <input type="hidden" id="editEditableTdsTaxId" name="tds_tax_id" value="0">
                     <input type="hidden" id="editEditableGstTaxId" name="gst_tax_id" value="0">
-                    <input type="hidden" id="editEditableBaseAmount" value="0">
-
                     <input type="hidden" name="source" value="standard">
-                    <div class="modal-body">
 
-                        <div class="row mb-4">
-                            <div class="col-md-4">
-                                <label class="form-label fw-bold text-uppercase small text-muted ">Expense Name</label>
-                                <p class="form-control-plaintext" id="editEditableExpenseNameDisplay"></p>
+                    <div class="modal-body">
+                        <!-- first row: expense name + base amount -->
+                        <div class="row mb-4 align-items-end">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold text-uppercase small text-muted">Expense Name</label>
+                                <p class="form-control-plaintext fw-bold" id="editEditableExpenseNameDisplay"></p>
                                 <input type="hidden" id="editEditableExpenseName" name="expense_name">
                             </div>
-                            <div class="col-md-8">
-                                <label class="form-label fw-bold text-uppercase small text-muted">Planned Amount (₹)
-                                    * <span id="editablePlannedBreakdown" class="text-primary ms-2"
-                                        style="text-transform: none;"></span></label>
-                                <div class="d-flex align-items-start">
-                                    <div class="flex-grow-1"></div>
-                                    <input type="number" class="form-control bg-light" readonly id="editEditablePlannedAmount"
-                                        name="planned_amount" step="0.01" required>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold text-uppercase small text-muted">Base Amount (₹)</label>
+                                <input type="number" id="editEditableBaseAmount" name="base_amount" step="0.01" class="form-control" placeholder="Enter base amount">
+                                <div id="editEditablePlannedBreakdownContainer">
+                                    <span id="editablePlannedBreakdown" class="text-primary" style="text-transform: none;"></span>
                                 </div>
-                                <div id="editTaxSummary" class="ms-3">
-                                    <!-- GST and Total will be displayed here -->
-                                </div>
-                            </div>
-
-
-                            <div class="row g-3 mb-4">
-                                <div class="col-md-3">
-                                    <label class="form-label fw-bold text-uppercase small text-muted">Paid Amount(₹)</label>
-                                    <input type="number" class="form-control" id="editEditableActualAmount"
-                                        name="actual_amount" step="0.01">
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label fw-bold text-uppercase small text-muted">Paid On</label>
-                                    <input type="date" class="form-control" id="editEditablePaidDate" name="paid_date" max="{{ date('Y-m-d') }}" required>
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label fw-bold text-uppercase small text-muted">Payment Mode</label>
-                                    <select class="form-select" id="editEditablePaymentMode" name="payment_mode"
-                                        onchange="togglePaymentModeDetails(this)">
-                                        <option value="cash">Cash</option>
-                                        <option value="bank_transfer">Bank Transfer</option>
-                                        <option value="cheque">Cheque</option>
-                                        <option value="upi">UPI</option>
-                                    </select>
-                                </div>
-
-                                <div class="col-md-3">
-                                    <label class="form-label fw-bold text-uppercase small text-muted">Upload
-                                        Receipts <span class="text-danger">*</span></label>
-                                    <input type="file" class="form-control" id="editEditableReceiptFile" name="receipts[]" required>
-                                </div>
-                            </div>
-
-                            <!-- Payment Mode Details (Hidden) -->
-                            <div class="row g-3 mb-4 payment-mode-details" style="display: none;">
-                                <div class="col-md-4 bank-details" style="display: none;">
-                                    <label class="form-label fw-bold text-uppercase small text-muted">Bank</label>
-                                    <select class="form-select" id="editEditableBankName" name="bank_name">
-                                        <option value="">Select Bank</option>
-                                        <option value="SBI">SBI</option>
-                                        <option value="HDFC">HDFC</option>
-                                        <option value="ICICI">ICICI</option>
-                                        <option value="Axis">Axis</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-4 upi-details" style="display: none;">
-                                    <label class="form-label fw-bold text-uppercase small text-muted">UPI Type</label>
-                                    <select class="form-select" id="editEditableUpiType" name="upi_type">
-                                        <option value="GPay">GPay</option>
-                                        <option value="PhonePe">PhonePe</option>
-                                        <option value="Paytm">Paytm</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-4 upi-details" style="display: none;">
-                                    <label class="form-label fw-bold text-uppercase small text-muted">UPI Phone</label>
-                                    <input type="text" class="form-control" id="editEditableUpiNumber" name="upi_number"
-                                        placeholder="Number" maxlength="10" pattern="[0-9]{10}" title="UPI phone number must be exactly 10 digits">
-                                </div>
-                            </div>
-
-                            <div class="row g-3 mb-4">
-
-                                <div class="col-md-4">
-                                    <label class="form-label fw-bold text-uppercase small text-muted">Balance (₹)</label>
-                                    <input type="number" class="form-control bg-light" id="edittableBalanceAmount"
-                                        name="balance_amount" step="0.01" readonly>
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label fw-bold text-uppercase small text-muted">Status</label>
-                                    <select class="form-select" id="editEditableStatus" name="status" required>
-                                        <option value="" selected disabled>Select Status</option>
-                                        <option value="due" class="text-warning">Due</option>
-                                        <option value="settle" class="text-info">Settle</option>
-                                        <option value="paid" class="text-success" style="display:none;">Paid</option>
-                                        <!-- <option value="convert_to_tds">Convert to TDS</option> -->
-                                    </select>
-                                </div>
-                                <div class="col-md-4" id="editEditableSettleNotesContainer" style="display:none;">
-                                    <label class="form-label fw-bold text-uppercase small text-muted" for="editEditableSettleNotes">Settle Notes <span class="text-danger">*</span></label>
-                                    <textarea class="form-control" id="editEditableSettleNotes" name="settle_notes" rows="1" placeholder="Enter notes..."></textarea>
-                                </div>
-                                <div class="col-md-4" style="display: none;">
-                                    <label class="form-label fw-bold text-uppercase small text-muted">Due Date</label>
-                                    <input type="date" class="form-control" id="editEditableDueDate" name="due_date"
-                                        min="{{ date('Y-m-d') }}">
-                                </div>
-
                             </div>
                         </div>
 
-                        <!-- GST Section -->
+                        <!-- hidden planned row (kept for structure) -->
+                        <div class="row d-none">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold text-uppercase small text-muted">Planned Amount (₹)</label>
+                                <input type="number" class="form-control bg-light" readonly id="editEditablePlannedAmount" name="planned_amount" step="0.01">
+                            </div>
+                            <div id="editTaxSummary" class="col-md-4"></div>
+                        </div>
+
+                        <!-- paid amount, paid on, payment mode -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold text-uppercase small text-muted">Paid Amount (₹)</label>
+                                <input type="number" class="form-control" id="editEditableActualAmount" name="actual_amount" step="0.01">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold text-uppercase small text-muted">Paid On</label>
+                                <input type="date" class="form-control" id="editEditablePaidDate" name="paid_date" max="{{ date('Y-m-d') }}" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold text-uppercase small text-muted">Payment Mode</label>
+                                <select class="form-select" id="editEditablePaymentMode" name="payment_mode" onchange="togglePaymentModeDetails(this)">
+                                    <option value="cash">Cash</option>
+                                    <option value="bank_transfer">Bank Transfer</option>
+                                    <option value="cheque">Cheque</option>
+                                    <option value="upi">UPI</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold text-uppercase small text-muted">Upload Receipts <span class="text-danger">*</span></label>
+                                <input type="file" class="form-control" id="editEditableReceiptFile" name="receipts[]" required>
+                            </div>
+                             <div class="col-md-4">
+                                <label class="form-label fw-bold text-uppercase small text-muted">Balance (₹)</label>
+                                <input type="number" class="form-control bg-light" id="edittableBalanceAmount" name="balance_amount" step="0.01" readonly>
+                            </div>
+                        </div>
+
+                        <!-- payment mode details (hidden by default) -->
+                        <div class="row g-3 mb-4 payment-mode-details" style="display: none;">
+                            <div class="col-md-4 bank-details" style="display: none;">
+                                <label class="form-label fw-bold text-uppercase small text-muted">Bank</label>
+                                <select class="form-select" id="editEditableBankName" name="bank_name">
+                                    <option value="">Select Bank</option>
+                                    <option value="SBI">SBI</option>
+                                    <option value="HDFC">HDFC</option>
+                                    <option value="ICICI">ICICI</option>
+                                    <option value="Axis">Axis</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 upi-details" style="display: none;">
+                                <label class="form-label fw-bold text-uppercase small text-muted">UPI Type</label>
+                                <select class="form-select" id="editEditableUpiType" name="upi_type">
+                                    <option value="GPay">GPay</option>
+                                    <option value="PhonePe">PhonePe</option>
+                                    <option value="Paytm">Paytm</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 upi-details" style="display: none;">
+                                <label class="form-label fw-bold text-uppercase small text-muted">UPI Phone</label>
+                                <input type="text" class="form-control" id="editEditableUpiNumber" name="upi_number" placeholder="Number" maxlength="10" pattern="[0-9]{10}">
+                            </div>
+                        </div>
+
+                        <!-- balance, receipts, status -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold text-uppercase small text-muted">Status</label>
+                                <select class="form-select" id="editEditableStatus" name="status" required>
+                                    <option value="" selected disabled>Select Status</option>
+                                    <option value="due" class="text-warning">Due</option>
+                                    <option value="settle" class="text-info">Settle</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- settle notes (conditional) -->
+                        <div class="row mb-4" id="editEditableSettleNotesContainer" style="display: none;">
+                            <div class="col-md-12">
+                                <label class="form-label fw-bold text-uppercase small text-muted" for="editEditableSettleNotes">Settle Notes <span class="text-danger">*</span></label>
+                                <textarea class="form-control" id="editEditableSettleNotes" name="settle_notes" rows="2" placeholder="Enter notes..."></textarea>
+                            </div>
+                        </div>
+
+                        <!-- hidden due date -->
+                        <div class="row">
+                            <div class="col-md-4" style="display: none;">
+                                <label class="form-label fw-bold text-uppercase small text-muted">Due Date</label>
+                                <input type="date" class="form-control" id="editEditableDueDate" name="due_date" min="{{ date('Y-m-d') }}">
+                            </div>
+                        </div>
+
+                        <!-- GST section -->
                         <div class="tax-section mb-3" id="editGstSection">
                             <div class="row g-3 align-items-end">
                                 <div class="col-auto">
-                                    <div class="form-check" style="margin-top: 32px;">
-                                        <input class="form-check-input" type="checkbox" id="editableApplyGst"
-                                            name="apply_gst" value="1" checked style="pointer-events: none;" onclick="return false;">
-                                        <label class="form-check-label" for="editableApplyGst">GST</label>
+                                    <div class="form-check" style="margin-top: 0.25rem;">
+                                        <input class="form-check-input" type="checkbox" id="editableApplyGst" name="apply_gst" value="1" checked style="pointer-events: none;" onclick="return false;">
+                                        <label class="form-check-label fw-bold text-uppercase small text-muted" for="editableApplyGst">GST</label>
                                     </div>
                                 </div>
                                 <div class="col">
-                                    <label class="form-label">GST %</label>
+                                    <label class="form-label fw-bold text-uppercase small text-muted">GST %</label>
                                     <div class="input-group">
-                                        <input type="number" class="form-control" id="editableGstPercentage"
-                                            name="gst_percentage" value="18" min="0" max="100" step="0.01" readonly>
+                                        <input type="number" class="form-control" id="editableGstPercentage" name="gst_percentage" value="18" min="0" max="100" step="0.01" readonly>
                                         <span class="input-group-text">%</span>
                                     </div>
                                 </div>
                                 <div class="col">
-                                    <label class="form-label">GST Amount</label>
-                                    <input type="number" class="form-control" id="editableGstAmount" name="gst_amount"
-                                        value="0.00" readonly>
+                                    <label class="form-label fw-bold text-uppercase small text-muted">GST Amount</label>
+                                    <input type="number" class="form-control" id="editableGstAmount" name="gst_amount" value="0.00" readonly>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- TDS Section -->
+                        <!-- TDS section -->
                         <div class="tax-section mb-3" id="editTdsSection">
                             <div class="row g-3 align-items-end">
                                 <div class="col-auto">
-                                    <div class="form-check" style="margin-top: 32px;">
-                                        <input class="form-check-input" type="checkbox" id="editableApplyTds"
-                                            name="apply_tds" value="1" checked style="pointer-events: none;" onclick="return false;">
-                                        <label class="form-check-label" for="editableApplyTds">TDS</label>
+                                    <div class="form-check" style="margin-top: 0.25rem;">
+                                        <input class="form-check-input" type="checkbox" id="editableApplyTds" name="apply_tds" value="1" checked style="pointer-events: none;" onclick="return false;">
+                                        <label class="form-check-label fw-bold text-uppercase small text-muted" for="editableApplyTds">TDS</label>
                                     </div>
                                 </div>
                                 <div class="col">
-                                    <label class="form-label">TDS %</label>
+                                    <label class="form-label fw-bold text-uppercase small text-muted">TDS %</label>
                                     <div class="input-group">
-                                        <input type="number" class="form-control" id="editableTdsPercentage"
-                                            name="tds_percentage" value="10" min="0" max="100" step="0.01" readonly>
+                                        <input type="number" class="form-control" id="editableTdsPercentage" name="tds_percentage" value="10" min="0" max="100" step="0.01" readonly>
                                         <span class="input-group-text">%</span>
                                     </div>
                                 </div>
                                 <div class="col">
-                                    <label class="form-label">TDS Amount</label>
-                                    <input type="number" class="form-control" id="editableTdsAmount" name="tds_amount"
-                                        value="0.00" readonly>
+                                    <label class="form-label fw-bold text-uppercase small text-muted">TDS Amount</label>
+                                    <input type="number" class="form-control" id="editableTdsAmount" name="tds_amount" value="0.00" readonly>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- TDS Status Section -->
-                        <div class="row mb-3" id="editableTdsStatusSection">
-                            <div class="col-md-4">
-                                <label class="form-label small fw-bold text-uppercase small text-muted">TDS Status</label>
-                                <select class="form-select form-select-sm" id="editEditableTdsStatus" name="tds_status">
+                        <!-- TDS status & certificate -->
+                        <div class="row mb-4" id="editableTdsStatusSection">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold text-uppercase small text-muted">TDS Status</label>
+                                <select class="form-select" id="editEditableTdsStatus" name="tds_status">
                                     <option value="received">Paid</option>
                                     <option value="not_received" selected>Not Paid</option>
                                 </select>
                             </div>
-                            <div class="col-md-4">
-                                <label class="form-label small fw-bold text-uppercase small text-muted">TDS
-                                    Certificate/Receipt</label>
-                                <div class="input-group input-group-sm">
-                                    <input type="file" class="form-control" id="editEditableTdsFile" name="tds_file"
-                                        accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
-                                    <button type="button" class="btn btn-outline-secondary" onclick="viewTdsFile()"
-                                        id="viewTdsBtn" style="display: none;">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold text-uppercase small text-muted">TDS Certificate/Receipt</label>
+                                <div class="input-group">
+                                    <input type="file" class="form-control" id="editEditableTdsFile" name="tds_file" accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
+                                    <button type="button" class="btn btn-outline-secondary" onclick="viewTdsFile()" id="viewTdsBtn" style="display: none;">
                                         <i class="fas fa-eye"></i> View
                                     </button>
                                 </div>
-                                <small class="text-muted" id="tdsFileInfo"></small>
+                                <small class="text-muted" id="tdsFileInfo">No file chosen</small>
                             </div>
                         </div>
 
+                        <!-- party/vendor & mobile -->
                         <div class="row mb-4">
-
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <label class="form-label fw-bold text-uppercase small text-muted">Party/Vendor</label>
                                 <input type="text" class="form-control" id="editEditablePartyName" name="party_name">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold text-uppercase small text-muted">Mobile Number</label>
-                                <input type="number" class="form-control" id="editEditableMobileNumber" name="mobile_number"
-                                    placeholder="">
+                                <input type="number" class="form-control" id="editEditableMobileNumber" name="mobile_number">
                             </div>
                         </div>
 
-                        <div class="row mb-4">
-                            <div class="col-12 mb-3">
+                        <!-- notes -->
+                        <div class="row mb-3">
+                            <div class="col-12">
                                 <label class="form-label fw-bold text-uppercase small text-muted" for="editEditableNotes">Notes</label>
                                 <textarea class="form-control" id="editEditableNotes" name="notes" rows="2"></textarea>
                             </div>
                         </div>
-                    </div>
+
+                    </div><!-- modal-body -->
+
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Update Payment</button>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-check me-1"></i>Update Payment</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
+
     <!-- Add this modal at the bottom of your view -->
     <div class="modal fade" id="splitHistoryModal">
         <div class="modal-dialog modal-lg">
@@ -1622,12 +1624,13 @@
                 });
 
                 // Determine which modal to show based on expense type
-                if (expenseType === 'standard_fixed') {
+                const isSplitPayment = data.is_split == 1 || (data.parent_id && data.parent_id > 0);
+                if (expenseType === 'standard_fixed' && !isSplitPayment) {
                     window.isStandardFixedLoading = true;
                     loadStandardFixedData(data);
                     const modal = new bootstrap.Modal(document.getElementById('editStandardFixedModal'));
                     modal.show();
-                } else if (expenseType === 'standard_editable') {
+                } else if (expenseType === 'standard_editable' && !isSplitPayment) {
                     window.isStandardEditableLoading = true;
                     loadStandardEditableData(data);
                     const modal = new bootstrap.Modal(document.getElementById('editStandardEditableModal'));
@@ -1918,7 +1921,12 @@
 
             if (!baseAmountInput || !plannedAmountDisplay || !paidAmountInput) return;
 
-            const baseAmount = parseFloat(baseAmountInput.value) || 0;
+            let baseAmount = parseFloat(baseAmountInput.value) || 0;
+            const maxBase = parseFloat(baseAmountInput.getAttribute('max')) || 0;
+            if (maxBase > 0 && baseAmount > maxBase) {
+                baseAmount = maxBase;
+                baseAmountInput.value = maxBase.toFixed(2);
+            }
 
             // Get references to tax elements
             const applyGst = document.getElementById('editApplyGst');
@@ -1960,19 +1968,19 @@
             }
 
             updateBreakdownText('nonStandardPlannedBreakdown', baseAmount, gstAmount, tdsAmount);
-            // Recalculate Planned Amount = Base + GST
-            const isSplitNonStandard = document.getElementById('editIsSplit')?.value == '1' || document.getElementById('editParentId')?.value != '0';
-            const plannedAmount = isSplitNonStandard ? (baseAmount + gstAmount - tdsAmount) : (baseAmount + gstAmount);
-            if (plannedAmountDisplay) {
-                plannedAmountDisplay.value = plannedAmount.toFixed(2);
-            }
-
-            // Net Payable = Base + GST - TDS
-            const netPayable = baseAmount + gstAmount - tdsAmount;
+            // Planned Amount should not change on edits (user requested: "dont change planned amount")
+            const plannedAmount = parseFloat(plannedAmountDisplay.value) || 0;
 
             const isSplit = document.getElementById('editIsSplit')?.value == '1' || document.getElementById('editParentId')?.value != '0';
 
-            // Removed auto-update of Paid Amount based on user request (Paid Amount should not auto-change on edits)
+            const isBaseOrTaxChange = event && event.target && ['editGstPercentage', 'editApplyGst', 'editTdsPercentage', 'editApplyTds', 'editCurrentBaseAmount'].includes(event.target.id);
+            const form = document.getElementById('editExpenseForm');
+            if (isBaseOrTaxChange && !window.isNonStandardLoading) {
+                form.dataset.isManuallyEdited = "1";
+            }
+            
+            // Net Payable = Base + GST - TDS
+            let netPayable = baseAmount + gstAmount - tdsAmount;
 
             // Final balance calculation
             let finalPaid = parseFloat(paidAmountInput.value) || 0;
@@ -1981,39 +1989,41 @@
                     finalPaid = 0;
                     if (paidAmountInput) paidAmountInput.value = '0.00';
                 } else if (statusField.value === 'paid') {
-                    finalPaid = isSplit ? plannedAmount : netPayable;
+                    finalPaid = netPayable;
                     if (paidAmountInput) paidAmountInput.value = finalPaid.toFixed(2);
                 }
             }
 
-            const isBaseOrTaxChange = event && event.target && ['editGstPercentage', 'editApplyGst', 'editTdsPercentage', 'editApplyTds', 'editCurrentBaseAmount'].includes(event.target.id);
             if (isBaseOrTaxChange && !window.isNonStandardLoading) {
-                if (statusField && statusField.value === 'paid') {
-                    finalPaid = isSplit ? plannedAmount : netPayable;
-                    if (paidAmountInput) paidAmountInput.value = finalPaid.toFixed(2);
-                } else {
-                    const balanceField = document.getElementById('editBalanceAmount');
-                    const currentBalance = parseFloat(balanceField?.value) || 0;
-                    finalPaid = Math.max(0, netPayable - currentBalance);
-                    if (paidAmountInput) paidAmountInput.value = finalPaid.toFixed(2);
-                }
+                // Default to Net Payable of the adjusted base amount minus what was already paid
+                const previouslyPaid = parseFloat(paidAmountInput?.dataset?.previouslyPaid) || 0;
+                finalPaid = Math.max(0, netPayable - previouslyPaid);
+                if (paidAmountInput) paidAmountInput.value = finalPaid.toFixed(2);
             }
 
-            if (finalPaid > netPayable + 0.01) {
+            const previouslyPaidValidation = parseFloat(paidAmountInput?.dataset?.previouslyPaid) || 0;
+            const maxPayable = Math.max(0, netPayable - previouslyPaidValidation);
+
+            if (finalPaid > maxPayable + 0.01) {
                 Swal.fire({
                     icon: 'error',
                     title: 'Invalid Amount',
-                    text: 'Paid Amount cannot be more than Planned Amount - TDS Amount (₹' + netPayable.toFixed(2) + ')',
+                    text: 'Paid Amount cannot be more than Remaining Balance (₹' + maxPayable.toFixed(2) + ')',
                     confirmButtonColor: '#6c5ce7'
                 });
-                finalPaid = netPayable;
-                paidAmountInput.value = netPayable.toFixed(2);
+                finalPaid = maxPayable;
+                if (paidAmountInput) paidAmountInput.value = maxPayable.toFixed(2);
             } else if (finalPaid < 0) {
                 finalPaid = 0;
                 paidAmountInput.value = '0.00';
             }
 
-            const balance = Math.max(0, (isSplit ? plannedAmount : netPayable) - finalPaid);
+            const previouslyPaid = parseFloat(paidAmountInput?.dataset?.previouslyPaid) || 0;
+            const oldPlannedAmount = parseFloat(plannedAmountDisplay?.value) || 0;
+            const oldTdsAmount = parseFloat(plannedAmountDisplay?.dataset?.oldTdsAmount) || 0;
+            const oldNetPayable = oldPlannedAmount - oldTdsAmount;
+            const effectiveTotalPayable = Math.max(netPayable, oldNetPayable);
+            const balance = Math.max(0, effectiveTotalPayable - previouslyPaid - finalPaid);
 
             if (balanceDisplay) {
                 balanceDisplay.value = balance.toFixed(2);
@@ -2022,8 +2032,16 @@
             // Validations: If balance > 0, status is mandatory. If status is due, due date is mandatory.
             if (statusField) {
                 const statusContainer = statusField.closest('div[class^="col-"]');
+                const balanceCol = balanceDisplay ? balanceDisplay.closest('div[class^="col-"]') : null;
+                const receiptCol = document.getElementById('editReceiptFile') ? document.getElementById('editReceiptFile').closest('div[class^="col-"]') : null;
+
                 if (balance > 0.01) {
                     if (statusContainer) statusContainer.style.display = 'block';
+                    if (balanceCol) balanceCol.className = 'col-md-4';
+                    if (receiptCol) receiptCol.className = 'col-md-4';
+                    const paidOpt = statusField.querySelector('option[value="paid"]');
+                    if (paidOpt) paidOpt.remove();
+
                     if (statusField.value === 'paid' || !statusField.value || (finalPaid <= 0 && statusField.value !== 'settle')) {
                         statusField.value = 'due';
                     }
@@ -2033,6 +2051,15 @@
                     if (label && !label.innerHTML.includes('*')) label.innerHTML += ' <span class="text-danger">*</span>';
                 } else {
                     if (statusContainer) statusContainer.style.display = 'none';
+                    if (balanceCol) balanceCol.className = 'col-md-6';
+                    if (receiptCol) receiptCol.className = 'col-md-6';
+                    if (!statusField.querySelector('option[value="paid"]')) {
+                        const opt = document.createElement('option');
+                        opt.value = 'paid';
+                        opt.textContent = 'Paid';
+                        opt.style.display = 'none';
+                        statusField.appendChild(opt);
+                    }
                     statusField.value = 'paid';
                     statusField.required = false;
                     statusField.removeAttribute('required');
@@ -2079,7 +2106,7 @@
             if (applyGst && !applyGst.checked) {
                 gstAmount = 0;
                 if (gstAmountField) gstAmountField.value = '0.00';
-            } else if (applyGst && applyGst.checked && !isStandardFixedLoading && isGstTrigger) {
+            } else if (applyGst && applyGst.checked && !window.isStandardFixedLoading && isGstTrigger) {
                 // Recalculate if NOT loading
                 const gstPercent = parseFloat(gstPercentage?.value) || 0;
                 gstAmount = (baseAmount * gstPercent) / 100;
@@ -2092,21 +2119,24 @@
             if (applyTds && !applyTds.checked) {
                 tdsAmount = 0;
                 if (tdsAmountField) tdsAmountField.value = '0.00';
-            } else if (applyTds && applyTds.checked && !isStandardFixedLoading && isTdsTrigger) {
+            } else if (applyTds && applyTds.checked && !window.isStandardFixedLoading && isTdsTrigger) {
                 const tdsPercent = parseFloat(tdsPercentage?.value) || 0;
                 tdsAmount = (baseAmount * tdsPercent) / 100;
                 if (tdsAmountField) tdsAmountField.value = tdsAmount.toFixed(2);
             }
 
             updateBreakdownText('fixedPlannedBreakdown', baseAmount, gstAmount, tdsAmount, isSplitFixed);
-            // Recalculate Planned Amount (Display only for fixed)
-            plannedAmount = isSplitFixed ? (baseAmount + gstAmount - tdsAmount) : (baseAmount + gstAmount);
-            if (plannedAmountDisplay) {
-                plannedAmountDisplay.value = plannedAmount.toFixed(2);
+            let totalWithTax = baseAmount + gstAmount - tdsAmount;
+
+            const isBaseOrTaxChange = event && event.target && ['fixedGstPercentage', 'fixedApplyGst', 'fixedTdsPercentage', 'fixedApplyTds', 'editFixedBaseAmount'].includes(event.target.id);
+            const form = document.getElementById('editStandardFixedForm');
+            if (isBaseOrTaxChange && !window.isStandardFixedLoading) {
+                form.dataset.isManuallyEdited = "1";
             }
 
-            // Net Payable = Planned Amount - TDS
-            const totalWithTax = baseAmount + gstAmount - tdsAmount;
+            if (isSplitFixed && form.dataset.isManuallyEdited !== "1") {
+                totalWithTax = parseFloat(document.getElementById('editFixedPlannedAmountDisplay')?.dataset?.splitPlanned) || totalWithTax;
+            }
 
             const paidAmountInput = document.getElementById('editFixedActualAmount');
             
@@ -2118,21 +2148,31 @@
                     paidAmount = 0;
                     if (paidAmountInput) paidAmountInput.value = '0.00';
                 } else if (statusField.value === 'paid') {
-                    paidAmount = isSplitFixed ? plannedAmount : totalWithTax;
+                    paidAmount = totalWithTax;
                     if (paidAmountInput) paidAmountInput.value = paidAmount.toFixed(2);
                 }
             }
 
+            if (isBaseOrTaxChange && !window.isStandardFixedLoading) {
+                const previouslyPaid = parseFloat(paidAmountInput?.dataset?.previouslyPaid) || 0;
+                const targetPayable = totalWithTax;
+                paidAmount = Math.max(0, targetPayable - previouslyPaid);
+                if (paidAmountInput) paidAmountInput.value = paidAmount.toFixed(2);
+            }
+
             // Validation
-            if (paidAmount > totalWithTax + 0.01) {
+            const previouslyPaidValidation = parseFloat(paidAmountInput?.dataset?.previouslyPaid) || 0;
+            const maxPayable = Math.max(0, totalWithTax - previouslyPaidValidation);
+
+            if (paidAmount > maxPayable + 0.01) {
                 Swal.fire({
                     icon: 'error',
                     title: 'Invalid Amount',
-                    text: 'Paid Amount cannot be more than Planned Amount - TDS Amount (₹' + totalWithTax.toFixed(2) + ')',
+                    text: 'Paid Amount cannot be more than Remaining Balance (₹' + maxPayable.toFixed(2) + ')',
                     confirmButtonColor: '#6c5ce7'
                 });
-                paidAmount = totalWithTax;
-                paidAmountInput.value = totalWithTax.toFixed(2);
+                paidAmount = maxPayable;
+                if (paidAmountInput) paidAmountInput.value = maxPayable.toFixed(2);
             } else if (paidAmount < 0) {
                 Swal.fire({
                     icon: 'error',
@@ -2144,7 +2184,12 @@
                 paidAmountInput.value = '0.00';
             }
             
-            const balance = Math.max(0, (isSplitFixed ? plannedAmount : totalWithTax) - paidAmount);
+            const previouslyPaid = parseFloat(paidAmountInput?.dataset?.previouslyPaid) || 0;
+            const oldPlannedAmount = parseFloat(plannedAmountDisplay?.value) || 0;
+            const oldTdsAmount = parseFloat(plannedAmountDisplay?.dataset?.oldTdsAmount) || 0;
+            const oldNetPayable = oldPlannedAmount - oldTdsAmount;
+            const effectiveTotalPayable = Math.max(totalWithTax, oldNetPayable);
+            const balance = Math.max(0, effectiveTotalPayable - previouslyPaid - paidAmount);
 
             if (balanceDisplay) {
                 balanceDisplay.value = balance.toFixed(2);
@@ -2153,8 +2198,16 @@
             // Enable/Disable status if balance exists
             if (statusField) {
                 const statusContainer = statusField.closest('div[class^="col-"]');
+                const balanceCol = balanceDisplay ? balanceDisplay.closest('div[class^="col-"]') : null;
+                const receiptCol = document.getElementById('editFixedReceiptFile') ? document.getElementById('editFixedReceiptFile').closest('div[class^="col-"]') : null;
+
                 if (balance > 0.01) {
                     if (statusContainer) statusContainer.style.display = 'block';
+                    if (balanceCol) balanceCol.className = 'col-md-4';
+                    if (receiptCol) receiptCol.className = 'col-md-4';
+                    const paidOpt = statusField.querySelector('option[value="paid"]');
+                    if (paidOpt) paidOpt.remove();
+
                     if ((paidAmount <= 0 && statusField.value !== 'settle') || !statusField.value) {
                         statusField.value = 'due';
                     }
@@ -2162,6 +2215,15 @@
                     statusField.setAttribute('required', 'required');
                 } else {
                     if (statusContainer) statusContainer.style.display = 'none';
+                    if (balanceCol) balanceCol.className = 'col-md-6';
+                    if (receiptCol) receiptCol.className = 'col-md-6';
+                    if (!statusField.querySelector('option[value="paid"]')) {
+                        const opt = document.createElement('option');
+                        opt.value = 'paid';
+                        opt.textContent = 'Paid';
+                        opt.style.display = 'none';
+                        statusField.appendChild(opt);
+                    }
                     statusField.value = 'paid';
                     statusField.required = false;
                     statusField.removeAttribute('required');
@@ -2186,7 +2248,13 @@
             const tdsAmountField = editableForm.querySelector('#editableTdsAmount');
 
             // Get base amount from hidden field
-            let baseAmount = parseFloat(document.getElementById('editEditableBaseAmount')?.value) || 0;
+            const baseField = document.getElementById('editEditableBaseAmount');
+            let baseAmount = parseFloat(baseField?.value) || 0;
+            const maxBase = parseFloat(baseField?.getAttribute('max')) || 0;
+            if (maxBase > 0 && baseAmount > maxBase) {
+                baseAmount = maxBase;
+                if (baseField) baseField.value = maxBase.toFixed(2);
+            }
 
             // Planned Amount Display (Actual + GST)
             const plannedAmountField = document.getElementById('editEditablePlannedAmount');
@@ -2231,14 +2299,17 @@
 
             const isSplitEditable = document.getElementById('editEditableIsSplit')?.value == '1' || document.getElementById('editEditableParentId')?.value != '0';
             updateBreakdownText('editablePlannedBreakdown', baseAmount, gstAmount, tdsAmount, isSplitEditable);
-            // Recalculate Planned Amount = Base + GST
-            plannedAmount = isSplitEditable ? (baseAmount + gstAmount - tdsAmount) : (baseAmount + gstAmount);
-            if (plannedAmountField) {
-                plannedAmountField.value = plannedAmount.toFixed(2);
+            
+            const isTaxChange = event && event.target && ['editableGstPercentage', 'editableApplyGst', 'editableTdsPercentage', 'editableApplyTds', 'editEditableBaseAmount', 'editEditablePlannedAmount'].includes(event.target.id);
+            const form = document.getElementById('editStandardEditableForm');
+            if (isTaxChange && !window.isStandardEditableLoading) {
+                form.dataset.isManuallyEdited = "1";
             }
-
-            // Net Payable Calculation
-            const netPayable = baseAmount + gstAmount - tdsAmount;
+            
+            let netPayable = baseAmount + gstAmount - tdsAmount;
+            if (isSplitEditable && form.dataset.isManuallyEdited !== "1") {
+                netPayable = parseFloat(document.getElementById('editEditablePlannedAmount')?.dataset?.splitPlanned) || netPayable;
+            }
 
             // Get actual paid amount
             const actualAmountField = document.getElementById('editEditableActualAmount');
@@ -2251,37 +2322,44 @@
                     actualAmount = 0;
                     if (actualAmountField) actualAmountField.value = '0.00';
                 } else if (statusField.value === 'paid') {
-                    actualAmount = isSplitEditable ? plannedAmount : netPayable;
+                    actualAmount = netPayable;
                     if (actualAmountField) actualAmountField.value = actualAmount.toFixed(2);
                 }
             }
 
-            const isTaxChange = event && event.target && ['editableGstPercentage', 'editableApplyGst', 'editableTdsPercentage', 'editableApplyTds'].includes(event.target.id);
             if (isTaxChange && !window.isStandardEditableLoading) {
-                const balanceField = document.getElementById('edittableBalanceAmount');
-                const currentBalance = parseFloat(balanceField?.value) || 0;
-                const targetPayable = isSplitEditable ? plannedAmount : netPayable;
-                actualAmount = Math.max(0, targetPayable - currentBalance);
+                const previouslyPaid = parseFloat(actualAmountField?.dataset?.previouslyPaid) || 0;
+                const targetPayable = netPayable;
+                actualAmount = Math.max(0, targetPayable - previouslyPaid);
                 if (actualAmountField) actualAmountField.value = actualAmount.toFixed(2);
             }
 
             // Validation: Paid Amount cannot be greater than Net Payable or negative
-            if (actualAmount > netPayable + 0.01) {
+            const previouslyPaidValidation = parseFloat(actualAmountField?.dataset?.previouslyPaid) || 0;
+            const maxPayable = Math.max(0, netPayable - previouslyPaidValidation);
+
+            if (actualAmount > maxPayable + 0.01) {
                 Swal.fire({
                     icon: 'error',
                     title: 'Invalid Amount',
-                    text: 'Paid Amount cannot be more than Planned Amount - TDS Amount (₹' + netPayable.toFixed(2) + ')',
+                    text: 'Paid Amount cannot be more than Remaining Balance (₹' + maxPayable.toFixed(2) + ')',
                     confirmButtonColor: '#6c5ce7'
                 });
-                actualAmount = netPayable;
-                if (actualAmountField) actualAmountField.value = netPayable.toFixed(2);
+                actualAmount = maxPayable;
+                if (actualAmountField) actualAmountField.value = maxPayable.toFixed(2);
             } else if (actualAmount < 0) {
                 actualAmount = 0;
                 if (actualAmountField) actualAmountField.value = '0.00';
             }
 
             // Update balance amount
-            const balanceAmount = Math.max(0, (isSplitEditable ? plannedAmount : netPayable) - actualAmount);
+            const previouslyPaid = parseFloat(actualAmountField?.dataset?.previouslyPaid) || 0;
+            const plannedAmountDisplay = document.getElementById('editEditablePlannedAmount');
+            const oldPlannedAmount = parseFloat(plannedAmountDisplay?.value) || 0;
+            const oldTdsAmount = parseFloat(plannedAmountDisplay?.dataset?.oldTdsAmount) || 0;
+            const oldNetPayable = oldPlannedAmount - oldTdsAmount;
+            const effectiveTotalPayable = Math.max(netPayable, oldNetPayable);
+            const balanceAmount = Math.max(0, effectiveTotalPayable - previouslyPaid - actualAmount);
             const balanceField = document.getElementById('edittableBalanceAmount');
             if (balanceField) {
                 balanceField.value = balanceAmount.toFixed(2);
@@ -2290,8 +2368,16 @@
             // Enable/Disable status if balance exists
             if (statusField) {
                 const statusContainer = statusField.closest('div[class^="col-"]');
+                const balanceCol = document.getElementById('edittableBalanceAmount') ? document.getElementById('edittableBalanceAmount').closest('div[class^="col-"]') : null;
+                const receiptCol = document.getElementById('editEditableReceiptFile') ? document.getElementById('editEditableReceiptFile').closest('div[class^="col-"]') : null;
+                
                 if (balanceAmount > 0.01) {
                     if (statusContainer) statusContainer.style.display = 'block';
+                    if (balanceCol) balanceCol.className = 'col-md-4';
+                    if (receiptCol) receiptCol.className = 'col-md-4';
+                    const paidOpt = statusField.querySelector('option[value="paid"]');
+                    if (paidOpt) paidOpt.remove();
+
                     if ((actualAmount <= 0 && statusField.value !== 'settle') || !statusField.value) {
                         statusField.value = 'due';
                     }
@@ -2299,6 +2385,15 @@
                     statusField.setAttribute('required', 'required');
                 } else {
                     if (statusContainer) statusContainer.style.display = 'none';
+                    if (balanceCol) balanceCol.className = 'col-md-6';
+                    if (receiptCol) receiptCol.className = 'col-md-6';
+                    if (!statusField.querySelector('option[value="paid"]')) {
+                        const opt = document.createElement('option');
+                        opt.value = 'paid';
+                        opt.textContent = 'Paid';
+                        opt.style.display = 'none';
+                        statusField.appendChild(opt);
+                    }
                     statusField.value = 'paid';
                     statusField.required = false;
                     statusField.removeAttribute('required');
@@ -2353,6 +2448,9 @@
                     statusDropdown.disabled = false;
                     if (balance > 0.01) {
                         if (statusContainer) statusContainer.style.display = 'block';
+                        const paidOpt = statusDropdown.querySelector('option[value="paid"]');
+                        if (paidOpt) paidOpt.remove();
+
                         if (statusDropdown.value === 'paid' || !statusDropdown.value || (paidAmount <= 0 && statusDropdown.value !== 'settle')) {
                             statusDropdown.value = 'due';
                         }
@@ -2360,6 +2458,13 @@
                         statusDropdown.setAttribute('required', 'required');
                     } else {
                         if (statusContainer) statusContainer.style.display = 'none';
+                        if (!statusDropdown.querySelector('option[value="paid"]')) {
+                            const opt = document.createElement('option');
+                            opt.value = 'paid';
+                            opt.textContent = 'Paid';
+                            opt.style.display = 'none';
+                            statusDropdown.appendChild(opt);
+                        }
                         statusDropdown.value = 'paid';
                         statusDropdown.required = false;
                         statusDropdown.removeAttribute('required');
@@ -2441,46 +2546,20 @@
             const gstPercentage = fixedForm.querySelector('#fixedGstPercentage');
             const tdsPercentage = fixedForm.querySelector('#fixedTdsPercentage');
             const paidAmountInput = document.getElementById('editFixedActualAmount');
+            const editFixedBaseAmount = document.getElementById('editFixedBaseAmount');
 
+            // Set up handlers using onchange/oninput directly to avoid duplicates
+            if (applyGst) applyGst.onchange = calculateTaxStandardFixed;
+            if (gstPercentage) gstPercentage.oninput = calculateTaxStandardFixed;
+            if (applyTds) applyTds.onchange = calculateTaxStandardFixed;
+            if (tdsPercentage) tdsPercentage.oninput = calculateTaxStandardFixed;
+            if (paidAmountInput) paidAmountInput.oninput = calculateTaxStandardFixed;
+            if (editFixedBaseAmount) editFixedBaseAmount.oninput = calculateTaxStandardFixed;
 
-            // Remove existing listeners
-            if (applyGst) applyGst.onchange = null;
-            if (applyTds) applyTds.onchange = null;
-            if (gstPercentage) gstPercentage.oninput = null;
-            if (tdsPercentage) tdsPercentage.oninput = null;
-            if (paidAmountInput) paidAmountInput.oninput = null;
-
-            // Add event listeners for tax calculation triggers
-            const taxCalculationEvents = (event) => {
-                calculateTaxStandardFixed(event);
-                toggleTdsFieldsFixed(); // Also toggle TDS fields if needed
-            };
-
-            // GST related events
-            if (applyGst) {
-                applyGst.addEventListener('change', taxCalculationEvents);
-            }
-            if (gstPercentage) {
-                gstPercentage.addEventListener('input', taxCalculationEvents);
-            }
-
-            // TDS related events
-            if (applyTds) {
-                applyTds.addEventListener('change', taxCalculationEvents);
-            }
-            if (tdsPercentage) {
-                tdsPercentage.addEventListener('input', taxCalculationEvents);
-            }
-
-            // Paid amount input - this is CRITICAL for balance calculation
-            if (paidAmountInput) {
-                paidAmountInput.addEventListener('input', calculateTaxStandardFixed);
-            }
-
-            // Initialize calculations
-            // calculateTaxStandardFixed();
+            // Initialize toggle on load
             toggleTdsFieldsFixed();
         }
+
         // Initialize Edit Standard Editable Modal Tax Events
         function initializeEditStandardEditableTaxEvents() {
             const editableForm = document.getElementById('editStandardEditableForm');
@@ -2493,20 +2572,16 @@
             const applyTds = editableForm.querySelector('#editableApplyTds');
             const gstPercentage = editableForm.querySelector('#editableGstPercentage');
             const tdsPercentage = editableForm.querySelector('#editableTdsPercentage');
+            const editEditableBaseAmount = document.getElementById('editEditableBaseAmount');
 
-            // Remove existing listeners to avoid duplicates
-            const removeAndAdd = (el, type, handler) => {
-                if (!el) return;
-                el.removeEventListener(type, handler);
-                el.addEventListener(type, handler);
-            };
-
-            removeAndAdd(plannedAmount, 'input', calculateTaxStandardEditable);
-            removeAndAdd(actualAmount, 'input', calculateTaxStandardEditable);
-            removeAndAdd(applyGst, 'change', calculateTaxStandardEditable);
-            removeAndAdd(applyTds, 'change', calculateTaxStandardEditable);
-            removeAndAdd(gstPercentage, 'input', calculateTaxStandardEditable);
-            removeAndAdd(tdsPercentage, 'input', calculateTaxStandardEditable);
+            // Set up handlers using onchange/oninput directly to avoid duplicates
+            if (plannedAmount) plannedAmount.oninput = calculateTaxStandardEditable;
+            if (actualAmount) actualAmount.oninput = calculateTaxStandardEditable;
+            if (applyGst) applyGst.onchange = calculateTaxStandardEditable;
+            if (applyTds) applyTds.onchange = calculateTaxStandardEditable;
+            if (gstPercentage) gstPercentage.oninput = calculateTaxStandardEditable;
+            if (tdsPercentage) tdsPercentage.oninput = calculateTaxStandardEditable;
+            if (editEditableBaseAmount) editEditableBaseAmount.oninput = calculateTaxStandardEditable;
 
             // Initialize toggle on load
             toggleTdsFieldsEditable();
@@ -2544,6 +2619,9 @@
 
                 const expenseId = document.getElementById('editFixedExpenseId').value;
                 const formData = new FormData(this);
+                if (this.dataset.isManuallyEdited === "1") {
+                    formData.append('is_manually_edited', '1');
+                }
                 formData.append('_method', 'PUT');
 
                 try {
@@ -2603,6 +2681,9 @@
 
                 const expenseId = document.getElementById('editEditableExpenseId').value;
                 const formData = new FormData(this);
+                if (this.dataset.isManuallyEdited === "1") {
+                    formData.append('is_manually_edited', '1');
+                }
                 formData.append('_method', 'PUT');
 
                 try {
@@ -2644,6 +2725,29 @@
                 let tdsAmount = parseFloat(document.getElementById('editTdsAmount').value) || 0;
                 let isSplit = document.getElementById('editIsSplit').value == '1' || document.getElementById('editParentId').value != '0';
                 
+                let maxBaseVal = parseFloat(document.getElementById('editCurrentBaseAmount').max);
+                let minBaseVal = parseFloat(document.getElementById('editCurrentBaseAmount').min) || 0;
+
+                if (!isNaN(maxBaseVal) && baseAmount > maxBaseVal) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Invalid Base Amount',
+                        text: 'Base Amount cannot be more than original base amount (' + maxBaseVal.toFixed(2) + ').',
+                        confirmButtonColor: '#6c5ce7'
+                    });
+                    return;
+                }
+                if (baseAmount < minBaseVal) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Invalid Base Amount',
+                        text: 'Base Amount cannot be less than ' + minBaseVal.toFixed(2),
+                        confirmButtonColor: '#6c5ce7'
+                    });
+                    return;
+                }
+                
+                let plannedAmount = parseFloat(document.getElementById('editPlannedAmountDisplay').value) || 0;
                 let netPayable = baseAmount + gstAmount - tdsAmount;
 
                 if (paidAmount > netPayable + 0.01) {
@@ -2659,6 +2763,9 @@
 
                 const expenseId = document.getElementById('editExpenseId').value;
                 const formData = new FormData(this);
+                if (this.dataset.isManuallyEdited === "1") {
+                    formData.append('is_manually_edited', '1');
+                }
 
                 try {
                     const response = await fetch(
@@ -2707,16 +2814,49 @@
             const gstAmount = parseFloat(expense.gst_amount) || 0;
             const tdsAmount = parseFloat(expense.tds_amount) || 0;
 
-            // True Base = Planned Amount - GST (For Split: Planned Amount + TDS - GST)
-            const trueBase = expense.is_split ? (plannedAmount + tdsAmount - gstAmount) : (plannedAmount - gstAmount);
+            // Calculate base amount like edit income base amount calculation
+            const isSplitPayment = expense.is_split == 1 || (expense.parent_id && expense.parent_id > 0);
+            const netAmount = plannedAmount - tdsAmount;
+            const grossAmount = plannedAmount;
+            
+            let trueBase = 0;
+            if (expense.actual_amount && parseFloat(expense.actual_amount) > 0) {
+                trueBase = parseFloat(expense.actual_amount);
+            } else if (isSplitPayment) {
+                trueBase = netAmount;
+            } else {
+                trueBase = grossAmount;
+            }
             document.getElementById('editFixedBaseAmount').value = trueBase.toFixed(2);
+            document.getElementById('editFixedBaseAmount').max = trueBase;
+            document.getElementById('editFixedBaseAmount').min = 0;
 
             // Display Planned Amount as Gross (Base + GST)
-            document.getElementById('editFixedPlannedAmountDisplay').value = plannedAmount.toFixed(2);
+            document.getElementById('editStandardFixedForm').dataset.isManuallyEdited = "0";
+            const plannedAmountDisplay = document.getElementById('editFixedPlannedAmountDisplay');
+            if (plannedAmountDisplay) {
+                plannedAmountDisplay.dataset.splitPlanned = expense.planned_amount || 0;
+                plannedAmountDisplay.dataset.oldTdsAmount = tdsAmount || 0;
+                plannedAmountDisplay.value = plannedAmount.toFixed(2);
+            }
             updateBreakdownText('fixedPlannedBreakdown', trueBase, gstAmount, tdsAmount, expense.is_split || expense.parent_id);
 
-            let actualAmount = plannedAmount - tdsAmount;
-            document.getElementById('editFixedActualAmount').value = expense.is_split ? plannedAmount.toFixed(2) : actualAmount.toFixed(2);
+            let actualAmount;
+            let previouslyPaid = 0;
+            if (expense.is_split || expense.parent_id) {
+                actualAmount = plannedAmount - tdsAmount;
+            } else {
+                let balance = parseFloat(expense.balance_amount);
+                if (isNaN(balance)) {
+                    actualAmount = (plannedAmount - tdsAmount);
+                } else {
+                    actualAmount = balance;
+                    previouslyPaid = (plannedAmount - tdsAmount) - balance;
+                }
+            }
+            const fixedActualInput = document.getElementById('editFixedActualAmount');
+            fixedActualInput.value = actualAmount.toFixed(2);
+            fixedActualInput.dataset.previouslyPaid = previouslyPaid;
             document.getElementById('editFixedMobileNumber').value = expense.mobile_number || '';
 
             // Get tax-related elements
@@ -2901,7 +3041,7 @@
 
             // Reset loading flag
             setTimeout(() => {
-                isStandardFixedLoading = false;
+                window.isStandardFixedLoading = false;
             }, 100);
             handleTdsStatusBehavior('editFixedTdsStatus', 'editFixedTdsFile');
 
@@ -2910,24 +3050,21 @@
         }
 
         // Function to update the tax summary display
-        function updateBreakdownText(displayId, baseAmount, gstAmount, tdsAmount, isSplit = false) {
+        function updateBreakdownText(displayId, baseAmount, gstAmount, tdsAmount) {
             const el = document.getElementById(displayId);
             if (!el) return;
 
-            el.className = "ms-1 text-primary fw-normal";
+            el.className = "mt-1 text-primary fw-normal d-block";
             el.style.fontSize = "0.9em";
             el.style.textTransform = "none";
 
-            let html = `(Base: ₹${baseAmount.toFixed(2)}`;
+            let html = `Base: ₹${baseAmount.toFixed(2)}`;
             if (gstAmount > 0) html += ` + GST: ₹${gstAmount.toFixed(2)}`;
-            if (isSplit && tdsAmount > 0) {
-                html += ` - TDS: ₹${tdsAmount.toFixed(2)}`;
-            }
-            let finalAmt = isSplit ? (baseAmount + gstAmount - tdsAmount) : (baseAmount + gstAmount);
-            html += ` = ₹${finalAmt.toFixed(2)})`;
+            let finalAmt = baseAmount + gstAmount;
+            html += ` = ₹${finalAmt.toFixed(2)}`;
 
-            if (!isSplit && tdsAmount > 0) {
-                html += ` <span class="text-danger ms-1" style="font-size:0.95em;"><i class="bi bi-info-circle"></i> TDS ₹${tdsAmount.toFixed(2)} deducted from payable</span>`;
+            if (tdsAmount > 0) {
+                html += `<br><span class="text-danger" style="font-size:0.95em;"><i class="bi bi-info-circle"></i> TDS ₹${tdsAmount.toFixed(2)} deducted from payable</span>`;
             }
             el.innerHTML = html;
         }
@@ -2973,13 +3110,28 @@
 
             const isSplitPayment = expense.is_split == 1 || (expense.parent_id && expense.parent_id > 0);
             
-            // True Base = Planned Amount - GST (For Split: Planned Amount + TDS - GST)
-            const trueBase = expense.is_split ? (plannedAmount + tdsAmountVal - gstAmountVal) : (plannedAmount - gstAmountVal);
+            // Calculate base amount like edit income base amount calculation
+            const netAmount = plannedAmount - tdsAmountVal;
+            const grossAmount = plannedAmount;
+            
+            let trueBase = 0;
+            if (expense.actual_amount && parseFloat(expense.actual_amount) > 0) {
+                trueBase = parseFloat(expense.actual_amount);
+            } else if (isSplitPayment) {
+                trueBase = netAmount;
+            } else {
+                trueBase = grossAmount;
+            }
             document.getElementById('editEditableBaseAmount').value = trueBase.toFixed(2);
+            document.getElementById('editEditableBaseAmount').max = trueBase;
+            document.getElementById('editEditableBaseAmount').min = 0;
 
             // Display Planned Amount as Gross (Base + GST)
+            document.getElementById('editStandardEditableForm').dataset.isManuallyEdited = "0";
             const plannedAmountInput = document.getElementById('editEditablePlannedAmount');
             if (plannedAmountInput) {
+                plannedAmountInput.dataset.splitPlanned = expense.planned_amount || 0;
+                plannedAmountInput.dataset.oldTdsAmount = tdsAmountVal || 0;
                 plannedAmountInput.value = plannedAmount.toFixed(2);
                 plannedAmountInput.readOnly = true;
                 plannedAmountInput.classList.add('bg-light');
@@ -2989,15 +3141,24 @@
             // If it's an existing record, show actual_amount. If new/reset, show Net Payable.
             const netPayableVal = plannedAmount - tdsAmountVal;
             let paidAmountVal;
-            if (['due', 'pending', 'upcoming'].includes(expense.status)) {
+            let previouslyPaid = 0;
+            if (expense.is_split || expense.parent_id) {
                 paidAmountVal = netPayableVal;
             } else {
-                paidAmountVal = parseFloat(expense.actual_amount) || netPayableVal;
+                let balance = parseFloat(expense.balance_amount);
+                if (isNaN(balance)) {
+                    paidAmountVal = netPayableVal;
+                } else {
+                    paidAmountVal = balance;
+                    previouslyPaid = netPayableVal - balance;
+                }
             }
             console.log('paidAmountVal', paidAmountVal)
             console.log('expense.actual_amount', expense.actual_amount)
             console.log('netPayableVal', netPayableVal)
-            document.getElementById('editEditableActualAmount').value = expense.is_split ? plannedAmount.toFixed(2) : paidAmountVal.toFixed(2);
+            const editableActualInput = document.getElementById('editEditableActualAmount');
+            editableActualInput.value = paidAmountVal.toFixed(2);
+            editableActualInput.dataset.previouslyPaid = previouslyPaid;
             document.getElementById('editEditablePartyName').value = expense.party_name || '';
             document.getElementById('editEditableMobileNumber').value = expense.mobile_number || '';
             document.getElementById('editEditableDueDate').value = expense.due_date || '';
@@ -3168,6 +3329,12 @@
             console.log('Loading non-standard expense data:', expense);
             window.isNonStandardLoading = true;
 
+            // Dynamically set modal title
+            const modalTitle = document.querySelector('#editExpenseModal .modal-title');
+            if (modalTitle) {
+                modalTitle.textContent = expense.source === 'standard' ? 'Edit Standard Expense (Split)' : 'Edit Non-Standard Expense';
+            }
+
             document.getElementById('editExpenseId').value = expense.id;
             document.getElementById('editIsSplit').value = expense.is_split ? 1 : 0;
             document.getElementById('editParentId').value = expense.parent_id || 0;
@@ -3188,17 +3355,45 @@
             document.getElementById('editApplyTds').checked = !!expense.has_tds;
             document.getElementById('editTdsStatus').value = expense.tds_status || 'not_received';
 
-            // Calculate the base amount: Base = Planned - GST (For Split: Planned + TDS - GST)
+            // Calculate base amount
             const plannedAmount = parseFloat(expense.planned_amount) || 0;
-            const currentBase = (expense.is_split || expense.parent_id) ? (plannedAmount - gstAmountVal + tdsAmountVal) : (plannedAmount - gstAmountVal);
-            document.getElementById('editCurrentBaseAmount').value = currentBase.toFixed(2);
-            
             const isSplitPayment = expense.is_split == 1 || (expense.parent_id && expense.parent_id > 0);
+            // If actual_amount is 0, derive base from planned_amount (Total Payable).
+            // Total Payable = Base + GST - TDS => Base = Total Payable - GST + TDS
+            const derivedBaseAmount = plannedAmount - gstAmountVal + tdsAmountVal;
+            const grossAmount = plannedAmount;
+            
+            let currentBase = 0;
+            if (expense.actual_amount && parseFloat(expense.actual_amount) > 0) {
+                currentBase = parseFloat(expense.actual_amount);
+            } else if (expense.original_amount && parseFloat(expense.original_amount) > 0) {
+                currentBase = parseFloat(expense.original_amount);
+            } else if (isSplitPayment) {
+                currentBase = derivedBaseAmount;
+            } else {
+                currentBase = grossAmount;
+            }
+            document.getElementById('editCurrentBaseAmount').value = currentBase.toFixed(2);
+            document.getElementById('editCurrentBaseAmount').max = currentBase;
+            document.getElementById('editCurrentBaseAmount').min = 0;
+            
+            document.getElementById('editExpenseForm').dataset.isManuallyEdited = "0";
             const plannedAmountDisplay = document.getElementById('editPlannedAmountDisplay');
             if (plannedAmountDisplay) {
-                plannedAmountDisplay.value = plannedAmount.toFixed(2);
+                plannedAmountDisplay.dataset.splitPlanned = expense.schedule_amount || expense.planned_amount || 0;
+                plannedAmountDisplay.dataset.oldTdsAmount = tdsAmountVal || 0;
+                plannedAmountDisplay.value = parseFloat(expense.schedule_amount || expense.planned_amount || 0).toFixed(2);
                 plannedAmountDisplay.readOnly = true;
                 plannedAmountDisplay.classList.add('bg-light');
+            }
+
+            const plannedAmountContainer = document.getElementById('editPlannedAmountContainer');
+            const plannedBreakdownContainer = document.getElementById('editPlannedBreakdownContainer');
+            if (plannedAmountContainer) {
+                plannedAmountContainer.style.display = 'block';
+            }
+            if (plannedBreakdownContainer) {
+                plannedBreakdownContainer.style.display = 'block';
             }
             
             updateBreakdownText('nonStandardPlannedBreakdown', currentBase, gstAmountVal, tdsAmountVal, expense.is_split || expense.parent_id);
@@ -3206,12 +3401,22 @@
             document.getElementById('editOriginalAmountDisplay').value = parseFloat(expense.original_total_base || currentBase).toFixed(2);
 
             let paidAmount;
+            let previouslyPaid = 0;
+            const netPayableVal = currentBase + gstAmountVal - tdsAmountVal;
             if (expense.is_split || expense.parent_id) {
-                paidAmount = plannedAmount;
+                paidAmount = netPayableVal;
             } else {
-                paidAmount = parseFloat(expense.balance_amount) || plannedAmount - tdsAmountVal;
+                let balance = parseFloat(expense.balance_amount);
+                if (isNaN(balance)) {
+                    paidAmount = netPayableVal;
+                } else {
+                    paidAmount = balance;
+                    previouslyPaid = netPayableVal - balance;
+                }
             }
-            document.getElementById('editPaidAmount').value = paidAmount.toFixed(2);
+            const paidInput = document.getElementById('editPaidAmount');
+            paidInput.value = paidAmount.toFixed(2);
+            paidInput.dataset.previouslyPaid = previouslyPaid;
 
             let statusVal = (expense.status === 'settle' || expense.status === 'paid') ? 'settle' : (expense.status === 'convert_to_tds' ? 'convert_to_tds' : 'due');
             document.getElementById('editStatus').value = statusVal;
@@ -3969,9 +4174,10 @@
                                                                                                                                                                                             <tr>
                                                                                                                                                                                                 <th>Split #</th>
                                                                                                                                                                                                 <th>Expense ID</th>
-                                                                                                                                                                                                <th>Amount</th>
+                                                                                                                                                                                                <th>Base Amount</th>
                                                                                                                                                                                                 <th>GST Amount</th>
                                                                                                                                                                                                 <th>TDS Amount</th>
+                                                                                                                                                                                                <th>Payable Amount</th>
                                                                                                                                                                                                 <th>Status</th>
                                                                                                                                                                                                 <th>Created Date</th>
                                                                                                                                                                                                 <th>Due Date</th>
@@ -3997,11 +4203,14 @@
                                                                                                                                                                                             </span>
                                                                                                                                                                                         </td>
                                                                                                                                                                                         <td>
-                                                                                                                                                                                            ₹${parseFloat(child.planned_amount).toFixed(2)}
-                                                                                                                                                                                            ${child.status === 'settle' && child.settle_notes ? `<div class="text-muted small mt-1">(${child.settle_notes})</div>` : ''}
+                                                                                                                                                                                            ₹${parseFloat(child.actual_amount || 0).toFixed(2)}
                                                                                                                                                                                         </td>
                                                                                                                                                                                         <td>${child.status === 'settle' ? '-' : '₹' + parseFloat(child.gst_amount || 0).toFixed(2)}</td>
                                                                                                                                                                                         <td>${child.status === 'settle' ? '-' : '₹' + parseFloat(child.tds_amount || 0).toFixed(2)}</td>
+                                                                                                                                                                                        <td>
+                                                                                                                                                                                            ₹${parseFloat(child.planned_amount).toFixed(2)}
+                                                                                                                                                                                            ${child.status === 'settle' && child.settle_notes ? `<div class="text-muted small mt-1">(${child.settle_notes})</div>` : ''}
+                                                                                                                                                                                        </td>
                                                                                                                                                                                         <td>
                                                                                                                                                                                             <span class="badge bg-${statusClass}">
                                                                                                                                                                                                 ${child.status}

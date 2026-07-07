@@ -582,13 +582,22 @@ class IncomeController extends Controller
       // Create new income for balance if this is a split payment
       $newIncomeId = null;
       if ($isSplitPayment && $balanceAmount > 0) {
+        $tdsPercentage = floatval($data['tds_percentage'] ?? 0);
+        $newTdsAmount = round($balanceBaseAmount * ($tdsPercentage / 100), 2);
+        $newGstAmount = $gstAmountTotal - $gstAmountForCurrent;
+        
+        $balanceBaseAmountToSave = $balanceBaseAmount;
+        if ($request->status === 'settle') {
+            $balanceBaseAmountToSave = round($balanceBaseAmount - $newTdsAmount, 2);
+        }
+
         $newIncome = $income->replicate();
         unset($newIncome->paid_date);
         $newIncome->party_name = $income->party_name;
         $newIncome->amount = $balanceAmount;
-        $newIncome->planned_amount = $balancePlannedAmount;
-        $newIncome->actual_amount = $balanceBaseAmount;
-        $newIncome->balance_amount = $balanceAmount;
+        $newIncome->planned_amount = $request->status === 'settle' ? $balanceAmount : $balancePlannedAmount;
+        $newIncome->actual_amount = $balanceBaseAmountToSave;
+        $newIncome->balance_amount = $request->status === 'settle' ? 0 : $balanceAmount;
         $newIncome->status = $request->status === 'settle' ? 'settle' : 'pending';
         $newIncome->income_date = $request->new_due_date ?? now()->addDays(30)->format('Y-m-d');
         $newIncome->is_partial = true;
@@ -598,13 +607,13 @@ class IncomeController extends Controller
         $newIncome->updated_at = now();
         $newIncome->received_amount = 0;
         $newIncome->payment_mode = null;
-        $newIncome->settle_notes = null;
+        $newIncome->settle_notes = $request->status === 'settle' ? ($request->settle_notes ?? 'Settled remaining balance') : null;
         $newIncome->save();
 
         $newIncomeId = $newIncome->id;
 
         // Create taxes for the balance income
-        if ($request->boolean('apply_gst')) {
+        if ($request->boolean('apply_gst') && $request->status !== 'settle') {
           $newGstAmount = $gstAmountTotal - $gstAmountForCurrent;
           if ($newGstAmount > 0) {
             $newIncome->taxes()->create([
@@ -620,7 +629,7 @@ class IncomeController extends Controller
           }
         }
 
-        if ($request->boolean('apply_tds')) {
+        if ($request->boolean('apply_tds') && $request->status !== 'settle') {
           $newTdsAmount = $tdsAmountTotal - $tdsAmountForCurrent;
           if ($newTdsAmount > 0) {
             $newIncome->taxes()->create([
@@ -1055,20 +1064,22 @@ class IncomeController extends Controller
       $receivedAmount = $validated['received_amount'] ?? $income->received_amount ?? 0;
 
       if ($receivedAmount > $payableAmountTotal && $payableAmountTotal > 0) {
-          return response()->json([
-              'success' => false,
-              'message' => 'Received amount cannot exceed net payable amount.',
-              'errors' => ['received_amount' => ['Received amount cannot exceed net payable amount.']]
-          ], 422);
+          // If the frontend didn't auto-reduce it (e.g. API call), force it down so it fits
+          $receivedAmount = $payableAmountTotal;
       }
+      
+      $oldNetPayableAmount = floatval($income->amount);
+      $effectiveTotalPayable = max($payableAmountTotal, $oldNetPayableAmount);
 
       $isSplitPayment = ($validated['status'] === 'due' || $validated['status'] === 'settle') &&
         $receivedAmount > 0 &&
-        $receivedAmount < $payableAmountTotal;
+        $receivedAmount < $effectiveTotalPayable;
         
 
-
       $originalActualAmount = floatval($income->actual_amount);
+      $oldOriginalBaseAmount = floatval($income->original_amount ?? $income->actual_amount ?? 0);
+      $effectiveTotalBase = max($actualTotalBase, $oldOriginalBaseAmount);
+      
       $isForeignCurrency = ($income->invoice && $income->invoice->currency != 'INR') || ($income->currency && $income->currency != 'INR');
 
       if ($isSplitPayment && $payableAmountTotal > 0) {
@@ -1078,13 +1089,13 @@ class IncomeController extends Controller
         
         // actual_amount in DB stores the foreign currency value if foreign, else INR
         $paidBaseAmount = $isForeignCurrency ? ($originalActualAmount * $proportion) : ($actualTotalBase * $proportion);
-        $balanceBaseAmount = $isForeignCurrency ? ($originalActualAmount - $paidBaseAmount) : ($actualTotalBase - $paidBaseAmount);
+        $balanceBaseAmount = $originalActualAmount - $paidBaseAmount;
         
         $paidPlannedAmount = $plannedAmountTotal * $proportion;
         $conversionCostForCurrent = $conversionCost * $proportion;
         
         $balancePlannedAmount = $plannedAmountTotal - $paidPlannedAmount;
-        $balanceAmount = $payableAmountTotal - $receivedAmount;
+        $balanceAmount = $effectiveTotalPayable - $receivedAmount;
         $balanceConversionCost = $conversionCost - $conversionCostForCurrent;
       } else {
         $gstAmountForCurrent = $gstAmountTotal;
@@ -1095,7 +1106,7 @@ class IncomeController extends Controller
         
         $paidPlannedAmount = $plannedAmountTotal;
         $balancePlannedAmount = 0;
-        $balanceAmount = $payableAmountTotal - $receivedAmount;
+        $balanceAmount = $effectiveTotalPayable - $receivedAmount;
       }
 
       // Update client_details with the new mobile_number if provided
@@ -1107,6 +1118,11 @@ class IncomeController extends Controller
       $paidBaseAmountToSave = $paidBaseAmount;
       $actualTotalBaseToSave = $actualTotalBase;
       $balanceBaseAmountToSave = $balanceBaseAmount;
+      if ($validated['status'] === 'settle') {
+          $tdsPercentage = floatval($validated['tds_percentage'] ?? 0);
+          $newTdsAmount = round($balanceBaseAmount * ($tdsPercentage / 100), 2);
+          $balanceBaseAmountToSave = round($balanceBaseAmount - $newTdsAmount, 2);
+      }
 
       $incomeData = [
         'party_name' => $validated['client_name'] ?? $income->party_name,
@@ -1114,7 +1130,7 @@ class IncomeController extends Controller
         'received_amount' => $receivedAmount,
         'planned_amount' => $paidPlannedAmount,
         'actual_amount' => $paidBaseAmountToSave,
-        'original_amount' => $actualTotalBase,
+        'original_amount' => $isSplitPayment ? $oldOriginalBaseAmount : $actualTotalBase,
         'schedule_amount' => $plannedAmountTotal,
         'balance_amount' => $isSplitPayment ? 0 : max(0, $balanceAmount),
         'status' => $isSplitPayment ? 'received' : ($validated['status'] === 'settle' ? 'settle' : (round($balanceAmount, 2) <= 0.01 && $receivedAmount > 0 ? 'received' : (($validated['status'] === 'paid' || $validated['status'] === 'received') ? 'received' : ($validated['status'] ?? 'pending')))),
@@ -1207,15 +1223,15 @@ class IncomeController extends Controller
 
       // Create new income for balance if this is a split payment
       $newIncomeId = null;
-      if ($isSplitPayment && $balanceBaseAmount > 0) {
+      if ($isSplitPayment && $balanceAmount > 0) {
 
         $newIncome = $income->replicate();
         unset($newIncome->paid_date);
         $newIncome->party_name = $income->party_name;
         $newIncome->amount = $balanceAmount;
         $newIncome->actual_amount = $balanceBaseAmountToSave;
-        $newIncome->planned_amount = $balancePlannedAmount;
-        $newIncome->balance_amount = $balanceAmount;
+        $newIncome->planned_amount = $validated['status'] === 'settle' ? $balanceAmount : $balancePlannedAmount;
+        $newIncome->balance_amount = $validated['status'] === 'settle' ? 0 : $balanceAmount;
         $newIncome->status = $validated['status'] === 'settle' ? 'settle' : 'pending';
         $newIncome->due_date = $request->new_due_date ?? $request->due_date ?? now()->addDays(30)->format('Y-m-d');
         $newIncome->income_date = $income->income_date;
@@ -1227,7 +1243,7 @@ class IncomeController extends Controller
         $newIncome->updated_at = now();
         $newIncome->received_amount = 0;
         $newIncome->payment_mode = null;
-        $newIncome->settle_notes = null;
+        $newIncome->settle_notes = $validated['status'] === 'settle' ? ($validated['settle_notes'] ?? $request->settle_notes ?? 'Settled remaining balance') : null;
         $newIncome->save();
 
         $newIncomeId = $newIncome->id;
@@ -1452,7 +1468,7 @@ class IncomeController extends Controller
         'id' => $income->id,
         'invoice_number' => $income->invoice
           ? $income->invoice->invoice_number
-          : ($income->invoice_id ?? 'INV-' . str_pad($income->id, 6, '0', STR_PAD_LEFT)),
+          : ($income->invoice_number ?? ($income->invoice_id ?? 'INV-' . str_pad($income->getRootParentId(), 6, '0', STR_PAD_LEFT))),
 
         'status' => $income->status,
         'type' => $income->income_type ?? 'invoice',

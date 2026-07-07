@@ -754,30 +754,40 @@ class ExpensesController extends Controller
 
       $balanceAmount = $netPayableAmount - $paidAmount;
 
-      $gstAmountForCurrent = $request->gst_amount ?? 0;
-      $tdsAmountForCurrent = $request->tds_amount ?? 0;
-
       $proportion = $netPayableAmount > 0 ? ($paidAmount / $netPayableAmount) : 1;
 
       if ($isSplitPayment) {
-        $paidBaseAmount = $actualTotalBase * $proportion;
-        $balanceBaseAmount = $actualTotalBase - $paidBaseAmount;
+        $tempPaidBase = round($actualTotalBase * $proportion, 2);
+        $totalGst = $request->gst_amount ?? 0;
+        $totalTds = $request->tds_amount ?? 0;
         
-        if ($request->boolean('apply_gst')) {
-            $gstPercentage = $request->gst_percentage ?? 0;
-            $gstAmountForCurrent = $paidBaseAmount * ($gstPercentage / 100);
+        $tempGst = $request->boolean('apply_gst') ? round($totalGst * $proportion, 2) : 0;
+        $tempTds = $request->boolean('apply_tds') ? round($totalTds * $proportion, 2) : 0;
+        
+        if ($request->has('gst_amount') && $request->is_manually_edited == '1') {
+            $tempGst = floatval($request->gst_amount);
         }
-        if ($request->boolean('apply_tds')) {
-            $tdsPercentage = $request->tds_percentage ?? 0;
-            $tdsAmountForCurrent = $paidBaseAmount * ($tdsPercentage / 100);
+        if ($request->has('tds_amount') && $request->is_manually_edited == '1') {
+            $tempTds = floatval($request->tds_amount);
         }
+
+        $calculatedNet = $tempPaidBase + $tempGst - $tempTds;
+        $discrepancy = round($paidAmount - $calculatedNet, 2);
+        
+        $paidBaseAmount = round($tempPaidBase + $discrepancy, 2);
+        $gstAmountForCurrent = $tempGst;
+        $tdsAmountForCurrent = $tempTds;
+        
+        $balanceBaseAmount = round($actualTotalBase - $paidBaseAmount, 2);
       } else {
         $paidBaseAmount = $actualTotalBase;
         $balanceBaseAmount = 0;
+        $gstAmountForCurrent = $request->gst_amount ?? 0;
+        $tdsAmountForCurrent = $request->tds_amount ?? 0;
       }
 
-      $newGstAmount = ($request->gst_amount ?? 0) - $gstAmountForCurrent;
-      $newTdsAmount = ($request->tds_amount ?? 0) - $tdsAmountForCurrent;
+      $newGstAmount = round(($request->gst_amount ?? 0) - $gstAmountForCurrent, 2);
+      $newTdsAmount = round(($request->tds_amount ?? 0) - $tdsAmountForCurrent, 2);
 
       // Prepare expense data
       $expenseData = [
@@ -785,7 +795,7 @@ class ExpensesController extends Controller
         'company_id' => $request->company_id,
         'category_id' => $request->category_id,
         'actual_amount' => $isSplitPayment ? $paidBaseAmount : $actualTotalBase,
-        'planned_amount' => $isSplitPayment ? $paidAmount : $plannedAmount,
+        'planned_amount' => $isSplitPayment ? ($paidBaseAmount + $gstAmountForCurrent) : $plannedAmount,
         'original_amount' => $actualTotalBase,
         'schedule_amount' => $plannedAmount,
         'status' => ($isSplitPayment || $request->status === 'paid')
@@ -816,6 +826,7 @@ class ExpensesController extends Controller
       }
 
       // Create the expense
+      $expenseData['expense_number'] = Expense::generateNewExpenseNumber();
       $expense = Expense::create($expenseData);
 
       // Handle GST Tax if applied
@@ -883,17 +894,24 @@ class ExpensesController extends Controller
       $newExpenseId = null;
       if ($isSplitPayment && $balanceAmount > 0) {
         $newExpense = $expense->replicate();
+        
+        $correctedBaseAmount = $balanceBaseAmount;
+        if ($request->status === 'settle') {
+            $correctedBaseAmount = round($balanceBaseAmount - $newTdsAmount, 2);
+        }
+        
         $newExpense->expense_name = $expense->expense_name . ' - Balance';
-        $newExpense->planned_amount = $balanceAmount;
-        $newExpense->actual_amount = 0;
-        $newExpense->original_amount = $balanceBaseAmount;
+        $newExpense->planned_amount = ($request->status === 'settle') ? $balanceAmount : ($balanceBaseAmount + $newGstAmount);
+        $newExpense->actual_amount = $correctedBaseAmount;
+        $newExpense->original_amount = $correctedBaseAmount;
         $newExpense->status = ($request->status === 'settle') ? 'settle' : 'pending';
         $newExpense->due_date = $request->new_due_date ?? now()->addDays(30)->format('Y-m-d');
         $newExpense->paid_date = null;
         $newExpense->is_split = true;
         $newExpense->parent_id = $expense->id;
+        $newExpense->expense_number = $expense->expense_number;
         $newExpense->balance_amount = $balanceAmount;
-        $newExpense->schedule_amount = $actualTotalBase;
+        $newExpense->schedule_amount = $balanceAmount;
         $newExpense->notes = $request->balance_notes ?? 'Balance from partial payment of expense #' . $expense->id;
         if ($request->status === 'settle') {
             $newExpense->settle_notes = $request->settle_notes;
@@ -1111,7 +1129,7 @@ class ExpensesController extends Controller
           // Find the root expense
           $rootExpense = $expense;
           while ($rootExpense->parent_id) {
-              $parent = Expense::find($rootExpense->parent_id);
+              $parent = Expense::with('taxes')->find($rootExpense->parent_id);
               if ($parent) {
                   $rootExpense = $parent;
               } else {
@@ -1124,7 +1142,7 @@ class ExpensesController extends Controller
           $childrenIds = [$rootExpense->id];
           
           while (!empty($childrenIds)) {
-              $children = Expense::whereIn('parent_id', $childrenIds)->get();
+              $children = Expense::with('taxes')->whereIn('parent_id', $childrenIds)->get();
               if ($children->isEmpty()) {
                   break;
               }
@@ -1202,7 +1220,7 @@ class ExpensesController extends Controller
         'gst_due_date' => $gstTax ? $gstTax->due_date : null,
         'has_gst' => $gstTax ? true : false,
         'gst_tax_id' => $gstTax ? $gstTax->id : null,
-        'original_total_base' => $expense->schedule_amount ?? 0, // Sending context for "Actual amount should be 5000"
+        'original_total_base' => $expense->original_amount ?? $expense->planned_amount ?? 0, // Sending context for "Actual amount should be 5000"
         // Receipts
         'receipts' => $expense->receipts->map(function ($receipt) {
           return [
@@ -1220,6 +1238,7 @@ class ExpensesController extends Controller
       ]);
     }
   }
+  
   public function update(Request $request, $id)
   {
     $request->validate([
@@ -1263,12 +1282,13 @@ class ExpensesController extends Controller
       // Handle "Convert to TDS" special status
       if ($request->status === 'convert_to_tds') {
         // Use current data to calculate balance for TDS
-        $pAmount = $request->planned_amount ?? $expense->planned_amount;
-        $gAmount = $request->boolean('apply_gst') ? ($request->gst_amount ?? 0) : 0;
+        $baseAmt = floatval($request->input('base_amount', $expense->original_amount ?? $expense->actual_amount));
+        $gAmount = $request->boolean('apply_gst') ? floatval($request->input('gst_amount', 0)) : 0;
+        $pAmount = $baseAmt + $gAmount;
         $rAmount = $request->actual_amount ?? $expense->actual_amount ?? 0;
 
         // Calculate needed TDS to clear balance: TDS = (Base + GST) - Paid
-        $targetTds = ($pAmount + $gAmount) - $rAmount;
+        $targetTds = $pAmount - $rAmount;
 
         if ($targetTds > 0) {
           $request->merge([
@@ -1282,18 +1302,32 @@ class ExpensesController extends Controller
         }
       }
 
+      // Fetch old tax amounts before potentially updating them
+      $oldGstTax = Tax::where('taxable_type', Expense::class)
+        ->where('taxable_id', $expense->id)
+        ->where('tax_type', 'gst')
+        ->first();
+      $oldGstAmount = $oldGstTax ? floatval($oldGstTax->tax_amount) : 0;
+      
+      $oldTdsTax = Tax::where('taxable_type', Expense::class)
+        ->where('taxable_id', $expense->id)
+        ->where('tax_type', 'tds')
+        ->first();
+      $oldTdsAmount = $oldTdsTax ? floatval($oldTdsTax->tax_amount) : 0;
+
       // Calculate values
       $paidAmount = $request->actual_amount ?? $expense->actual_amount ?? 0;
-      $originalPlannedAmount = $request->planned_amount ?? $expense->planned_amount;
-      $originalGstAmount = $request->gst_amount ?? 0;
-      $originalTdsAmount = $request->tds_amount ?? 0;
+      
+      $oldOriginalBaseAmount = floatval($expense->original_amount ?? $expense->actual_amount);
+      $oldPlannedAmount = floatval($expense->planned_amount);
+      $oldNetPayableAmount = $oldPlannedAmount - $oldTdsAmount;
+      
+      $originalBaseAmount = floatval($request->input('base_amount', $oldOriginalBaseAmount));
+      $originalGstAmount = $request->boolean('apply_gst') ? floatval($request->input('gst_amount', 0)) : 0;
+      $originalTdsAmount = $request->boolean('apply_tds') ? floatval($request->input('tds_amount', 0)) : 0;
 
-      // Balance is simply planned minus paid (TDS is tracked separately as a tax record)
-      if ($expense->parent_id) {
-        $netPayableAmount = $originalPlannedAmount;
-      } else {
-        $netPayableAmount = $originalPlannedAmount - $originalTdsAmount;
-      }
+      $originalPlannedAmount = $originalBaseAmount + $originalGstAmount;
+      $netPayableAmount = $originalPlannedAmount - $originalTdsAmount;
 
       if ($paidAmount > $netPayableAmount + 0.01) {
           return response()->json([
@@ -1302,7 +1336,9 @@ class ExpensesController extends Controller
           ], 422);
       }
 
-      $balanceAmount = $netPayableAmount - $paidAmount;
+      $effectiveTotalPayable = max($netPayableAmount, $oldNetPayableAmount);
+      $balanceAmount = $effectiveTotalPayable - $paidAmount;
+      
       $isFullyPaid = $balanceAmount < 0.01;
 
       // Check if this is a split payment
@@ -1316,49 +1352,44 @@ class ExpensesController extends Controller
           $originalTdsAmount = 0;
       }
 
-      // If split payment, calculate proportional taxes and base amounts
-      $gstAmountForCurrent = $originalGstAmount;
-      $tdsAmountForCurrent = $originalTdsAmount;
-      
-      // Calculate expected base amount: Base = Payable + TDS - GST
-      $dbTdsAmount = $expense->taxes->where('tax_type', 'tds')->first()->tax_amount ?? 0;
-      $dbGstAmount = $expense->taxes->where('tax_type', 'gst')->first()->tax_amount ?? 0;
-      $expectedBase = $expense->planned_amount + $dbTdsAmount - $dbGstAmount;
+      $totalGstAmount = $originalGstAmount;
+      $totalTdsAmount = $originalTdsAmount;
+      $effectiveTotalBase = max($originalBaseAmount, $oldOriginalBaseAmount);
 
-      if ($request->has('base_amount') && !is_null($request->input('base_amount'))) {
-          $originalBaseAmount = floatval($request->input('base_amount'));
-      } else {
-          $originalBaseAmount = $expense->actual_amount > 0 ? $expense->actual_amount : $expectedBase;
-      }
-
-      $proportion = $netPayableAmount > 0 ? ($paidAmount / $netPayableAmount) : 1;
-      
       if ($isSplitPayment) {
-          $paidBaseAmount = $originalBaseAmount * $proportion;
-          $balanceBaseAmount = $originalBaseAmount - $paidBaseAmount;
+          $proportion = ($netPayableAmount > 0) ? ($paidAmount / $netPayableAmount) : 1;
+          
+          // Calculate proportional amounts and round them to 2 decimal places
+          $tempPaidBase = round($originalBaseAmount * $proportion, 2);
+          $tempGst = $request->boolean('apply_gst') ? round($totalGstAmount * $proportion, 2) : 0;
+          $tempTds = $request->boolean('apply_tds') ? round($totalTdsAmount * $proportion, 2) : 0;
+          
+          // Absorb the rounding discrepancy into the base amount to ensure exact mathematical equality
+          $calculatedNet = $tempPaidBase + $tempGst - $tempTds;
+          $discrepancy = round($paidAmount - $calculatedNet, 2);
+          
+          $paidBaseAmount = round($tempPaidBase + $discrepancy, 2);
+          $gstAmountForCurrent = $tempGst;
+          $tdsAmountForCurrent = $tempTds;
+          
+          $balanceBaseAmount = round($effectiveTotalBase - $paidBaseAmount, 2);
       } else {
           $paidBaseAmount = $originalBaseAmount;
           $balanceBaseAmount = 0;
-      }
-      
-      if ($request->boolean('apply_gst')) {
-          $gstPercentage = $request->gst_percentage ?? ($expense->taxes->where('tax_type', 'gst')->first()->tax_percentage ?? 0);
-          $gstAmountForCurrent = $paidBaseAmount * ($gstPercentage / 100);
-      }
-      if ($request->boolean('apply_tds')) {
-          $tdsPercentage = $request->tds_percentage ?? ($expense->taxes->where('tax_type', 'tds')->first()->tax_percentage ?? 0);
-          $tdsAmountForCurrent = $paidBaseAmount * ($tdsPercentage / 100);
+          $gstAmountForCurrent = $request->boolean('apply_gst') ? $totalGstAmount : 0;
+          $tdsAmountForCurrent = $request->boolean('apply_tds') ? $totalTdsAmount : 0;
       }
 
 
       if ($isSplitPayment) {
         $expenseData = [
           'expense_name' => $request->expense_name ?? $expense->expense_name,
-          'planned_amount' => $paidAmount,
+          'planned_amount' => ($paidBaseAmount + $gstAmountForCurrent),
           'actual_amount' => $paidBaseAmount,
           'original_amount' => $originalBaseAmount,
           'schedule_amount' => $originalPlannedAmount,
           'status' => 'paid',
+          'balance_amount' => 0,
           'party_name' => $request->party_name ?? $expense->party_name,
           'mobile_number' => $request->mobile_number ?? $expense->mobile_number,
           'notes' => $request->notes ?? $expense->notes,
@@ -1379,6 +1410,7 @@ class ExpensesController extends Controller
           'original_amount' => $originalBaseAmount,
           'schedule_amount' => $originalPlannedAmount,
           'status' => ($actualStatus === 'due') ? 'upcoming' : $actualStatus,
+          'balance_amount' => ($request->status === 'settle') ? 0 : $balanceAmount,
           'party_name' => $request->party_name ?? $expense->party_name,
           'mobile_number' => $request->mobile_number ?? $expense->mobile_number,
           'notes' => $request->notes ?? $expense->notes,
@@ -1542,16 +1574,29 @@ class ExpensesController extends Controller
       // Create new expense for balance if this is a split payment
       $newExpenseId = null;
       if ($isSplitPayment && $balanceAmount > 0) {
+        // Calculate new taxes early so we can correctly set planned_amount
+        $effectiveTotalGst = max($totalGstAmount, $oldGstAmount);
+        $newGstAmount = round($effectiveTotalGst - $gstAmountForCurrent, 2);
+        
+        $effectiveTotalTds = max($totalTdsAmount, $oldTdsAmount);
+        $newTdsAmount = round($effectiveTotalTds - $tdsAmountForCurrent, 2);
+        
+        $correctedBaseAmount = $balanceBaseAmount;
+        if ($request->status === 'settle') {
+            $correctedBaseAmount = round($balanceBaseAmount - $newTdsAmount, 2);
+        }
+        
         $newExpense = $expense->replicate();
         $newExpense->expense_name = $expense->expense_name;
-        $newExpense->planned_amount = $balanceAmount;
-        $newExpense->actual_amount = 0;
-        $newExpense->original_amount = $balanceBaseAmount;
+        $newExpense->planned_amount = ($request->status === 'settle') ? $balanceAmount : ($balanceBaseAmount + $newGstAmount);
+        $newExpense->actual_amount = $correctedBaseAmount ?? 0;
+        $newExpense->original_amount = $correctedBaseAmount;
         $newExpense->status = ($request->status === 'settle') ? 'settle' : 'pending';
         $newExpense->due_date = $request->new_due_date ?? $request->due_date ?? now()->addDays(30)->format('Y-m-d');
         $newExpense->paid_date = null;
         $newExpense->is_split = true;
         $newExpense->parent_id = $expense->id;
+        $newExpense->expense_number = $expense->expense_number;
         $newExpense->balance_amount = ($request->status === 'settle') ? 0 : $balanceAmount;
         $newExpense->schedule_amount = $balanceAmount;
         $newExpense->notes = $request->balance_notes ?? 'Balance from partial payment of expense #' . $expense->id;
@@ -1565,8 +1610,7 @@ class ExpensesController extends Controller
         $newExpenseId = $newExpense->id;
 
         // Create GST tax for new expense if applicable
-        if ($request->boolean('apply_gst') && $originalGstAmount > 0) {
-          $newGstAmount = $originalGstAmount - $gstAmountForCurrent;
+        if ($request->boolean('apply_gst') && $effectiveTotalGst > 0) {
           if ($newGstAmount > 0 && $request->status !== 'settle') {
             Tax::create([
               'taxable_type' => Expense::class,
@@ -1584,8 +1628,9 @@ class ExpensesController extends Controller
         }
 
         // Create TDS tax for new expense if applicable
-        if ($request->boolean('apply_tds') && $originalTdsAmount > 0) {
-          $newTdsAmount = $originalTdsAmount - $tdsAmountForCurrent;
+        if ($request->boolean('apply_tds') && max($totalTdsAmount, $oldTdsAmount) > 0) {
+          $effectiveTotalTds = max($totalTdsAmount, $oldTdsAmount);
+          $newTdsAmount = round($effectiveTotalTds - $tdsAmountForCurrent, 2);
           if ($newTdsAmount > 0 && $request->status !== 'settle') {
             Tax::create([
               'taxable_type' => Expense::class,

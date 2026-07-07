@@ -3,7 +3,7 @@
 <div class="container-fluid py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h4 class="mb-0 text-dark fw-bold">Income Details: {{ $income->invoice_number ?? ('#INC-' . $income->id) }}</h4>
+            <h4 class="mb-0 text-dark fw-bold">Income Details: {{ $income->invoice_number ?? ('#INC-' . $income->getRootParentId()) }}</h4>
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb mb-0">
                     <li class="breadcrumb-item"><a href="{{ route('manager.dashboard') }}">Dashboard</a></li>
@@ -21,7 +21,7 @@
 
     @php
         $itemCurrency = $income->currency ?? ($income->invoice->currency ?? 'INR');
-        $itemSymbol = ($itemCurrency == 'USD' ? '$' : ($itemCurrency == 'EUR' ? '€' : ($itemCurrency == 'GBP' ? '£' : '₹')));
+        $itemSymbol = '₹';
     @endphp
 
     <div class="row g-4 mb-4">
@@ -166,6 +166,21 @@
                         </div>
                     @endif
 
+                    @php
+                        $displayGst = 0;
+                        if ($rootIncome->taxes && $rootIncome->taxes->count() > 0) {
+                            $gstTaxObj = $rootIncome->taxes->where('tax_type', 'gst')->first();
+                            if ($gstTaxObj) {
+                                $displayGst = $displayBase * ($gstTaxObj->tax_percentage / 100);
+                            }
+                        }
+                        $displayPlanned = $displayBase + $displayGst;
+                    @endphp
+                    <div class="d-flex justify-content-between mb-2 border-bottom pb-2">
+                        <span class="text-muted">Planned Amount:</span>
+                        <span class="fw-bold">₹{{ number_format($displayPlanned, 2) }}</span>
+                    </div>
+
                     <div class="d-flex justify-content-between mt-4 pt-3 border-top border-dark">
                         <span class="text-dark fw-bold h5 mb-0">Total Amount:</span>
                         <span class="text-success fw-bold h5 mb-0">₹{{ number_format($displayTotal, 2) }}</span>
@@ -186,58 +201,130 @@
                     <thead class="table-light">
                         <tr>
                             <th class="ps-4">Split #</th>
-                            <th>Invoice No</th>
-                            <th>Receivable Amount</th>
-                            <th>Base Amount</th>
+                            <th>Income ID</th>
+                            <th>Receivable Amt</th>
+                            <th>Base Amount (-TDS)</th>
+                            <th>GST Amount</th>
                             <th>Status</th>
-                            <th>Created Date</th>
+                            <th>Received Date</th>
                             <th>Due Date</th>
-                            <th>Paid Date</th>
+                            <th>TDS Amount</th>
+                            <th>Status</th>
                         </tr>
                     </thead>
                     <tbody>
+                        @php
+                            $formatAmount = function($amt) {
+                                return fmod($amt, 1) == 0 ? number_format($amt, 0, '.', '') : number_format($amt, 2);
+                            };
+                            $totalPaidAmt = 0;
+                            $totalBaseAmount = 0;
+                            $totalGstAmount = 0;
+                            $totalTdsAmount = 0;
+                        @endphp
                         @forelse($uniqueFamily->sortBy('created_at') as $index => $split)
+                            @php
+                                $displayAmount = ($split->is_split || $split->is_partial || $split->parent_id) ? $split->amount : $displayTotal;
+                                $rowBaseAmount = ($split->is_split || $split->is_partial || $split->parent_id) ? ($split->actual_amount > 0 ? $split->actual_amount : $split->amount) : $displayBase;
+
+                                $rowGstAmount = $split->taxes->where('tax_type', 'gst')->sum('tax_amount');
+                                $rowTdsTax = $split->taxes->where('tax_type', 'tds')->first();
+                                $rowTdsAmount = $rowTdsTax ? $rowTdsTax->tax_amount : 0;
+                                
+                                $rowTdsStatus = 'pending';
+                                if ($rowTdsTax) {
+                                    $paymentStatus = strtolower($rowTdsTax->payment_status);
+                                    if ($paymentStatus === 'received' || $paymentStatus === 'paid') {
+                                        $rowTdsStatus = 'Paid';
+                                    } elseif ($paymentStatus === 'not_received' || $paymentStatus === 'pending') {
+                                        $rowTdsStatus = 'pending';
+                                    } else {
+                                        $rowTdsStatus = ucfirst($paymentStatus);
+                                    }
+                                }
+
+                                $totalPaidAmt += $displayAmount;
+                                $totalBaseAmount += $rowBaseAmount;
+                                $totalGstAmount += $rowGstAmount;
+                                $totalTdsAmount += $rowTdsAmount;
+
+                                $splitStatusClass = match ($split->status) {
+                                    'received' => 'bg-success',
+                                    'due' => 'bg-warning text-dark',
+                                    'overdue' => 'bg-danger',
+                                    'settle', 'settled' => 'bg-secondary',
+                                    'convert to tds' => 'bg-info text-dark',
+                                    default => 'bg-primary',
+                                };
+
+                                $tdsStatusClass = match (strtolower($rowTdsStatus)) {
+                                    'paid', 'received' => 'bg-success',
+                                    'pending', 'not_received' => 'bg-warning text-dark',
+                                    'n/a' => 'bg-light text-muted',
+                                    default => 'bg-secondary',
+                                };
+                            @endphp
                             <tr>
                                 <td class="ps-4 fw-medium">{{ $index + 1 }}</td>
-                                <td>#{{ $split->invoice_number ?? ('INC-' . $split->id) }}</td>
-                                @php
-                                    $displayAmount = ($split->is_partial || $split->parent_id) ? $split->amount : $displayTotal;
-                                @endphp
-                                <td class="fw-bold text-success">
-                                    ₹{{ number_format($displayAmount, 2) }}
-                                    @if($split->status === 'settle' && $split->settle_notes)
-                                        <div class="text-muted small mt-1">({{ $split->settle_notes }})</div>
+                                <td>
+                                    <a href="{{ route('manager.income.view', $split->id) }}" class="text-decoration-none fw-medium">#{{ $split->id }}</a>
+                                </td>
+                                <td class="fw-bold text-dark">
+                                    {{ $formatAmount($displayAmount) }}
+                                    @if(in_array($split->status, ['settle', 'settled']))
+                                        @php
+                                            $notes = $split->settle_notes;
+                                            if (!$notes && $split->parent_id) {
+                                                $parentSplit = $uniqueFamily->where('id', $split->parent_id)->first();
+                                                if ($parentSplit) {
+                                                    $notes = $parentSplit->settle_notes;
+                                                }
+                                            }
+                                        @endphp
+                                        @if($notes)
+                                            <div class="text-muted small mt-1">({{ $notes }})</div>
+                                        @endif
                                     @endif
                                 </td>
-                                @php
-                                    $rowProportion = $displayTotal > 0 ? ($displayAmount / $displayTotal) : 1;
-                                    $rowBaseAmount = $displayBase * $rowProportion;
-                                @endphp
-                                <td>₹{{ number_format($rowBaseAmount, 2) }}</td>
+                                <td class="fw-bold text-danger">{{ $formatAmount($rowBaseAmount - $rowTdsAmount) }}</td>
+                                <td class="fw-bold text-primary">{{ $formatAmount($rowGstAmount) }}</td>
                                 <td>
-                                    @php
-                                        $splitStatusClass = match ($split->status) {
-                                            'received' => 'bg-success',
-                                            'due' => 'bg-warning text-dark',
-                                            'overdue' => 'bg-danger',
-                                            'settle' => 'bg-secondary',
-                                            'convert to tds' => 'bg-info text-dark',
-                                            default => 'bg-primary',
-                                        };
-                                    @endphp
                                     <span class="badge {{ $splitStatusClass }}">{{ ucfirst($split->status) }}</span>
                                 </td>
-                                <td>{{ \Carbon\Carbon::parse($split->created_at)->format('d M Y') }}</td>
-                                <td>{{ $split->due_date ? \Carbon\Carbon::parse($split->due_date)->format('d M Y') : 'N/A' }}</td>
-                                <td>{{ $split->paid_date ? \Carbon\Carbon::parse($split->paid_date)->format('d M Y') : (($split->status === 'received' || $split->status === 'settle') && $split->income_date ? \Carbon\Carbon::parse($split->income_date)->format('d M Y') : 'N/A') }}</td>
+                                <td>{{ $split->paid_date ? \Carbon\Carbon::parse($split->paid_date)->format('n/j/Y') : (($split->status === 'received' || $split->status === 'settle') && $split->income_date ? \Carbon\Carbon::parse($split->income_date)->format('n/j/Y') : 'N/A') }}</td>
+                                <td>{{ $split->due_date ? \Carbon\Carbon::parse($split->due_date)->format('n/j/Y') : 'N/A' }}</td>
+                                <td class="fw-bold text-danger">{{ $formatAmount($rowTdsAmount) }}</td>
+                                <td>
+                                    @if($rowTdsTax)
+                                        <span class="badge {{ $tdsStatusClass }}">{{ ucfirst($rowTdsStatus) }}</span>
+                                    @else
+                                        <span class="text-muted small">N/A</span>
+                                    @endif
+                                </td>
                             </tr>
 
                         @empty
                             <tr>
-                                <td colspan="8" class="text-center py-4 text-muted">No split history available.</td>
+                                <td colspan="10" class="text-center py-4 text-muted">No split history available.</td>
                             </tr>
                         @endforelse
                     </tbody>
+                    @if($uniqueFamily->isNotEmpty())
+                        <tfoot>
+                            <tr class="table-light fw-bold border-top border-dark">
+                                <td class="ps-4"></td>
+                                <td></td>
+                                <td class="text-dark">{{ $itemSymbol }}{{ $formatAmount($totalPaidAmt) }}</td>
+                                <td class="text-danger">{{ $itemSymbol }}{{ $formatAmount($totalBaseAmount - $totalTdsAmount) }}</td>
+                                <td class="text-primary">{{ $itemSymbol }}{{ $formatAmount($totalGstAmount) }}</td>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                                <td class="text-danger">{{ $itemSymbol }}{{ $formatAmount($totalTdsAmount) }}</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    @endif
                 </table>
             </div>
         </div>

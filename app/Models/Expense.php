@@ -48,7 +48,8 @@ class Expense extends Model
         'original_amount',
         'schedule_amount',
         'paid_amount',
-        'balance_amount'
+        'balance_amount',
+        'expense_number'
     ];
 
     protected $casts = [
@@ -198,5 +199,76 @@ class Expense extends Model
     public function allChildren()
     {
         return $this->hasMany(Expense::class, 'parent_id')->with('allChildren');
+    }
+
+    protected static function booted()
+    {
+        static::creating(function ($expense) {
+            if (empty($expense->expense_number)) {
+                // If it is a split child, copy parent's expense_number
+                if ($expense->parent_id) {
+                    $parent = self::find($expense->parent_id);
+                    if ($parent && !empty($parent->expense_number)) {
+                        $expense->expense_number = $parent->expense_number;
+                        return;
+                    }
+                }
+                
+                // Otherwise, generate a new one
+                $expense->expense_number = self::generateNewExpenseNumber();
+            }
+        });
+    }
+
+    public static function generateNewExpenseNumber()
+    {
+        $date = now();
+        $year = $date->format('y');
+        $nextYear = (int)$year + 1;
+        $financialYear = $year . '-' . str_pad($nextYear, 2, '0', STR_PAD_LEFT);
+        
+        $prefix = "{$financialYear}-EXP-";
+        
+        // Find the maximum sequence number for the current financial year
+        $lastExpense = self::where('expense_number', 'like', $prefix . '%')
+            ->orderBy('id', 'desc')
+            ->first();
+            
+        $sequence = 1;
+        if ($lastExpense && !empty($lastExpense->expense_number)) {
+            $lastSeqStr = str_replace($prefix, '', $lastExpense->expense_number);
+            $sequence = intval($lastSeqStr) + 1;
+        }
+        
+        return $prefix . str_pad($sequence, 5, '0', STR_PAD_LEFT);
+    }
+
+    public function getExpenseNumberAttribute($value)
+    {
+        if (!empty($value)) {
+            return $value;
+        }
+        
+        // Fallback for older records
+        if ($this->parent_id) {
+            $parent = self::find($this->parent_id);
+            if ($parent && !empty($parent->expense_number)) {
+                return $parent->expense_number;
+            }
+            $date = $this->created_at ?? now();
+            $year = $date->format('y');
+            $nextYear = (int)$year + 1;
+            $financialYear = $year . '-' . str_pad($nextYear, 2, '0', STR_PAD_LEFT);
+            $prefix = "{$financialYear}-EXP-";
+            return $prefix . str_pad($this->parent_id, 5, '0', STR_PAD_LEFT);
+        }
+        
+        $date = $this->created_at ?? now();
+        $year = $date->format('y');
+        $nextYear = (int)$year + 1;
+        $financialYear = $year . '-' . str_pad($nextYear, 2, '0', STR_PAD_LEFT);
+        
+        $prefix = "{$financialYear}-EXP-";
+        return $prefix . str_pad($this->id, 5, '0', STR_PAD_LEFT);
     }
 }

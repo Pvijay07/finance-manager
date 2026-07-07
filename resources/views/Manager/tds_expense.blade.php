@@ -237,7 +237,7 @@
                             <tr>
                                 <td>
                                     <a href="{{ route('manager.expense.view', $expense->id) }}" class="fw-bold text-primary text-decoration-none">
-                                        #EXP-{{ $expense->id }}
+                                        {{ $expense->expense_number }}
                                     </a>
                                 </td>
                                 <td>

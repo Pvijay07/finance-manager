@@ -169,7 +169,7 @@
                             </td>
                             <td>{{ $company->created_at->format('d-M-y') }}</td>
                             <td>
-                                <button class="btn btn-outline edit-company-btn" data-company-id="{{ $company->id }}"
+                                <button class="btn btn-outline-primary edit-company-btn" data-company-id="{{ $company->id }}"
                                     style="padding: 5px 10px; font-size: 0.8rem;">
                                     <i class="fas fa-edit"></i> Edit
                                 </button>

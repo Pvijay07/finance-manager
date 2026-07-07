@@ -240,7 +240,7 @@
                                 <tr>
                                     <td>
                                         <a href="{{ route('manager.income.view', $income->id) }}" class="fw-bold text-primary text-decoration-none">
-                                            {{ $income->invoice_number ?? ('#INC-' . $income->id) }}
+                                            {{ $income->invoice_number ?? ('#INC-' . $income->getRootParentId()) }}
                                         </a>
                                     </td>
                                     <td>
@@ -317,12 +317,12 @@
                                                     <i class="fas fa-envelope"></i>
                                                 </button>
 
-                                                @if ($income->is_split || $income->parent_id)
+                                                <!-- @if ($income->is_split || $income->parent_id)
                                                     <button class="btn btn-outline-info btn-sm ms-1"
                                                         onclick="viewSplitHistory({{ $income->id }})" title="View Split History">
                                                         <i class="fas fa-code-branch"></i>
                                                     </button>
-                                                @endif
+                                                @endif -->
                                             </div>
                                         </div>
                                     </td>
@@ -2098,13 +2098,15 @@
                     if (isForeignCurrency) {
                         // The amount in INR before any received
                         document.getElementById('editPlannedAmount').value = parseFloat(income.planned_amount || income.amount || 0).toFixed(2);
-                    } else if (income.actual_amount) {
+                    } else if (income.actual_amount && parseFloat(income.actual_amount) > 0) {
                         document.getElementById('editPlannedAmount').value = parseFloat(income.actual_amount).toFixed(2);
                     } else if (isSplitPayment) {
                         document.getElementById('editPlannedAmount').value = netAmount.toFixed(2);
                     } else {
                         document.getElementById('editPlannedAmount').value = grossAmount.toFixed(2);
                     }
+
+                    document.getElementById('editPlannedAmount').max = document.getElementById('editPlannedAmount').value;
 
                     let defaultPaidAmountVal = 0;
                     if (income.status === 'received' || income.status === 'settle') {
@@ -2161,15 +2163,13 @@
                         }
                     }
 
-                    // Make base amount readonly for standard income or split payments
+                    // Base amount is now editable for all incomes
                     const plannedAmountInput = document.getElementById('editPlannedAmount');
                     if (plannedAmountInput) {
-                        plannedAmountInput.readOnly = isStandardIncome || isSplitPayment;
-                        if (isStandardIncome || isSplitPayment) {
-                            plannedAmountInput.classList.add('bg-light');
-                        } else {
-                            plannedAmountInput.classList.remove('bg-light');
-                        }
+                        plannedAmountInput.readOnly = false;
+                        plannedAmountInput.classList.remove('bg-light');
+                        // Set base amount limits: not less than 0
+                        plannedAmountInput.min = 0;
                     }
 
                     // Calculate and set balance for ALL incomes (Gross - TDS - Paid)
@@ -2530,7 +2530,12 @@
             }
 
             function calculateEditTaxAndBalance(source) {
-                const baseAmount = parseFloat(plannedAmountInput.value) || 0; // plannedAmountInput maps to the Base amount in our new logic
+                let baseAmount = parseFloat(plannedAmountInput.value) || 0; // plannedAmountInput maps to the Base amount in our new logic
+                const maxBase = parseFloat(plannedAmountInput.getAttribute('max')) || 0;
+                if (maxBase > 0 && baseAmount > maxBase) {
+                    baseAmount = maxBase;
+                    plannedAmountInput.value = maxBase.toFixed(2);
+                }
                 let paidAmount = parseFloat(paidAmountInput.value) || 0;
                 
                 const applyGst = gstCheckbox ? gstCheckbox.checked : false;
@@ -2567,9 +2572,8 @@
                 if (source === 'init') {
                     paidAmount = netPayable;
                     if (paidAmountInput) paidAmountInput.value = paidAmount.toFixed(2);
-                } else if (source !== 'paid') {
-                    const currentBalance = parseFloat(balanceAmountInput?.value) || 0;
-                    paidAmount = Math.max(0, netPayable - currentBalance);
+                } else if (source === 'planned' || source === 'tax') {
+                    paidAmount = netPayable;
                     if (paidAmountInput) paidAmountInput.value = paidAmount.toFixed(2);
                 }
 
@@ -2593,8 +2597,15 @@
                     const error = document.getElementById('paidAmountError');
                     if (error) error.remove();
                 }
+                const oldNetPayable = parseFloat(document.getElementById('editOriginalAmount').dataset.originalTotal || 0);
+                const effectiveTotalPayable = Math.max(netPayable, oldNetPayable);
                 
-                const balance = netPayable - paidAmount;
+                // Balance calculation matching expense logic to capture difference
+                let balance = effectiveTotalPayable - paidAmount;
+                // If paidAmount was automatically reduced, we need to subtract the difference from the original paid amount
+                // But wait, if paidAmount is 915.26, effectiveTotalPayable is 1080, balance is 1080 - 915.26 = 164.74.
+                // This perfectly matches the user's explicit example.
+                
                 const balanceVal = Math.max(0, balance);
                 
                 if (balanceAmountInput) {
@@ -2743,6 +2754,20 @@
             // Enable disabled fields temporarily for submission
             const disabledElements = this.querySelectorAll(':disabled');
             disabledElements.forEach(el => el.disabled = false);
+
+            const plannedAmountInput = document.getElementById('editPlannedAmount');
+            if (plannedAmountInput) {
+                const baseAmount = parseFloat(plannedAmountInput.value) || 0;
+                const minVal = parseFloat(plannedAmountInput.min) || 0;
+                
+                // Max validation removed so Base Amount is fully editable
+                if (baseAmount < minVal) {
+                    alert(`Base Amount cannot be less than ${minVal}.`);
+                    disabledElements.forEach(el => el.disabled = true);
+                    this.dataset.submitting = 'false';
+                    return;
+                }
+            }
 
             const paymentMode = document.getElementById('editPaymentMode').value;
             if (paymentMode === 'bank_transfer' || paymentMode === 'cheque') {

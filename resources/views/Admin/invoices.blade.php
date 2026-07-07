@@ -498,15 +498,14 @@
                                 <!-- Terms & Conditions -->
                                 <div class="col-md-6">
                                     <label class="form-label small">Terms & Conditions</label>
-                                    <textarea class="form-control form-control-sm" name="terms_conditions" rows="2"
+                                    <textarea class="form-control form-control-sm" name="terms_conditions" rows="6"
                                         placeholder="Payment terms, delivery terms, etc.">
-                                                        Please make sure that full payment is credited to our Bank account.
-                                                        Payment should be made within 3 days of receiving this invoice.
-                                                        Accepted payment modes: Bank Transfer / PayPal only.
-                                                        Late payment penalty of 4% will apply for every 3 days delay.
-                                                        Source files will be delivered only after receiving full payment.
-                                                        Please send payment acknowledgment promptly to avoid communication issues.
-                                            </textarea>
+• Please make sure that full payment is credited to our Bank account.
+• Payment should be made within 3 days of receiving this invoice.
+• Accepted payment modes: Bank Transfer / PayPal only.
+• Late payment penalty of 4% will apply for every 3 days delay.
+• Source files will be delivered only after receiving full payment.
+• Please send payment acknowledgment promptly to avoid communication issues.</textarea>
                                 </div>
 
                                 <!-- Frequency and Settings -->

@@ -181,7 +181,7 @@
                                     <tr>
                                         <td>
                                             <a href="{{ route('manager.income.view', $invoice->id ?? $tax->id) }}" class="fw-bold text-primary text-decoration-none">
-                                                {{ $invoice->invoice_number ?? ('#INC-' . ($invoice->id ?? $tax->id)) }}
+                                                {{ $invoice->invoice_number ?? ('#INC-' . ($invoice ? $invoice->getRootParentId() : $tax->id)) }}
                                             </a>
                                         </td>
                                         <td>{{ $companyName }}</td>
