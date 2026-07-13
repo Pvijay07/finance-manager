@@ -1,5 +1,5 @@
 ---
 deployment:
   tasks:
-    - export DEPLOYPATH=/home/u506206132/domains/xhtmlreviews.in/public_html/beta-finance
+    - export DEPLOYPATH=/home/f4a4niugpq5y/public_html/finance-manager
     - /bin/rsync -avz --exclude '.git' --exclude '.cpanel.yml' ./ $DEPLOYPATH
