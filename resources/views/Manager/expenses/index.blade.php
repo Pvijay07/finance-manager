@@ -2,341 +2,257 @@
 @section('content')
     <div id="expenses" class="manager-panel">
         <!-- Date Range & Filter Section -->
-        <div class="filter-section card border-0 shadow-sm mb-4">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h6 class="card-title mb-0">
-                        <i class="fas fa-filter me-2 text-primary"></i>Filters
-                    </h6>
-                    <button class="btn btn-sm btn-outline-secondary" onclick="resetFilters()">
-                        <i class="fas fa-redo me-1"></i>Reset
-                    </button>
-                </div>
+          <!-- Page Title & Add Button -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 style="font-weight: 800; color: #0f172a; font-size: 2rem; letter-spacing: -0.75px;">Expenses</h1>
+                <div style="font-size: 0.95rem; color: #64748b; margin-top: 4px;">Monitor and manage all corporate expenditures and settlements.</div>
+            </div>
+            <div>
+              
+            </div>
+        </div>
+ <!-- Bento Filter Bar -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-md bg-surface-container-lowest p-md rounded-xl card-shadow border border-outline-variant mb-lg">
+            <!-- Date Range -->
+            <div class="flex flex-col gap-xs">
+                <label class="font-label-md text-[10px] uppercase text-on-surface-variant px-1">Date Range</label>
+                <select id="dateRangeFilter" onchange="updateDateRange()" class="border-outline-variant rounded-lg font-body-sm text-body-sm bg-surface-container-low focus:ring-secondary py-2 px-3 w-full border">
+                    <option value="today" {{ $dateRange == 'today' ? 'selected' : '' }}>Today</option>
+                    <option value="week" {{ $dateRange == 'week' ? 'selected' : '' }}>This Week</option>
+                    <option value="month" {{ $dateRange == 'month' ? 'selected' : '' }}>This Month</option>
+                    <option value="quarter" {{ $dateRange == 'quarter' ? 'selected' : '' }}>This Quarter</option>
+                    <option value="year" {{ $dateRange == 'year' ? 'selected' : '' }}>This Year</option>
+                    <option value="custom" {{ $dateRange == 'custom' ? 'selected' : '' }}>Custom Range</option>
+                </select>
+            </div>
+            
+            <!-- Company -->
+            <div class="flex flex-col gap-xs">
+                <label class="font-label-md text-[10px] uppercase text-on-surface-variant px-1">Company</label>
+                <select id="companyFilter" onchange="applyFilters()" class="border-outline-variant rounded-lg font-body-sm text-body-sm bg-surface-container-low focus:ring-secondary py-2 px-3 w-full border">
+                    <option value="">All Companies</option>
+                    @foreach ($companies as $company)
+                        <option value="{{ $company->id }}" {{ $companyId == $company->id ? 'selected' : '' }}>{{ $company->name }}</option>
+                    @endforeach
+                </select>
+            </div>
 
-                <div class="row g-3">
-                    <!-- Date Range Filter -->
-                    <div class="col-md-3 col-sm-6">
-                        <div class="form-group">
-                            <label class="form-label small fw-bold mb-1">
-                                <i class="fas fa-calendar-alt me-1 text-muted"></i>Date Range
-                            </label>
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text bg-light border-end-0">
-                                    <i class="fas fa-calendar text-muted"></i>
-                                </span>
-                                <select class="form-select border-start-0" id="dateRangeFilter"
-                                    onchange="updateDateRange()">
-                                    <option value="today" {{ $dateRange == 'today' ? 'selected' : '' }}>Today</option>
-                                    <option value="week" {{ $dateRange == 'week' ? 'selected' : '' }}>This Week</option>
-                                    <option value="month" {{ $dateRange == 'month' ? 'selected' : '' }}>This Month
-                                    </option>
-                                    <option value="quarter" {{ $dateRange == 'quarter' ? 'selected' : '' }}>This Quarter
-                                    </option>
-                                    <option value="year" {{ $dateRange == 'year' ? 'selected' : '' }}>This Year</option>
-                                    <option value="custom" {{ $dateRange == 'custom' ? 'selected' : '' }}>Custom Range
-                                    </option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
+            <!-- Type -->
+            <div class="flex flex-col gap-xs">
+                <label class="font-label-md text-[10px] uppercase text-on-surface-variant px-1">Type</label>
+                <select id="typeFilter" onchange="applyFilters()" class="border-outline-variant rounded-lg font-body-sm text-body-sm bg-surface-container-low focus:ring-secondary py-2 px-3 w-full border">
+                    <option value="all" {{ $type == 'all' ? 'selected' : '' }}>All Types</option>
+                    <option value="standard" {{ $type == 'standard' ? 'selected' : '' }}>Standard</option>
+                    <option value="non-standard" {{ $type == 'non-standard' ? 'selected' : '' }}>Non-standard</option>
+                </select>
+            </div>
 
-                    <!-- Company Filter -->
-                    <div class="col-md-3 col-sm-6">
-                        <div class="form-group">
-                            <label class="form-label small fw-bold mb-1">
-                                <i class="fas fa-building me-1 text-muted"></i>Company
-                            </label>
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text bg-light border-end-0">
-                                    <i class="fas fa-building text-muted"></i>
-                                </span>
-                                <select class="form-select border-start-0" id="companyFilter" onchange="applyFilters()">
-                                    <option value="">All Companies</option>
-                                    @foreach ($companies as $company)
-                                        <option value="{{ $company->id }}" {{ $companyId == $company->id ? 'selected' : '' }}>
-                                            {{ $company->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                        </div>
-                    </div>
+            <!-- Category -->
+            <div class="flex flex-col gap-xs">
+                <label class="font-label-md text-[10px] uppercase text-on-surface-variant px-1">Category</label>
+                <select id="categoryFilter" onchange="applyFilters()" class="border-outline-variant rounded-lg font-body-sm text-body-sm bg-surface-container-low focus:ring-secondary py-2 px-3 w-full border">
+                    <option value="all">All Categories</option>
+                    @foreach ($categories as $cat)
+                        <option value="{{ $cat->id }}" {{ $categoryId == $cat->id ? 'selected' : '' }}>{{ $cat->name }}</option>
+                    @endforeach
+                </select>
+            </div>
 
-                    <!-- Type Filter -->
-                    <div class="col-md-2 col-sm-6">
-                        <div class="form-group">
-                            <label class="form-label small fw-bold mb-1">
-                                <i class="fas fa-tag me-1 text-muted"></i>Type
-                            </label>
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text bg-light border-end-0">
-                                    <i class="fas fa-tag text-muted"></i>
-                                </span>
-                                <select class="form-select border-start-0" id="typeFilter" onchange="applyFilters()">
-                                    <option value="all" {{ $type == 'all' ? 'selected' : '' }}>All Types</option>
-                                    <option value="standard" {{ $type == 'standard' ? 'selected' : '' }}>Standard</option>
-                                    <option value="non-standard" {{ $type == 'non-standard' ? 'selected' : '' }}>
-                                        Non-standard</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
+            <!-- Status -->
+            <div class="flex flex-col gap-xs">
+                <label class="font-label-md text-[10px] uppercase text-on-surface-variant px-1">Status</label>
+                <select id="statusFilter" onchange="applyFilters()" class="border-outline-variant rounded-lg font-body-sm text-body-sm bg-surface-container-low focus:ring-secondary py-2 px-3 w-full border">
+                    <option value="all" {{ $status == 'all' ? 'selected' : '' }}>All Status</option>
+                    <option value="paid" {{ $status == 'paid' ? 'selected' : '' }}>Paid</option>
+                    <option value="pending" {{ $status == 'pending' ? 'selected' : '' }}>Pending</option>
+                    <option value="upcoming" {{ $status == 'upcoming' ? 'selected' : '' }}>Upcoming</option>
+                    <option value="overdue" {{ $status == 'overdue' ? 'selected' : '' }}>Overdue</option>
+                </select>
+            </div>
 
-                    <!-- Category Filter -->
-                    <div class="col-md-2 col-sm-6">
-                        <div class="form-group">
-                            <label class="form-label small fw-bold mb-1">
-                                <i class="fas fa-layer-group me-1 text-muted"></i>Category
-                            </label>
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text bg-light border-end-0">
-                                    <i class="fas fa-layer-group text-muted"></i>
-                                </span>
-                                <select class="form-select border-start-0" id="categoryFilter" onchange="applyFilters()">
-                                    <option value="all">All Categories</option>
-                                    @foreach ($categories as $cat)
-                                        <option value="{{ $cat->id }}" {{ $categoryId == $cat->id ? 'selected' : '' }}>
-                                            {{ $cat->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                        </div>
-                    </div>
+            <!-- Reset -->
+            <div class="flex items-end">
+                <button type="button" onclick="resetFilters()" class="w-full h-[40px] border border-secondary text-secondary bg-transparent font-label-md text-label-md rounded-lg flex items-center justify-center gap-sm hover:bg-secondary-fixed transition-colors">
+                    <span class="material-symbols-outlined text-[20px]">refresh</span> Reset Filters
+                </button>
+            </div>
+        </section>
 
-                    <!-- Status Filter -->
-                    <div class="col-md-2 col-sm-6">
-                        <div class="form-group">
-                            <label class="form-label small fw-bold mb-1">
-                                <i class="fas fa-circle me-1 text-muted"></i>Status
-                            </label>
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text bg-light border-end-0">
-                                    <i class="fas fa-circle text-muted"></i>
-                                </span>
-                                <select class="form-select border-start-0" id="statusFilter" onchange="applyFilters()">
-                                    <option value="all" {{ $status == 'all' ? 'selected' : '' }}>All Status</option>
-                                    <option value="paid" {{ $status == 'paid' ? 'selected' : '' }}>Paid</option>
-                                    <option value="pending" {{ $status == 'pending' ? 'selected' : '' }}>Pending</option>
-                                    <option value="upcoming" {{ $status == 'upcoming' ? 'selected' : '' }}>Upcoming</option>
-                                    <option value="overdue" {{ $status == 'overdue' ? 'selected' : '' }}>Overdue</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+        <!-- Custom Date Range (Hidden by Default) -->
+        <div id="customDateRange" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-md p-md bg-surface-container-lowest rounded-xl border border-outline-variant mb-4" style="display: {{ $dateRange == 'custom' ? 'grid' : 'none' }};">
+            <div class="flex flex-col gap-xs">
+                <label class="font-label-md text-[10px] uppercase text-on-surface-variant px-1">Start Date</label>
+                <input type="date" id="startDate" value="{{ $startDate ? $startDate->format('Y-m-d') : '' }}" class="border-outline-variant rounded-lg font-body-sm text-body-sm bg-surface-container-low focus:ring-secondary py-2 px-3 border">
+            </div>
+            <div class="flex flex-col gap-xs">
+                <label class="font-label-md text-[10px] uppercase text-on-surface-variant px-1">End Date</label>
+                <input type="date" id="endDate" value="{{ $endDate ? $endDate->format('Y-m-d') : '' }}" class="border-outline-variant rounded-lg font-body-sm text-body-sm bg-surface-container-low focus:ring-secondary py-2 px-3 border">
+            </div>
+            <div class="flex items-end">
+                <button type="button" onclick="applyFilters()" class="w-full h-[40px] bg-secondary text-on-secondary font-label-md text-label-md rounded-lg flex items-center justify-center gap-sm hover:brightness-110 transition-colors border-0">
+                    Apply Date Range
+                </button>
+            </div>
+        </div>
 
-                <!-- Custom Date Range (Hidden by Default) -->
-                <div id="customDateRange" class="row g-3 mt-3"
-                    style="display: {{ $dateRange == 'custom' ? 'flex' : 'none' }};">
-                    <div class="col-md-3 col-sm-6">
-                        <label class="form-label small fw-bold mb-1">Start Date</label>
-                        <input type="date" class="form-control form-control-sm" id="startDate"
-                            value="{{ $startDate ? $startDate->format('Y-m-d') : '' }}">
-                    </div>
-                    <div class="col-md-3 col-sm-6">
-                        <label class="form-label small fw-bold mb-1">End Date</label>
-                        <input type="date" class="form-control form-control-sm" id="endDate"
-                            value="{{ $endDate ? $endDate->format('Y-m-d') : '' }}">
-                    </div>
-                    <div class="col-md-2 col-sm-6 align-self-end">
-                        <button class="btn btn-sm btn-primary w-100" onclick="applyCustomDate()">
-                            <i class="fas fa-check me-1"></i>Apply
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Active Filters Badges -->
-                @if ($companyId || $categoryId != 'all' || $status != 'all' || $type != 'all')
-                    <div class="mt-3 pt-2 border-top">
-                        <small class="text-muted me-2">Active filters:</small>
-                        @if ($companyId)
-                            @php $companyName = $companies->where('id', $companyId)->first()->name ?? ''; @endphp
-                            <span class="badge bg-light text-dark border me-1 mb-1">
-                                <i class="fas fa-building me-1"></i>{{ $companyName }}
-                                <button type="button" class="btn-close btn-close-sm ms-1"
-                                    style="font-size: 0.6rem; padding: 0.2rem;" onclick="removeFilter('company')"></button>
-                            </span>
-                        @endif
-                        @if ($type != 'all')
-                            @php
-                                $typeColor = match ($type) {
-                                    'standard' => 'primary',
-                                    'non-standard' => 'warning',
-                                    default => 'secondary',
-                                };
-                                $typeIcon = match ($type) {
-                                    'standard' => 'fas fa-check-circle',
-                                    'non-standard' => 'fas fa-edit',
-                                    default => 'fas fa-tag',
-                                };
-                            @endphp
-                            <span class="badge bg-{{ $typeColor }} text-white me-1 mb-1">
-                                <i class="{{ $typeIcon }} me-1"></i>{{ ucfirst($type) }}
-                                <button type="button" class="btn-close btn-close-sm ms-1"
-                                    style="font-size: 0.6rem; padding: 0.2rem; opacity: 0.7;"
-                                    onclick="removeFilter('type')"></button>
-                            </span>
-                        @endif
-                        @if ($categoryId != 'all')
-                            @php $categoryName = $categories->where('id', $categoryId)->first()->name ?? ''; @endphp
-                            <span class="badge bg-info text-white me-1 mb-1">
-                                <i class="fas fa-layer-group me-1"></i>{{ $categoryName }}
-                                <button type="button" class="btn-close btn-close-sm ms-1"
-                                    style="font-size: 0.6rem; padding: 0.2rem; opacity: 0.7;"
-                                    onclick="removeFilter('category')"></button>
-                            </span>
-                        @endif
-                        @if ($status != 'all')
-                            @php
-                                $statusConfig = [
-                                    'paid' => ['color' => 'success', 'icon' => 'fas fa-check-circle'],
-                                    'pending' => ['color' => 'warning', 'icon' => 'fas fa-clock'],
-                                    'overdue' => ['color' => 'danger', 'icon' => 'fas fa-exclamation-circle'],
-                                    'upcoming' => ['color' => 'info', 'icon' => 'fas fa-calendar-alt'],
-                                ];
-                                $statusInfo = $statusConfig[$status] ?? [
-                                    'color' => 'secondary',
-                                    'icon' => 'fas fa-circle',
-                                ];
-                            @endphp
-                            <span class="badge bg-{{ $statusInfo['color'] }} text-white me-1 mb-1">
-                                <i class="{{ $statusInfo['icon'] }} me-1"></i>{{ ucfirst($status) }}
-                                <button type="button" class="btn-close btn-close-sm ms-1"
-                                    style="font-size: 0.6rem; padding: 0.2rem; opacity: 0.7;"
-                                    onclick="removeFilter('status')"></button>
-                            </span>
-                        @endif
-                    </div>
+        <!-- Active Filters Badges -->
+        @if ($companyId || $categoryId != 'all' || $status != 'all' || $type != 'all')
+            <div class="mb-4 d-flex align-items-center flex-wrap gap-2">
+                <span class="text-muted small me-2">Active filters:</span>
+                @if ($companyId)
+                    @php $companyName = $companies->where('id', $companyId)->first()->name ?? ''; @endphp
+                    <span class="badge bg-light text-dark border px-3 py-2 rounded-full d-inline-flex align-items-center">
+                        <i class="fas fa-building me-2 text-muted"></i>{{ $companyName }}
+                        <button type="button" class="btn-close ms-2" style="font-size: 0.5rem; padding: 0.15rem;" onclick="removeFilter('company')"></button>
+                    </span>
+                @endif
+                @if ($type != 'all')
+                    <span class="badge bg-light text-dark border px-3 py-2 rounded-full d-inline-flex align-items-center">
+                        <i class="fas fa-tag me-2 text-muted"></i>{{ ucfirst($type) }}
+                        <button type="button" class="btn-close ms-2" style="font-size: 0.5rem; padding: 0.15rem;" onclick="removeFilter('type')"></button>
+                    </span>
+                @endif
+                @if ($categoryId != 'all')
+                    @php $categoryName = $categories->where('id', $categoryId)->first()->name ?? ''; @endphp
+                    <span class="badge bg-light text-dark border px-3 py-2 rounded-full d-inline-flex align-items-center">
+                        <i class="fas fa-layer-group me-2 text-muted"></i>{{ $categoryName }}
+                        <button type="button" class="btn-close ms-2" style="font-size: 0.5rem; padding: 0.15rem;" onclick="removeFilter('category')"></button>
+                    </span>
+                @endif
+                @if ($status != 'all')
+                    <span class="badge bg-light text-dark border px-3 py-2 rounded-full d-inline-flex align-items-center">
+                        <i class="fas fa-circle me-2 text-muted"></i>{{ ucfirst($status) }}
+                        <button type="button" class="btn-close ms-2" style="font-size: 0.5rem; padding: 0.15rem;" onclick="removeFilter('status')"></button>
+                    </span>
                 @endif
             </div>
-        </div>
+        @endif
 
         <!-- Summary Cards Row -->
-        <div class="row mb-4">
-            <div class="col-md-3">
-                <div class="summary-card">
-                    <div class="summary-header">
-                        <h6 class="mb-1" id="dateRangeTitle">{{ $dateRangeTitle }} Payments</h6>
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-5 g-3 mb-4">
+            <!-- Payments -->
+            <div class="col">
+                <div class="summary-card flex flex-col justify-between hover:border-primary transition-all">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div class="summary-header">
+                            <p class="font-label-md text-label-md text-on-surface-variant mb-0" id="dateRangeTitle">{{ $dateRangeTitle }} Payments</p>
+                        </div>
+                        <div class="p-sm bg-secondary-fixed rounded-lg flex items-center justify-center" style="width: 40px; height: 40px;">
+                            <span class="material-symbols-outlined text-secondary">payments</span>
+                        </div>
                     </div>
                     <div class="summary-body">
-                        <div class="d-flex justify-content-between align-items-end">
-                            <div>
-                                <h3 class="mb-0" id="totalPayments">₹{{ number_format($totalPayments, 2) }}</h3>
-                                <small class="text-muted" id="totalItems">{{ $totalItems }} Items</small>
-                            </div>
-                            <div class="summary-icon">
-                                <i class="fas fa-money-bill-wave text-success"></i>
+                        <h4 class="font-headline-md text-headline-md text-primary mt-xs mb-2" id="totalPayments">₹{{ number_format($totalPayments, 2) }}</h4>
+                        <div class="mt-md d-flex align-items-center gap-sm">
+                            <span class="font-data-mono text-data-mono text-on-surface-variant" id="totalItems">{{ $totalItems }} Items</span>
+                            <div class="h-1 flex-1 bg-surface-container-high rounded-full overflow-hidden">
+                                <div class="bg-secondary h-full" style="width: 100%"></div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="col-md-3">
-                <div class="summary-card">
-                    <div class="summary-header">
-                        <h6 class="mb-1" id="paidTitle">{{ $dateRangeTitle }} Paid</h6>
+            <!-- Paid -->
+            <div class="col">
+                <div class="summary-card flex flex-col justify-between hover:border-tertiary transition-all">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div class="summary-header">
+                            <p class="font-label-md text-label-md text-on-surface-variant mb-0" id="paidTitle">{{ $dateRangeTitle }} Paid</p>
+                        </div>
+                        <div class="p-sm bg-tertiary-fixed rounded-lg flex items-center justify-center" style="width: 40px; height: 40px;">
+                            <span class="material-symbols-outlined text-on-tertiary-fixed-variant" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                        </div>
                     </div>
                     <div class="summary-body">
-                        <div class="d-flex justify-content-between align-items-end">
-                            <div>
-                                <h3 class="mb-0" id="paidAmount">₹{{ number_format($paidAmount, 2) }}</h3>
-                                <small class="text-muted" id="paidCount">{{ $paidCount }} Items</small>
-                            </div>
-                            <div class="summary-icon">
-                                <i class="fas fa-check-circle text-success"></i>
+                        <h4 class="font-headline-md text-headline-md text-tertiary mt-xs mb-2" id="paidAmount">₹{{ number_format($paidAmount, 2) }}</h4>
+                        @php
+                            $paidPercent = $totalItems > 0 ? ($paidCount / $totalItems) * 100 : 0;
+                        @endphp
+                        <div class="mt-md d-flex align-items-center gap-sm">
+                            <span class="font-data-mono text-data-mono text-on-surface-variant" id="paidCount">{{ $paidCount }} Items</span>
+                            <div class="h-1 flex-1 bg-surface-container-high rounded-full overflow-hidden">
+                                <div class="bg-on-tertiary-container h-full" style="width: {{ $paidPercent }}%"></div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="col-md-3">
-                <div class="summary-card">
-                    <div class="summary-header">
-                        <h6 class="mb-1" id="pendingTitle">{{ $dateRangeTitle }} Pending</h6>
+            <!-- Pending -->
+            <div class="col">
+                <div class="summary-card flex flex-col justify-between hover:border-secondary-container transition-all">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div class="summary-header">
+                            <p class="font-label-md text-label-md text-on-surface-variant mb-0" id="pendingTitle">{{ $dateRangeTitle }} Pending</p>
+                        </div>
+                        <div class="p-sm bg-secondary-fixed-dim/30 rounded-lg flex items-center justify-center" style="width: 40px; height: 40px;">
+                            <span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">schedule</span>
+                        </div>
                     </div>
                     <div class="summary-body">
-                        <div class="d-flex justify-content-between align-items-end">
-                            <div>
-                                <h3 class="mb-0" id="pendingAmount">₹{{ number_format($pendingAmount, 2) }}</h3>
-                                <small class="text-muted" id="pendingCount">{{ $pendingCount }} Items</small>
-                            </div>
-                            <div class="summary-icon">
-                                <i class="fas fa-clock text-warning"></i>
+                        <h4 class="font-headline-md text-headline-md text-secondary mt-xs mb-2" id="pendingAmount">₹{{ number_format($pendingAmount, 2) }}</h4>
+                        @php
+                            $pendingPercent = $totalItems > 0 ? ($pendingCount / $totalItems) * 100 : 0;
+                        @endphp
+                        <div class="mt-md d-flex align-items-center gap-sm">
+                            <span class="font-data-mono text-data-mono text-on-surface-variant" id="pendingCount">{{ $pendingCount }} Items</span>
+                            <div class="h-1 flex-1 bg-surface-container-high rounded-full overflow-hidden">
+                                <div class="bg-secondary-container h-full" style="width: {{ $pendingPercent }}%"></div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="col-md-3">
-                <div class="summary-card">
-                    <div class="summary-header">
-                        <h6 class="mb-1" id="overdueTitle">{{ $dateRangeTitle }} Over Due</h6>
+            <!-- Over Due -->
+            <div class="col">
+                <div class="summary-card flex flex-col justify-between hover:border-error transition-all">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div class="summary-header">
+                            <p class="font-label-md text-label-md text-on-surface-variant mb-0" id="overdueTitle">{{ $dateRangeTitle }} Over Due</p>
+                        </div>
+                        <div class="p-sm bg-error-container rounded-lg flex items-center justify-center" style="width: 40px; height: 40px;">
+                            <span class="material-symbols-outlined text-error" style="font-variation-settings: 'FILL' 1;">warning</span>
+                        </div>
                     </div>
                     <div class="summary-body">
-                        <div class="d-flex justify-content-between align-items-end">
-                            <div>
-                                <h3 class="mb-0" id="overdueAmount">₹{{ number_format($overdueAmount, 2) }}</h3>
-                                <small class="text-muted" id="overdueCount">{{ $overdueCount }} Items</small>
-                            </div>
-                            <div class="summary-icon">
-                                <i class="fas fa-exclamation-triangle text-danger"></i>
+                        <h4 class="font-headline-md text-headline-md text-error mt-xs mb-2" id="overdueAmount">₹{{ number_format($overdueAmount, 2) }}</h4>
+                        @php
+                            $overduePercent = $totalItems > 0 ? ($overdueCount / $totalItems) * 100 : 0;
+                        @endphp
+                        <div class="mt-md d-flex align-items-center gap-sm">
+                            <span class="font-data-mono text-data-mono text-on-surface-variant" id="overdueCount">{{ $overdueCount }} Items</span>
+                            <div class="h-1 flex-1 bg-surface-container-high rounded-full overflow-hidden">
+                                <div class="bg-error h-full" style="width: {{ $overduePercent }}%"></div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="col-md-3">
-                <div class="summary-card">
-                    <div class="summary-header">
-                        <h6 class="mb-1">Total Over Due</h6>
-                    </div>
-                    <div class="summary-body">
-                        <div class="d-flex justify-content-between align-items-end">
-                            <div>
-                                <h3 class="mb-0" id="totalOverdueAmount">
-                                    ₹{{ number_format($totalOverdueAmount, 2) }}
-                                </h3>
-                                <small class="text-muted" id="totalOverdueCount">{{ $totalOverdueCount }} Items</small>
-                            </div>
-                            <div class="summary-icon">
-                                <i class="fas fa-exclamation-circle text-danger"></i>
-                            </div>
+            <!-- Total Over Due -->
+            <div class="col">
+                <div class="summary-card flex flex-col justify-between hover:border-error transition-all">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div class="summary-header">
+                            <p class="font-label-md text-label-md text-on-surface-variant mb-0">Total Over Due</p>
+                        </div>
+                        <div class="p-sm bg-error-container rounded-lg flex items-center justify-center" style="width: 40px; height: 40px;">
+                            <span class="material-symbols-outlined text-error" style="font-variation-settings: 'FILL' 1;">error</span>
                         </div>
                     </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Filter Buttons Row -->
-        <div class="row mb-4">
-            <div class="col-md-12">
-                <div class="summary-card h-100">
-                    <div class="summary-header">
-                        <h6 class="mb-1">Filter Payments</h6>
-                    </div>
                     <div class="summary-body">
-                        <div class="btn-group w-100">
-                            <button class="btn btn-outline-primary {{ $status == 'all' ? 'active' : '' }}"
-                                onclick="filterPayments('all')" id="btnAll">
-                                All Payments
-                            </button>
-                            <button class="btn btn-outline-warning {{ $status == 'pending' ? 'active' : '' }}"
-                                onclick="filterPayments('pending')" id="btnPending">
-                                Only Pending
-                            </button>
-                            <button class="btn btn-outline-info {{ $status == 'upcoming' ? 'active' : '' }}"
-                                onclick="filterPayments('upcoming')" id="btnUpcoming">
-                                Only Upcoming
-                            </button>
-                            <button class="btn btn-outline-success {{ $status == 'paid' ? 'active' : '' }}"
-                                onclick="filterPayments('paid')" id="btnPaid">
-                                Only Paid
-                            </button>
+                        <h4 class="font-headline-md text-headline-md text-error mt-xs mb-2" id="totalOverdueAmount">₹{{ number_format($totalOverdueAmount, 2) }}</h4>
+                        @php
+                            $totalOverduePercent = $totalItems > 0 ? ($totalOverdueCount / $totalItems) * 100 : 0;
+                        @endphp
+                        <div class="mt-md d-flex align-items-center gap-sm">
+                            <span class="font-data-mono text-data-mono text-on-surface-variant" id="totalOverdueCount">{{ $totalOverdueCount }} Items</span>
+                            <div class="h-1 flex-1 bg-surface-container-high rounded-full overflow-hidden">
+                                <div class="bg-error h-full" style="width: {{ $totalOverduePercent }}%"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -345,21 +261,58 @@
 
         <!-- Main Table Section -->
         <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">All Payments</h5>
-                <div class="card-tools d-flex align-items-center gap-2">
-                    <select class="form-select form-select-sm border-0 bg-light" style="width: auto;" id="perPageSelector"
-                        onchange="updatePerPage()">
-                        <option value="10" {{ request('per_page') == 10 ? 'selected' : '' }}>10 per page</option>
-                        <option value="25" {{ request('per_page') == 25 ? 'selected' : '' }}>25 per page</option>
-                        <option value="50" {{ request('per_page') == 50 ? 'selected' : '' }}>50 per page</option>
-                        <option value="100" {{ request('per_page') == 100 ? 'selected' : '' }}>100 per page</option>
-                    </select>
+              <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center flex-wrap gap-3 py-3 px-4" style="background-color: white !important;">
+                <!-- Left: Filter Tabs -->
+                <div class="d-flex align-items-center gap-2 flex-wrap" id="tabFilterContainer">
+                    <button class="btn btn-sm py-2 px-3 {{ $status == 'all' ? 'btn-primary' : 'btn-light text-muted' }}"
+                        onclick="filterPayments('all')" id="btnAll" style="border: none !important; border-radius: 6px !important; font-weight: 600; font-size: 0.9rem; {{ $status == 'all' ? 'background-color: #4f46e5 !important; color: white !important;' : 'background-color: transparent !important;' }}">
+                        All Payments
+                    </button>
+                    <button class="btn btn-sm py-2 px-3 {{ $status == 'pending' ? 'btn-primary' : 'btn-light text-muted' }}"
+                        onclick="filterPayments('pending')" id="btnPending" style="border: none !important; border-radius: 6px !important; font-weight: 600; font-size: 0.9rem; {{ $status == 'pending' ? 'background-color: #4f46e5 !important; color: white !important;' : 'background-color: transparent !important;' }}">
+                        Only Pending
+                    </button>
+                    <button class="btn btn-sm py-2 px-3 {{ $status == 'upcoming' ? 'btn-primary' : 'btn-light text-muted' }}"
+                        onclick="filterPayments('upcoming')" id="btnUpcoming" style="border: none !important; border-radius: 6px !important; font-weight: 600; font-size: 0.9rem; {{ $status == 'upcoming' ? 'background-color: #4f46e5 !important; color: white !important;' : 'background-color: transparent !important;' }}">
+                        Only Upcoming
+                    </button>
+                    <button class="btn btn-sm py-2 px-3 {{ $status == 'paid' ? 'btn-primary' : 'btn-light text-muted' }}"
+                        onclick="filterPayments('paid')" id="btnPaid" style="border: none !important; border-radius: 6px !important; font-weight: 600; font-size: 0.9rem; {{ $status == 'paid' ? 'background-color: #4f46e5 !important; color: white !important;' : 'background-color: transparent !important;' }}">
+                        Only Paid
+                    </button>
+                </div>
+
+                <!-- Right: Per Page & Pagination UI -->
+                <div class="d-flex align-items-center gap-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="text-muted small fw-semibold" style="white-space: nowrap;">Items per page:</span>
+                        <select class="form-select form-select-sm" style="width: auto; border: 1px solid #e2e8f0 !important; border-radius: 6px !important; padding: 4px 28px 4px 10px !important; background-color: white !important;" id="perPageSelector"
+                            onchange="updatePerPage()">
+                            <option value="10" {{ request('per_page') == 10 ? 'selected' : '' }}>10</option>
+                            <option value="25" {{ request('per_page') == 25 ? 'selected' : '' }}>25</option>
+                            <option value="50" {{ request('per_page') == 50 ? 'selected' : '' }}>50</option>
+                            <option value="100" {{ request('per_page') == 100 ? 'selected' : '' }}>100</option>
+                        </select>
+                    </div>
+
+                    <!-- Compact pagination arrows -->
+                    <div class="d-flex gap-1" id="compactPagination">
+                        @if ($allExpenses->onFirstPage())
+                            <button class="btn btn-sm btn-light border-0" disabled style="padding: 6px 10px !important; border-radius: 6px !important; background: #f8fafc !important; opacity: 0.5;"><i class="fas fa-chevron-left text-muted" style="font-size: 0.8rem;"></i></button>
+                        @else
+                            <a class="btn btn-sm btn-light border-0" href="{{ $allExpenses->previousPageUrl() }}" style="padding: 6px 10px !important; border-radius: 6px !important; background: #f8fafc !important; display: inline-flex; align-items: center; justify-content: center;"><i class="fas fa-chevron-left text-muted" style="font-size: 0.8rem;"></i></a>
+                        @endif
+
+                        @if ($allExpenses->hasMorePages())
+                            <a class="btn btn-sm btn-light border-0" href="{{ $allExpenses->nextPageUrl() }}" style="padding: 6px 10px !important; border-radius: 6px !important; background: #f8fafc !important; display: inline-flex; align-items: center; justify-content: center;"><i class="fas fa-chevron-right text-muted" style="font-size: 0.8rem;"></i></a>
+                        @else
+                            <button class="btn btn-sm btn-light border-0" disabled style="padding: 6px 10px !important; border-radius: 6px !important; background: #f8fafc !important; opacity: 0.5;"><i class="fas fa-chevron-right text-muted" style="font-size: 0.8rem;"></i></button>
+                        @endif
+                    </div>
                     <button class="btn btn-sm btn-primary" onclick="openAddNonStandardModal()">
                         <i class="fas fa-plus"></i> Add Non-standard Expense
                     </button>
                 </div>
-            </div>
             <div class="card-body">
                 <div class="table-responsive">
                     <table class="table table-hover">
@@ -682,10 +635,7 @@
                                 <div class="input-group">
                                     <input type="file" class="form-control" id="editTdsFile" name="tds_file"
                                         accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
-                                    <button type="button" class="btn btn-outline-secondary" onclick="viewTdsFile()"
-                                        id="viewTdsBtn" style="display: none;">
-                                        <i class="fas fa-eye"></i> View
-                                    </button>
+                                    
                                 </div>
                                 <small class="text-muted" id="tdsFileInfo"></small>
                             </div>
@@ -1270,10 +1220,7 @@
                                 <div class="input-group">
                                     <input type="file" class="form-control" id="editFixedTdsFile" name="tds_file"
                                         accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
-                                    <button type="button" class="btn btn-outline-secondary" onclick="viewTdsFile()"
-                                        id="viewTdsBtn" style="display: none;">
-                                        <i class="fas fa-eye"></i> View
-                                    </button>
+                                   
                                 </div>
                                 <small class="text-muted" id="tdsFileInfo"></small>
                             </div>
@@ -1497,9 +1444,7 @@
                                 <label class="form-label fw-bold text-uppercase small text-muted">TDS Certificate/Receipt</label>
                                 <div class="input-group">
                                     <input type="file" class="form-control" id="editEditableTdsFile" name="tds_file" accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
-                                    <button type="button" class="btn btn-outline-secondary" onclick="viewTdsFile()" id="viewTdsBtn" style="display: none;">
-                                        <i class="fas fa-eye"></i> View
-                                    </button>
+                                
                                 </div>
                                 <small class="text-muted" id="tdsFileInfo">No file chosen</small>
                             </div>
@@ -1608,7 +1553,7 @@
             window.isNonStandardLoading = true;
             try {
                 const response = await fetch(
-                    `https://xhtmlreviews.in/beta-finance/manager/expenses/${expenseId}/edit`);
+                    `${window.APP_URL}/manager/expenses/${expenseId}/edit`);
                 const data = await response.json();
 
                 if (!data.success) {
@@ -2626,7 +2571,7 @@
 
                 try {
                     const response = await fetch(
-                        `https://xhtmlreviews.in/beta-finance/manager/expenses/${expenseId}`, {
+                        `${window.APP_URL}/manager/expenses/${expenseId}`, {
                         method: 'POST',
                         headers: {
                             'X-CSRF-TOKEN': '{{ csrf_token() }}',
@@ -2688,7 +2633,7 @@
 
                 try {
                     const response = await fetch(
-                        `https://xhtmlreviews.in/beta-finance/manager/expenses/${expenseId}`, {
+                        `${window.APP_URL}/manager/expenses/${expenseId}`, {
                         method: 'POST',
                         headers: {
                             'X-CSRF-TOKEN': '{{ csrf_token() }}',
@@ -2769,7 +2714,7 @@
 
                 try {
                     const response = await fetch(
-                        `https://xhtmlreviews.in/beta-finance/manager/expenses/${expenseId}`, {
+                        `${window.APP_URL}/manager/expenses/${expenseId}`, {
                         method: 'POST',
                         headers: {
                             'X-CSRF-TOKEN': '{{ csrf_token() }}',
@@ -3501,7 +3446,7 @@
         // Mark as paid
         function markAsPaid(expenseId) {
             if (confirm('Mark this expense as paid?')) {
-                fetch(`https://xhtmlreviews.in/beta-finance/manager/expenses/${expenseId}/mark-paid`, {
+                fetch(`${window.APP_URL}/manager/expenses/${expenseId}/mark-paid`, {
                     method: 'POST',
                     headers: {
                         'X-CSRF-TOKEN': '{{ csrf_token() }}',
@@ -3527,7 +3472,7 @@
         // Delete expense
         function deleteExpense(expenseId) {
             if (confirm('Are you sure you want to delete this expense?')) {
-                fetch(`https://xhtmlreviews.in/beta-finance/manager/expenses/${expenseId}`, {
+                fetch(`${window.APP_URL}/manager/expenses/${expenseId}`, {
                     method: 'DELETE',
                     headers: {
                         'X-CSRF-TOKEN': '{{ csrf_token() }}',
@@ -3555,7 +3500,7 @@
         async function viewReceipts(expenseId) {
             try {
                 const response = await fetch(
-                    `https://xhtmlreviews.in/beta-finance/manager/expenses/${expenseId}/receipts`);
+                    `${window.APP_URL}/manager/expenses/${expenseId}/receipts`);
                 const data = await response.json();
 
                 const receiptsGallery = document.getElementById('receiptsGallery');
@@ -4126,7 +4071,7 @@
         async function viewSplitHistory(expenseId) {
             try {
                 const response = await fetch(
-                    `https://xhtmlreviews.in/beta-finance/manager/expenses/${expenseId}/split-history`);
+                    `${window.APP_URL}/manager/expenses/${expenseId}/split-history`);
                 const data = await response.json();
 
                 const splitHistoryContent = document.getElementById('splitHistoryContent');

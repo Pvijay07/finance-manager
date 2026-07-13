@@ -274,7 +274,7 @@
             async function loadExpenseType(id) {
                 console.log('Loading expense type:', id);
                 try {
-                    const response = await fetch(`https://xhtmlreviews.in/beta-finance/admin/expensetypes/${id}/edit`);
+                    const response = await fetch(`${window.APP_URL}/admin/expensetypes/${id}/edit`);
                     const result = await response.json();
 
                     if (result.success) {
@@ -409,7 +409,7 @@
 
                 const expenseId = expenseIdInput.value;
                 const url = expenseId ?
-                    `https://xhtmlreviews.in/beta-finance/admin/expensetypes/${expenseId}` :
+                    `${window.APP_URL}/admin/expensetypes/${expenseId}` :
                     "{{ route('admin.expensetypes.store') }}";
                 const method = expenseId ? 'PUT' : 'POST';
 

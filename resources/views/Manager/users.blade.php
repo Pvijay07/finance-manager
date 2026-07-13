@@ -258,7 +258,7 @@
         }
 
         function editUser(userId) {
-            fetch(`https://xhtmlreviews.in/beta-finance/admin/users/${userId}/edit`)
+            fetch(`${window.APP_URL}/admin/users/${userId}/edit`)
                 .then(response => response.json())
                 .then(user => {
                     document.getElementById('modalTitle').textContent = 'Edit User';
@@ -348,7 +348,7 @@
 
             const formData = new FormData(this);
             const userId = document.getElementById('userId').value;
-            const url = userId ? `https://xhtmlreviews.in/beta-finance/admin/users/${userId}` :
+            const url = userId ? `${window.APP_URL}/admin/users/${userId}` :
                 "{{ route('admin.users.store') }}";
             const method = userId ? 'PUT' : 'POST';
 
@@ -385,7 +385,7 @@
             const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
 
             if (confirm(`Are you sure you want to ${newStatus === 'active' ? 'activate' : 'deactivate'} this user?`)) {
-                fetch(`https://xhtmlreviews.in/beta-finance/admin/users/${userId}/status`, {
+                fetch(`${window.APP_URL}/admin/users/${userId}/status`, {
                         method: 'PUT',
                         headers: {
                             'Content-Type': 'application/json',
@@ -437,7 +437,7 @@
         function loadRolePermissions() {
             const role = document.getElementById('role-select').value;
 
-            fetch(`https://xhtmlreviews.in/beta-finance/admin/users/role-permissions/${role}`)
+            fetch(`${window.APP_URL}/admin/users/role-permissions/${role}`)
                 .then(response => response.json())
                 .then(data => {
                     const container = document.getElementById('permissions-container');
@@ -480,7 +480,7 @@
                 permissions.push(cb.value);
             });
 
-            fetch('https://xhtmlreviews.in/beta-finance/admin/users/role-permissions', {
+            fetch(`${window.APP_URL}/admin/users/role-permissions`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

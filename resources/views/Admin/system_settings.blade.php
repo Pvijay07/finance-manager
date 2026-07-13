@@ -1421,7 +1421,7 @@
                 if (confirm('Are you sure you want to delete this category?')) {
                     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-                    fetch(`https://xhtmlreviews.in/beta-finance/admin/categories/${categoryId}`, {
+                    fetch(`${window.APP_URL}/admin/categories/${categoryId}`, {
                             method: 'DELETE',
                             headers: {
                                 'X-CSRF-TOKEN': csrfToken,

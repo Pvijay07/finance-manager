@@ -2,19 +2,29 @@
 @section('content')
     <!-- Dashboard Page -->
     <div id="dashboard" class="page active">
-        <!-- Filter Bar -->
-        <div class="filter-bar">
-            <div class="filter-group">
-                <div class="filter-label">Date Range</div>
-                <select id="dateRange" onchange="updateFilters()">
+        <!-- Page Title -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 style="font-weight: 800; color: #0f172a; font-size: 2rem; letter-spacing: -0.75px;">Manager Dashboard</h1>
+                <div style="font-size: 0.95rem; color: #64748b; margin-top: 4px;">Overview of financials and analytics</div>
+            </div>
+        </div>
+
+        <!-- Bento Filter Bar -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-md bg-surface-container-lowest p-md rounded-xl card-shadow border border-outline-variant mb-lg">
+            <!-- Date Range -->
+            <div class="flex flex-col gap-xs">
+                <label class="font-label-md text-[10px] uppercase text-on-surface-variant px-1">Date Range</label>
+                <select id="dateRange" onchange="updateFilters()" class="border-outline-variant rounded-lg font-body-sm text-body-sm bg-surface-container-low focus:ring-secondary py-2 px-3 w-full border">
                     <option value="today" {{ $dateRange == 'today' ? 'selected' : '' }}>Today</option>
                     <option value="week" {{ $dateRange == 'week' ? 'selected' : '' }}>This Week</option>
                     <option value="month" {{ $dateRange == 'month' ? 'selected' : '' }}>This Month</option>
                 </select>
             </div>
-            <div class="filter-group">
-                <div class="filter-label">Company</div>
-                <select id="companyFilter" onchange="updateFilters()">
+            <!-- Company -->
+            <div class="flex flex-col gap-xs">
+                <label class="font-label-md text-[10px] uppercase text-on-surface-variant px-1">Company</label>
+                <select id="companyFilter" onchange="updateFilters()" class="border-outline-variant rounded-lg font-body-sm text-body-sm bg-surface-container-low focus:ring-secondary py-2 px-3 w-full border">
                     <option value="">All Companies</option>
                     @foreach($companies as $company)
                     <option value="{{ $company->id }}" {{ $companyId == $company->id ? 'selected' : '' }}>
@@ -23,105 +33,187 @@
                     @endforeach
                 </select>
             </div>
-            <div class="filter-group">
-                <div class="filter-label">View</div>
-                <select id="viewType" onchange="updateFilters()">
+            <!-- View -->
+            <div class="flex flex-col gap-xs">
+                <label class="font-label-md text-[10px] uppercase text-on-surface-variant px-1">View</label>
+                <select id="viewType" onchange="updateFilters()" class="border-outline-variant rounded-lg font-body-sm text-body-sm bg-surface-container-low focus:ring-secondary py-2 px-3 w-full border">
                     <option value="summary" {{ $viewType == 'summary' ? 'selected' : '' }}>Summary</option>
                     <option value="detailed" {{ $viewType == 'detailed' ? 'selected' : '' }}>Detailed</option>
                 </select>
             </div>
-            <div class="filter-group" style="flex-grow: 1;"></div>
-            <div class="filter-group" style="align-self: flex-end;">
-                <button class="btn btn-primary" onclick="window.location.reload()">
-                    <i class="fas fa-sync-alt"></i> Refresh
+            <!-- Refresh -->
+            <div class="flex items-end">
+                <button type="button" onclick="window.location.reload()" class="w-full h-[40px] border border-secondary text-secondary bg-transparent font-label-md text-label-md rounded-lg flex items-center justify-center gap-sm hover:bg-secondary-fixed transition-colors">
+                    <span class="material-symbols-outlined text-[20px]">sync</span> Refresh
                 </button>
             </div>
-        </div>
+        </section>
 
-        <!-- KPI Cards -->
-        <div class="dashboard-grid">
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">Total Income</div>
-                    <div class="card-icon income">
-                        <i class="fas fa-arrow-up"></i>
+        <!-- Summary Cards Row -->
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-4 g-3 mb-4">
+            <!-- Total Income -->
+            <div class="col">
+                <div class="summary-card flex flex-col justify-between hover:border-success transition-all bg-surface-container-lowest p-md rounded-xl card-shadow border border-outline-variant h-100">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div class="summary-header">
+                            <p class="font-label-md text-label-md text-on-surface-variant mb-0 uppercase">Total Income</p>
+                        </div>
+                        <div class="p-sm rounded-lg flex items-center justify-center" style="width: 40px; height: 40px; background-color: rgba(34, 197, 94, 0.1);">
+                            <span class="material-symbols-outlined text-success">arrow_upward</span>
+                        </div>
                     </div>
-                </div>
-                <div class="card-value">₹{{ number_format($currentStats['totalIncome'], 2) }}</div>
-                <div>{{ $currentStats['periodLabel'] }}</div>
-                <div class="card-footer">
-                    @php
-                        $incomeChange = $previousStats['totalIncome'] > 0 
-                            ? (($currentStats['totalIncome'] - $previousStats['totalIncome']) / $previousStats['totalIncome']) * 100 
-                            : 0;
-                    @endphp
-                    <span class="{{ $incomeChange >= 0 ? 'text-success' : 'text-danger' }}">
-                        {{ $incomeChange >= 0 ? '+' : '' }}{{ number_format($incomeChange, 1) }}% from last month
-                    </span>
+                    <div class="summary-body">
+                        <h4 class="font-headline-md text-headline-md text-success mt-xs mb-2">₹{{ number_format($currentStats['totalIncome'], 2) }}</h4>
+                        <div class="mt-md d-flex justify-content-between align-items-center gap-sm">
+                            <span class="font-data-mono text-data-mono text-on-surface-variant">{{ $currentStats['periodLabel'] }}</span>
+                            @php
+                                $incomeChange = $previousStats['totalIncome'] > 0 
+                                    ? (($currentStats['totalIncome'] - $previousStats['totalIncome']) / $previousStats['totalIncome']) * 100 
+                                    : 0;
+                            @endphp
+                            <span class="font-label-sm text-label-sm {{ $incomeChange >= 0 ? 'text-success' : 'text-danger' }}">
+                                {{ $incomeChange >= 0 ? '+' : '' }}{{ number_format($incomeChange, 1) }}%
+                            </span>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">Total Expenses</div>
-                    <div class="card-icon expense">
-                        <i class="fas fa-arrow-down"></i>
+ <div class="col">
+                <div class="summary-card flex flex-col justify-between hover:border-success transition-all bg-surface-container-lowest p-md rounded-xl card-shadow border border-outline-variant h-100">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div class="summary-header">
+                            <p class="font-label-md text-label-md text-on-surface-variant mb-0 uppercase">Total Receivable Income</p>
+                        </div>
+                        <div class="p-sm rounded-lg flex items-center justify-center" style="width: 40px; height: 40px; background-color: rgba(34, 197, 94, 0.1);">
+                            <span class="material-symbols-outlined text-success">arrow_upward</span>
+                        </div>
                     </div>
-                </div>
-                <div class="card-value">₹{{ number_format($currentStats['totalExpenses'], 2) }}</div>
-                <div>{{ $currentStats['periodLabel'] }}</div>
-                <div class="card-footer">
-                    @php
-                        $expenseChange = $previousStats['totalExpenses'] > 0 
-                            ? (($currentStats['totalExpenses'] - $previousStats['totalExpenses']) / $previousStats['totalExpenses']) * 100 
-                            : 0;
-                    @endphp
-                    <span class="{{ $expenseChange <= 0 ? 'text-success' : 'text-danger' }}">
-                        {{ $expenseChange >= 0 ? '+' : '' }}{{ number_format($expenseChange, 1) }}% from last month
-                    </span>
+                    <div class="summary-body">
+                        <h4 class="font-headline-md text-headline-md text-success mt-xs mb-2">₹{{ number_format($currentStats['totalReceivableIncome'], 2) }}</h4>
+                        <div class="mt-md d-flex justify-content-between align-items-center gap-sm">
+                            <span class="font-data-mono text-data-mono text-on-surface-variant">{{ $currentStats['periodLabel'] }}</span>
+                            @php
+                                $incomeChange = $previousStats['totalReceivableIncome'] > 0 
+                                    ? (($currentStats['totalReceivableIncome'] - $previousStats['totalReceivableIncome']) / $previousStats['totalReceivableIncome']) * 100 
+                                    : 0;
+                            @endphp
+                            <span class="font-label-sm text-label-sm {{ $incomeChange >= 0 ? 'text-success' : 'text-danger' }}">
+                                {{ $incomeChange >= 0 ? '+' : '' }}{{ number_format($incomeChange, 1) }}%
+                            </span>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">Net Profit</div>
-                    <div class="card-icon profit">
-                        <i class="fas fa-chart-line"></i>
+            <!-- Total Expenses -->
+            <div class="col">
+                <div class="summary-card flex flex-col justify-between hover:border-danger transition-all bg-surface-container-lowest p-md rounded-xl card-shadow border border-outline-variant h-100">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div class="summary-header">
+                            <p class="font-label-md text-label-md text-on-surface-variant mb-0 uppercase">Total Expenses</p>
+                        </div>
+                        <div class="p-sm rounded-lg flex items-center justify-center" style="width: 40px; height: 40px; background-color: rgba(239, 68, 68, 0.1);">
+                            <span class="material-symbols-outlined text-danger">arrow_downward</span>
+                        </div>
                     </div>
-                </div>
-                <div class="card-value {{ $currentStats['netProfit'] >= 0 ? 'text-success' : 'text-danger' }}">
-                    ₹{{ number_format(abs($currentStats['netProfit']), 2) }}
-                </div>
-                <div>{{ $currentStats['periodLabel'] }}</div>
-                <div class="card-footer">
-                    @php
-                        $profitChange = $previousStats['netProfit'] != 0 
-                            ? (($currentStats['netProfit'] - $previousStats['netProfit']) / abs($previousStats['netProfit'])) * 100 
-                            : ($currentStats['netProfit'] > 0 ? 100 : -100);
-                    @endphp
-                    <span class="{{ $profitChange >= 0 ? 'text-success' : 'text-danger' }}">
-                        {{ $profitChange >= 0 ? '+' : '' }}{{ number_format($profitChange, 1) }}% from last month
-                    </span>
+                    <div class="summary-body">
+                        <h4 class="font-headline-md text-headline-md text-danger mt-xs mb-2">₹{{ number_format($currentStats['totalExpenses'], 2) }}</h4>
+                        <div class="mt-md d-flex justify-content-between align-items-center gap-sm">
+                            <span class="font-data-mono text-data-mono text-on-surface-variant">{{ $currentStats['periodLabel'] }}</span>
+                            @php
+                                $expenseChange = $previousStats['totalExpenses'] > 0 
+                                    ? (($currentStats['totalExpenses'] - $previousStats['totalExpenses']) / $previousStats['totalExpenses']) * 100 
+                                    : 0;
+                            @endphp
+                            <span class="font-label-sm text-label-sm {{ $expenseChange <= 0 ? 'text-success' : 'text-danger' }}">
+                                {{ $expenseChange >= 0 ? '+' : '' }}{{ number_format($expenseChange, 1) }}%
+                            </span>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">Upcoming Payments</div>
-                    <div class="card-icon upcoming">
-                        <i class="fas fa-calendar-alt"></i>
+ <div class="col">
+                <div class="summary-card flex flex-col justify-between hover:border-danger transition-all bg-surface-container-lowest p-md rounded-xl card-shadow border border-outline-variant h-100">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div class="summary-header">
+                            <p class="font-label-md text-label-md text-on-surface-variant mb-0 uppercase">Total Payable Expenses</p>
+                        </div>
+                        <div class="p-sm rounded-lg flex items-center justify-center" style="width: 40px; height: 40px; background-color: rgba(239, 68, 68, 0.1);">
+                            <span class="material-symbols-outlined text-danger">arrow_downward</span>
+                        </div>
+                    </div>
+                    <div class="summary-body">
+                        <h4 class="font-headline-md text-headline-md text-danger mt-xs mb-2">₹{{ number_format($currentStats['totalPayableExpenses'], 2) }}</h4>
+                        <div class="mt-md d-flex justify-content-between align-items-center gap-sm">
+                            <span class="font-data-mono text-data-mono text-on-surface-variant">{{ $currentStats['periodLabel'] }}</span>
+                            @php
+                                $expenseChange = $previousStats['totalPayableExpenses'] > 0 
+                                    ? (($currentStats['totalPayableExpenses'] - $previousStats['totalPayableExpenses']) / $previousStats['totalPayableExpenses']) * 100 
+                                    : 0;
+                            @endphp
+                            <span class="font-label-sm text-label-sm {{ $expenseChange <= 0 ? 'text-success' : 'text-danger' }}">
+                                {{ $expenseChange >= 0 ? '+' : '' }}{{ number_format($expenseChange, 1) }}%
+                            </span>
+                        </div>
                     </div>
                 </div>
-                <div class="card-value">₹{{ number_format($currentStats['upcomingPayments'], 2) }}</div>
-                <div>This month</div>
-                <div class="card-footer">
-                    @php
-                        $upcomingCount = $immediatePayments->count();
-                    @endphp
-                    <span>{{ $upcomingCount }} payments due</span>
+            </div>
+            <!-- Net Profit -->
+            <div class="col">
+                <div class="summary-card flex flex-col justify-between hover:border-info transition-all bg-surface-container-lowest p-md rounded-xl card-shadow border border-outline-variant h-100">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div class="summary-header">
+                            <p class="font-label-md text-label-md text-on-surface-variant mb-0 uppercase">Net Profit</p>
+                        </div>
+                        <div class="p-sm rounded-lg flex items-center justify-center" style="width: 40px; height: 40px; background-color: rgba(14, 165, 233, 0.1);">
+                            <span class="material-symbols-outlined text-info">monitoring</span>
+                        </div>
+                    </div>
+                    <div class="summary-body">
+                        <h4 class="font-headline-md text-headline-md {{ $currentStats['netProfit'] >= 0 ? 'text-success' : 'text-danger' }} mt-xs mb-2">
+                            ₹{{ number_format(abs($currentStats['netProfit']), 2) }}
+                        </h4>
+                        <div class="mt-md d-flex justify-content-between align-items-center gap-sm">
+                            <span class="font-data-mono text-data-mono text-on-surface-variant">{{ $currentStats['periodLabel'] }}</span>
+                            @php
+                                $profitChange = $previousStats['netProfit'] != 0 
+                                    ? (($currentStats['netProfit'] - $previousStats['netProfit']) / abs($previousStats['netProfit'])) * 100 
+                                    : ($currentStats['netProfit'] > 0 ? 100 : -100);
+                            @endphp
+                            <span class="font-label-sm text-label-sm {{ $profitChange >= 0 ? 'text-success' : 'text-danger' }}">
+                                {{ $profitChange >= 0 ? '+' : '' }}{{ number_format($profitChange, 1) }}%
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Upcoming Payments -->
+            <div class="col">
+                <div class="summary-card flex flex-col justify-between hover:border-warning transition-all bg-surface-container-lowest p-md rounded-xl card-shadow border border-outline-variant h-100">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div class="summary-header">
+                            <p class="font-label-md text-label-md text-on-surface-variant mb-0 uppercase">Upcoming Payments</p>
+                        </div>
+                        <div class="p-sm rounded-lg flex items-center justify-center" style="width: 40px; height: 40px; background-color: rgba(245, 158, 11, 0.1);">
+                            <span class="material-symbols-outlined text-warning">event</span>
+                        </div>
+                    </div>
+                    <div class="summary-body">
+                        <h4 class="font-headline-md text-headline-md text-warning mt-xs mb-2">₹{{ number_format($currentStats['upcomingPayments'], 2) }}</h4>
+                        <div class="mt-md d-flex justify-content-between align-items-center gap-sm">
+                            <span class="font-data-mono text-data-mono text-on-surface-variant">This Month</span>
+                            @php
+                                $upcomingCount = $immediatePayments->count();
+                            @endphp
+                            <span class="font-label-sm text-label-sm text-warning">{{ $upcomingCount }} Due</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- Immediate Payments Table -->
-        <div class="table-container">
+        <!-- <div class="table-container">
             <div class="table-header">
                 <div class="table-title">Immediate Payments (Today + Next 3 Days)</div>
                 <div class="table-actions">
@@ -186,10 +278,10 @@
                 <p class="text-muted">No immediate payments due</p>
             </div>
             @endif
-        </div>
+        </div> -->
 
         <!-- Upcoming Debits & Credits -->
-        <div class="dashboard-grid">
+        <!-- <div class="dashboard-grid">
             <div class="card">
                 <div class="card-header">
                     <div class="card-title">Upcoming Debits</div>
@@ -222,10 +314,10 @@
                     </a>
                 </div>
             </div>
-        </div>
+        </div> -->
 
         <!-- Company-wise Profit/Loss Chart -->
-        <div class="chart-container">
+        <!-- <div class="chart-container">
             <div class="chart-header">
                 <div class="chart-title">Company-wise Profit & Loss</div>
                 <div>
@@ -240,7 +332,7 @@
             <div class="chart">
                 <canvas id="profitLossChart"></canvas>
             </div>
-        </div>
+        </div> -->
 
         <!-- Notifications Panel -->
         <div class="card">
@@ -285,7 +377,7 @@
     
     function markAsPaid(expenseId) {
         if (confirm('Mark this expense as paid?')) {
-            fetch(`https://xhtmlreviews.in/beta-finance/manager/standard-expenses/${expenseId}/mark-paid`, {
+            fetch(`{{ url('/') }}/manager/standard-expenses/${expenseId}/mark-paid`, {
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': '{{ csrf_token() }}',

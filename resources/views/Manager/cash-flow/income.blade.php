@@ -1,222 +1,329 @@
-@extends('Manager.layouts.app')
-@section('content')
-    <div id="income" class="manager-panel">
-        <!-- Date Range & Filter Section -->
-        <div class="filter-section mb-4">
-            <div class="row g-3">
-                <div class="col-md-3">
-                    <label class="form-label small fw-bold">Date Range</label>
-                    <select class="form-select form-select-sm" id="dateRangeFilter" onchange="applyFilters()">
-                        <option value="today" {{ $dateRange == 'today' ? 'selected' : '' }}>Today</option>
-                        <option value="week" {{ $dateRange == 'week' ? 'selected' : '' }}>This Week</option>
-                        <option value="month" {{ $dateRange == 'month' ? 'selected' : '' }}>This Month</option>
-                        <option value="quarter" {{ $dateRange == 'quarter' ? 'selected' : '' }}>This Quarter</option>
-                        <option value="year" {{ $dateRange == 'year' ? 'selected' : '' }}>This Year</option>
-                        <option value="next7days" {{ $dateRange == 'next7days' ? 'selected' : '' }}>Next 7 Days</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label small fw-bold">Company</label>
-                    <select class="form-select form-select-sm" id="companyFilter" onchange="applyFilters()">
-                        <option value="">All Companies</option>
-                        @foreach ($companies as $company)
-                            <option value="{{ $company->id }}" {{ $companyId == $company->id ? 'selected' : '' }}>
-                                {{ $company->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label small fw-bold">Category</label>
-                    <select class="form-select form-select-sm" id="categoryFilter" onchange="applyFilters()">
-                        <option value="all" {{ $category == 'all' ? 'selected' : '' }}>All Types</option>
-                        <option value="standard" {{ $category == 'standard' ? 'selected' : '' }}>Standard</option>
-                        <option value="non-standard" {{ $category == 'non-standard' ? 'selected' : '' }}>Non Standard
-                        </option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label small fw-bold">Status</label>
-                    <select class="form-select form-select-sm" id="statusFilter" onchange="applyFilters()">
-                        <option value="all" {{ $status == 'all' ? 'selected' : '' }}>All Status</option>
-                        <option value="pending" {{ $status == 'pending' ? 'selected' : '' }}>Pending</option>
-                        <option value="received" {{ $status == 'received' ? 'selected' : '' }}>Received</option>
-                        <option value="overdue" {{ $status == 'overdue' ? 'selected' : '' }}>Overdue</option>
-                        <option value="upcoming" {{ $status == 'upcoming' ? 'selected' : '' }}>Upcoming</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label small fw-bold">Currency</label>
-                    <select class="form-select form-select-sm" id="currencyFilter" onchange="applyFilters()">
-                        <option value="all" {{ $currency == 'all' ? 'selected' : '' }}>All Currencies</option>
-                        <option value="INR" {{ $currency == 'INR' ? 'selected' : '' }}>INR (₹)</option>
-                        <option value="USD" {{ $currency == 'USD' ? 'selected' : '' }}>USD ($)</option>
-                    </select>
-                </div>
-            </div>
+@extends( 'Manager.layouts.app' )
+@section( 'content' )
+<div id="income" class="manager-panel">
+    <!-- Date Range & Filter Section -->
+    <!-- Page Title & Add Button -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 style="font-weight: 800; color: #0f172a; font-size: 2rem; letter-spacing: -0.75px;">Income</h1>
+            <div style="font-size: 0.95rem; color: #64748b; margin-top: 4px;">Monitor and manage all corporate income
+                and receivables.</div>
+        </div>
+        <div>
 
-            <!-- Second row for Reset button -->
-            <div class="row g-3 mt-2">
-                <div class="col-md-12 d-flex justify-content-end">
-                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="resetFilters()">
-                        <i class="fas fa-redo me-1"></i> Reset All Filters
-                    </button>
-                </div>
-            </div>
+        </div>
+    </div>
+
+    <!-- Bento Filter Bar -->
+    <section
+        class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-md bg-surface-container-lowest p-md rounded-xl card-shadow border border-outline-variant mb-lg">
+        <!-- Date Range -->
+        <div class="flex flex-col gap-xs">
+            <label class="font-label-md text-[10px] uppercase text-on-surface-variant px-1">Date Range</label>
+            <select id="dateRangeFilter" onchange="applyFilters()"
+                class="border-outline-variant rounded-lg font-body-sm text-body-sm bg-surface-container-low focus:ring-secondary py-2 px-3 w-full border">
+                <option value="today" {{ $dateRange == 'today' ? 'selected' : '' }}>Today</option>
+                <option value="week" {{ $dateRange == 'week' ? 'selected' : '' }}>This Week</option>
+                <option value="month" {{ $dateRange == 'month' ? 'selected' : '' }}>This Month</option>
+                <option value="quarter" {{ $dateRange == 'quarter' ? 'selected' : '' }}>This Quarter</option>
+                <option value="year" {{ $dateRange == 'year' ? 'selected' : '' }}>This Year</option>
+                <option value="next7days" {{ $dateRange == 'next7days' ? 'selected' : '' }}>Next 7 Days</option>
+            </select>
         </div>
 
-        @php
-            $selectedCurrencySymbol = ($currency == 'USD' ? '$' : ($currency == 'EUR' ? '€' : ($currency == 'GBP' ? '£' : '₹')));
-        @endphp
-        <!-- Summary Cards Row -->
-        <div class="row mb-4">
-            <div class="col-4 mb-3">
-                <div class="summary-card">
+        <!-- Company -->
+        <div class="flex flex-col gap-xs">
+            <label class="font-label-md text-[10px] uppercase text-on-surface-variant px-1">Company</label>
+            <select id="companyFilter" onchange="applyFilters()"
+                class="border-outline-variant rounded-lg font-body-sm text-body-sm bg-surface-container-low focus:ring-secondary py-2 px-3 w-full border">
+                <option value="">All Companies</option>
+                @foreach ( $companies as $company )
+                <option value="{{ $company->id }}" {{ $companyId == $company->id ? 'selected' : '' }}>{{ $company->name }}
+                </option>
+                @endforeach
+            </select>
+        </div>
+
+        <!-- Category -->
+        <div class="flex flex-col gap-xs">
+            <label class="font-label-md text-[10px] uppercase text-on-surface-variant px-1">Category</label>
+            <select id="categoryFilter" onchange="applyFilters()"
+                class="border-outline-variant rounded-lg font-body-sm text-body-sm bg-surface-container-low focus:ring-secondary py-2 px-3 w-full border">
+                <option value="all" {{ $category == 'all' ? 'selected' : '' }}>All Types</option>
+                <option value="standard" {{ $category == 'standard' ? 'selected' : '' }}>Standard</option>
+                <option value="non-standard" {{ $category == 'non-standard' ? 'selected' : '' }}>Non Standard</option>
+            </select>
+        </div>
+
+        <!-- Status -->
+        <div class="flex flex-col gap-xs">
+            <label class="font-label-md text-[10px] uppercase text-on-surface-variant px-1">Status</label>
+            <select id="statusFilter" onchange="applyFilters()"
+                class="border-outline-variant rounded-lg font-body-sm text-body-sm bg-surface-container-low focus:ring-secondary py-2 px-3 w-full border">
+                <option value="all" {{ $status == 'all' ? 'selected' : '' }}>All Status</option>
+                <option value="pending" {{ $status == 'pending' ? 'selected' : '' }}>Pending</option>
+                <option value="received" {{ $status == 'received' ? 'selected' : '' }}>Received</option>
+                <option value="overdue" {{ $status == 'overdue' ? 'selected' : '' }}>Overdue</option>
+                <option value="upcoming" {{ $status == 'upcoming' ? 'selected' : '' }}>Upcoming</option>
+            </select>
+        </div>
+
+        <!-- Currency -->
+        <div class="flex flex-col gap-xs">
+            <label class="font-label-md text-[10px] uppercase text-on-surface-variant px-1">Currency</label>
+            <select id="currencyFilter" onchange="applyFilters()"
+                class="border-outline-variant rounded-lg font-body-sm text-body-sm bg-surface-container-low focus:ring-secondary py-2 px-3 w-full border">
+                <option value="all" {{ $currency == 'all' ? 'selected' : '' }}>All Currencies</option>
+                <option value="INR" {{ $currency == 'INR' ? 'selected' : '' }}>INR (₹)</option>
+                <option value="USD" {{ $currency == 'USD' ? 'selected' : '' }}>USD ($)</option>
+            </select>
+        </div>
+
+        <!-- Reset -->
+        <div class="flex items-end">
+            <button type="button" onclick="resetFilters()"
+                class="w-full h-[40px] border border-secondary text-secondary bg-transparent font-label-md text-label-md rounded-lg flex items-center justify-center gap-sm hover:bg-secondary-fixed transition-colors">
+                <span class="material-symbols-outlined text-[20px]">refresh</span> Reset Filters
+            </button>
+        </div>
+    </section>
+
+    @php
+    $selectedCurrencySymbol = ( $currency == 'USD' ? '$' : ( $currency == 'EUR' ? '€' : ( $currency == 'GBP' ? '£' : '₹' ) ) );
+    @endphp
+
+    <!-- Summary Cards Row -->
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-5 g-3 mb-4">
+        <!-- Payments -->
+        <div class="col">
+            <div class="summary-card flex flex-col justify-between hover:border-primary transition-all">
+                <div class="d-flex justify-content-between align-items-start mb-3">
                     <div class="summary-header">
-                        <h6 class="mb-1">{{ $currentMonth }}-{{ $nextMonth }} {{ $currentYear }} Payments</h6>
+                        <p class="font-label-md text-label-md text-on-surface-variant mb-0">
+                            {{ $currentMonth }}-{{ $nextMonth }} {{ $currentYear }} Payments
+                        </p>
                     </div>
-                    <div class="summary-body">
-                        <div class="d-flex justify-content-between align-items-end">
-                            <div>
-                                <h3 class="mb-0" id="totalPayments">
-                                    {{ $selectedCurrencySymbol }}{{ number_format($stats['totalPayments'] ?? 0, 2) }}
-                                </h3>
-                                <small class="text-muted">{{ $stats['paymentItems'] ?? 0 }} Items</small>
-                            </div>
-                            <div class="summary-icon">
-                                <i class="fas fa-money-bill-wave text-primary"></i>
-                            </div>
-                        </div>
+                    <div class="p-sm bg-secondary-fixed rounded-lg flex items-center justify-center"
+                        style="width: 40px; height: 40px;">
+                        <span class="material-symbols-outlined text-secondary">payments</span>
                     </div>
                 </div>
-            </div>
-
-            <div class="col-4 mb-3">
-                <div class="summary-card">
-                    <div class="summary-header">
-                        <h6 class="mb-1">{{ $currentMonth }}-{{ $nextMonth }} {{ $currentYear }} Received</h6>
-                    </div>
-                    <div class="summary-body">
-                        <div class="d-flex justify-content-between align-items-end">
-                            <div>
-                                <h3 class="mb-0" id="receivedAmount">
-                                    {{ $selectedCurrencySymbol }}{{ number_format($stats['totalReceived'] ?? 0, 2) }}
-                                </h3>
-                                <small class="text-muted">{{ $stats['receivedItems'] ?? 0 }} items</small>
-                            </div>
-                            <div class="summary-icon">
-                                <i class="fas fa-check-circle text-success"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-4 mb-3">
-                <div class="summary-card">
-                    <div class="summary-header">
-                        <h6 class="mb-1">{{ $currentMonth }}-{{ $nextMonth }} {{ $currentYear }} Pending</h6>
-                    </div>
-                    <div class="summary-body">
-                        <div class="d-flex justify-content-between align-items-end">
-                            <div>
-                                <h3 class="mb-0" id="pendingAmount">
-                                    {{ $selectedCurrencySymbol }}{{ number_format($stats['totalPending'] ?? 0, 2) }}
-                                </h3>
-                                <small class="text-muted">{{ $stats['pendingItems'] ?? 0 }} items</small>
-                            </div>
-                            <div class="summary-icon">
-                                <i class="fas fa-clock text-warning"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-4 mb-3">
-                <div class="summary-card">
-                    <div class="summary-header">
-                        <h6 class="mb-1">{{ $currentMonth }}-{{ $nextMonth }} {{ $currentYear }} Over Due</h6>
-                    </div>
-                    <div class="summary-body">
-                        <div class="d-flex justify-content-between align-items-end">
-                            <div>
-                                <h3 class="mb-0" id="overdueAmount">
-                                    {{ $selectedCurrencySymbol }}{{ number_format($stats['overdue'] ?? 0, 2) }}
-                                </h3>
-                                <small class="text-muted">{{ $stats['overdueItems'] ?? 0 }} items</small>
-                            </div>
-                            <div class="summary-icon">
-                                <i class="fas fa-exclamation-triangle text-danger"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-4 mb-3">
-                <div class="summary-card">
-                    <div class="summary-header">
-                        <h6 class="mb-1">Total Over Due</h6>
-                    </div>
-                    <div class="summary-body">
-                        <div class="d-flex justify-content-between align-items-end">
-                            <div>
-                                <h3 class="mb-0" id="totalOverdueAmount">
-                                    {{ $selectedCurrencySymbol }}{{ number_format($stats['allTimeOverdue'] ?? 0, 2) }}
-                                </h3>
-                                <small class="text-muted">{{ $stats['allTimeOverdueItems'] ?? 0 }} items</small>
-                            </div>
-                            <div class="summary-icon">
-                                <i class="fas fa-exclamation-circle text-danger"></i>
-                            </div>
+                <div class="summary-body">
+                    <h4 class="font-headline-md text-headline-md text-primary mt-xs mb-2">
+                        {{ $selectedCurrencySymbol }}{{ number_format ( $stats['totalPayments'] ?? 0, 2 ) }}
+                    </h4>
+                    <div class="mt-md d-flex align-items-center gap-sm">
+                        <span
+                            class="font-data-mono text-data-mono text-on-surface-variant">{{ $stats['paymentItems'] ?? 0 }}
+                            Items</span>
+                        <div class="h-1 flex-1 bg-surface-container-high rounded-full overflow-hidden">
+                            <div class="bg-secondary h-full" style="width: 100%"></div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Filter Buttons Row -->
-        <div class="row mb-4">
-            <div class="col-md-12">
-                <div class="summary-card h-100">
+        <!-- Received -->
+        <div class="col">
+            <div class="summary-card flex flex-col justify-between hover:border-tertiary transition-all">
+                <div class="d-flex justify-content-between align-items-start mb-3">
                     <div class="summary-header">
-                        <h6 class="mb-1">All Payments</h6>
+                        <p class="font-label-md text-label-md text-on-surface-variant mb-0">
+                            {{ $currentMonth }}-{{ $nextMonth }} {{ $currentYear }} Received
+                        </p>
                     </div>
-                    <div class="summary-body">
-                        <div class="btn-group w-100">
-                            <button
-                                class="btn btn-outline-primary {{ request('status') == 'all' || !request('status') ? 'active' : '' }}"
-                                onclick="filterPayments('all')" id="btnAll">
-                                All Payments
-                            </button>
-                            <button class="btn btn-outline-warning {{ request('status') == 'pending' ? 'active' : '' }}"
-                                onclick="filterPayments('pending')" id="btnPending">
-                                Only Pending
-                            </button>
-                            <button class="btn btn-outline-info {{ request('status') == 'upcoming' ? 'active' : '' }}"
-                                onclick="filterPayments('upcoming')" id="btnUpcoming">
-                                Only Upcoming
-                            </button>
-                            <button class="btn btn-outline-success {{ request('status') == 'received' ? 'active' : '' }}"
-                                onclick="filterPayments('received')" id="btnReceived">
-                                Only Received
-                            </button>
+                    <div class="p-sm bg-tertiary-fixed rounded-lg flex items-center justify-center"
+                        style="width: 40px; height: 40px;">
+                        <span class="material-symbols-outlined text-on-tertiary-fixed-variant"
+                            style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                    </div>
+                </div>
+                <div class="summary-body">
+                    <h4 class="font-headline-md text-headline-md text-tertiary mt-xs mb-2">
+                        {{ $selectedCurrencySymbol }}{{ number_format ( $stats['totalReceived'] ?? 0, 2 ) }}
+                    </h4>
+                    @php
+                    $receivedPercent = ( $stats['paymentItems'] ?? 0 ) > 0 ? ( ( $stats['receivedItems'] ?? 0 ) / $stats['paymentItems'] ) * 100 : 0;
+                    @endphp
+                    <div class="mt-md d-flex align-items-center gap-sm">
+                        <span
+                            class="font-data-mono text-data-mono text-on-surface-variant">{{ $stats['receivedItems'] ?? 0 }}
+                            Items</span>
+                        <div class="h-1 flex-1 bg-surface-container-high rounded-full overflow-hidden">
+                            <div class="bg-on-tertiary-container h-full" style="width: {{ $receivedPercent }}%"></div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Main Table Section -->
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">All Payments</h5>
-                <div class="card-tools">
-                    <button class="btn btn-sm btn-primary" onclick="openAddIncomeModal()">
-                        <i class="fas fa-plus"></i> Add Non-standard Income
-                    </button>
+        <!-- Pending -->
+        <div class="col">
+            <div class="summary-card flex flex-col justify-between hover:border-secondary-container transition-all">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div class="summary-header">
+                        <p class="font-label-md text-label-md text-on-surface-variant mb-0">
+                            {{ $currentMonth }}-{{ $nextMonth }} {{ $currentYear }} Pending
+                        </p>
+                    </div>
+                    <div class="p-sm bg-secondary-fixed-dim/30 rounded-lg flex items-center justify-center"
+                        style="width: 40px; height: 40px;">
+                        <span class="material-symbols-outlined text-secondary"
+                            style="font-variation-settings: 'FILL' 1;">schedule</span>
+                    </div>
                 </div>
+                <div class="summary-body">
+                    <h4 class="font-headline-md text-headline-md text-secondary mt-xs mb-2">
+                        {{ $selectedCurrencySymbol }}{{ number_format ( $stats['totalPending'] ?? 0, 2 ) }}
+                    </h4>
+                    @php
+                    $pendingPercent = ( $stats['paymentItems'] ?? 0 ) > 0 ? ( ( $stats['pendingItems'] ?? 0 ) / $stats['paymentItems'] ) * 100 : 0;
+                    @endphp
+                    <div class="mt-md d-flex align-items-center gap-sm">
+                        <span
+                            class="font-data-mono text-data-mono text-on-surface-variant">{{ $stats['pendingItems'] ?? 0 }}
+                            Items</span>
+                        <div class="h-1 flex-1 bg-surface-container-high rounded-full overflow-hidden">
+                            <div class="bg-secondary-fixed-dim h-full" style="width: {{ $pendingPercent }}%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Over Due -->
+        <div class="col">
+            <div class="summary-card flex flex-col justify-between hover:border-error transition-all">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div class="summary-header">
+                        <p class="font-label-md text-label-md text-on-surface-variant mb-0">
+                            {{ $currentMonth }}-{{ $nextMonth }} {{ $currentYear }} Over Due
+                        </p>
+                    </div>
+                    <div class="p-sm bg-error-container rounded-lg flex items-center justify-center"
+                        style="width: 40px; height: 40px;">
+                        <span class="material-symbols-outlined text-error"
+                            style="font-variation-settings: 'FILL' 1;">error</span>
+                    </div>
+                </div>
+                <div class="summary-body">
+                    <h4 class="font-headline-md text-headline-md text-error mt-xs mb-2">
+                        {{ $selectedCurrencySymbol }}{{ number_format ( $stats['overdue'] ?? 0, 2 ) }}
+                    </h4>
+                    @php
+                    $overduePercent = ( $stats['paymentItems'] ?? 0 ) > 0 ? ( ( $stats['overdueItems'] ?? 0 ) / $stats['paymentItems'] ) * 100 : 0;
+                    @endphp
+                    <div class="mt-md d-flex align-items-center gap-sm">
+                        <span
+                            class="font-data-mono text-data-mono text-on-surface-variant">{{ $stats['overdueItems'] ?? 0 }}
+                            Items</span>
+                        <div class="h-1 flex-1 bg-surface-container-high rounded-full overflow-hidden">
+                            <div class="bg-error h-full" style="width: {{ $overduePercent }}%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Total Over Due -->
+        <div class="col">
+            <div class="summary-card flex flex-col justify-between hover:border-error transition-all">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div class="summary-header">
+                        <p class="font-label-md text-label-md text-on-surface-variant mb-0">Total Over Due</p>
+                    </div>
+                    <div class="p-sm bg-error-container rounded-lg flex items-center justify-center"
+                        style="width: 40px; height: 40px;">
+                        <span class="material-symbols-outlined text-error"
+                            style="font-variation-settings: 'FILL' 1;">report</span>
+                    </div>
+                </div>
+                <div class="summary-body">
+                    <h4 class="font-headline-md text-headline-md text-error mt-xs mb-2">
+                        {{ $selectedCurrencySymbol }}{{ number_format ( $stats['allTimeOverdue'] ?? 0, 2 ) }}
+                    </h4>
+                    <div class="mt-md d-flex align-items-center gap-sm">
+                        <span
+                            class="font-data-mono text-data-mono text-on-surface-variant">{{ $stats['allTimeOverdueItems'] ?? 0 }}
+                            Items</span>
+                        <div class="h-1 flex-1 bg-surface-container-high rounded-full overflow-hidden">
+                            <div class="bg-error h-full" style="width: 100%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Table Section -->
+    <div class="card">
+        <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center flex-wrap gap-3 py-3 px-4"
+            style="background-color: white !important;">
+            <!-- Left: Filter Tabs -->
+            <div class="d-flex align-items-center gap-2 flex-wrap" id="tabFilterContainer">
+                <button class="btn btn-sm py-2 px-3 {{ $status == 'all' ? 'btn-primary' : 'btn-light text-muted' }}"
+                    onclick="filterPayments('all')" id="btnAll"
+                    style="border: none !important; border-radius: 6px !important; font-weight: 600; font-size: 0.9rem; {{ $status == 'all' ? 'background-color: #4f46e5 !important; color: white !important;' : 'background-color: transparent !important;' }}">
+                    All Payments
+                </button>
+                <button class="btn btn-sm py-2 px-3 {{ $status == 'pending' ? 'btn-primary' : 'btn-light text-muted' }}"
+                    onclick="filterPayments('pending')" id="btnPending"
+                    style="border: none !important; border-radius: 6px !important; font-weight: 600; font-size: 0.9rem; {{ $status == 'pending' ? 'background-color: #4f46e5 !important; color: white !important;' : 'background-color: transparent !important;' }}">
+                    Only Pending
+                </button>
+                <button
+                    class="btn btn-sm py-2 px-3 {{ $status == 'upcoming' ? 'btn-primary' : 'btn-light text-muted' }}"
+                    onclick="filterPayments('upcoming')" id="btnUpcoming"
+                    style="border: none !important; border-radius: 6px !important; font-weight: 600; font-size: 0.9rem; {{ $status == 'upcoming' ? 'background-color: #4f46e5 !important; color: white !important;' : 'background-color: transparent !important;' }}">
+                    Only Upcoming
+                </button>
+                <button class="btn btn-sm py-2 px-3 {{ $status == 'received' ? 'btn-primary' : 'btn-light text-muted' }}"
+                    onclick="filterPayments('received')" id="btnPaid"
+                    style="border: none !important; border-radius: 6px !important; font-weight: 600; font-size: 0.9rem; {{ $status == 'received' ? 'background-color: #4f46e5 !important; color: white !important;' : 'background-color: transparent !important;' }}">
+                    Only Paid
+                </button>
+            </div>
+
+            <!-- Right: Per Page & Pagination UI -->
+            <div class="d-flex align-items-center gap-3">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="text-muted small fw-semibold" style="white-space: nowrap;">Items per page:</span>
+                    <select class="form-select form-select-sm"
+                        style="width: auto; border: 1px solid #e2e8f0 !important; border-radius: 6px !important; padding: 4px 28px 4px 10px !important; background-color: white !important;"
+                        id="perPageSelector" onchange="updatePerPage()">
+                        <option value="10" {{ request ( 'per_page' ) == 10 ? 'selected' : '' }}>10</option>
+                        <option value="25" {{ request ( 'per_page' ) == 25 ? 'selected' : '' }}>25</option>
+                        <option value="50" {{ request ( 'per_page' ) == 50 ? 'selected' : '' }}>50</option>
+                        <option value="100" {{ request ( 'per_page' ) == 100 ? 'selected' : '' }}>100</option>
+                    </select>
+                </div>
+
+                <!-- Compact pagination arrows -->
+                <div class="d-flex gap-1" id="compactPagination">
+                    @if ( $incomes->onFirstPage () )
+                    <button class="btn btn-sm btn-light border-0" disabled
+                        style="padding: 6px 10px !important; border-radius: 6px !important; background: #f8fafc !important; opacity: 0.5;"><i
+                            class="fas fa-chevron-left text-muted" style="font-size: 0.8rem;"></i></button>
+                    @else
+                    <a class="btn btn-sm btn-light border-0" href="{{ $incomes->previousPageUrl () }}"
+                        style="padding: 6px 10px !important; border-radius: 6px !important; background: #f8fafc !important; display: inline-flex; align-items: center; justify-content: center;"><i
+                            class="fas fa-chevron-left text-muted" style="font-size: 0.8rem;"></i></a>
+                    @endif
+
+                    @if ( $incomes->hasMorePages () )
+                    <a class="btn btn-sm btn-light border-0" href="{{ $incomes->nextPageUrl () }}"
+                        style="padding: 6px 10px !important; border-radius: 6px !important; background: #f8fafc !important; display: inline-flex; align-items: center; justify-content: center;"><i
+                            class="fas fa-chevron-right text-muted" style="font-size: 0.8rem;"></i></a>
+                    @else
+                    <button class="btn btn-sm btn-light border-0" disabled
+                        style="padding: 6px 10px !important; border-radius: 6px !important; background: #f8fafc !important; opacity: 0.5;"><i
+                            class="fas fa-chevron-right text-muted" style="font-size: 0.8rem;"></i></button>
+                    @endif
+                </div>
+                <button class="btn btn-sm btn-primary" onclick="openAddIncomeModal()">
+                    <i class="fas fa-plus"></i> Add Non-standard Income
+                </button>
             </div>
             <div class="card-body">
                 <div class="table-responsive">
@@ -236,113 +343,106 @@
                             </tr>
                         </thead>
                         <tbody id="incomeTableBody">
-                            @foreach ($incomes as $income)
-                                <tr>
-                                    <td>
-                                        <a href="{{ route('manager.income.view', $income->id) }}" class="fw-bold text-primary text-decoration-none">
-                                            {{ $income->invoice_number ?? ('#INC-' . $income->getRootParentId()) }}
-                                        </a>
-                                    </td>
-                                    <td>
-                                        <strong>{{ $income->company->name ?? 'N/A' }}</strong>
-                                    </td>
-                                    <td>{{ $income->client_name }}</td>
+                            @foreach ( $incomes as $income )
+                            <tr>
+                                <td>
+                                    <a href="{{ route ( 'manager.income.view', $income->id ) }}"
+                                        class="fw-bold text-primary text-decoration-none">
+                                        {{ $income->invoice_number ?? ( '#INC-' . $income->getRootParentId () ) }}
+                                    </a>
+                                </td>
+                                <td>
+                                    <strong>{{ $income->company->name ?? 'N/A' }}</strong>
+                                </td>
+                                <td>{{ $income->client_name }}</td>
 
-                                    <td>
-                                        @php
-                                            $itemCurrency = $income->currency ?? ($income->invoice->currency ?? 'INR');
-                                            $itemSymbol = ($itemCurrency == 'USD' ? '$' : ($itemCurrency == 'EUR' ? '€' : ($itemCurrency == 'GBP' ? '£' : '₹')));
-                                        @endphp
-                                        <strong>₹{{ number_format($income->amount, 2) }}</strong>
-                                    </td>
-                                    <td>
-                                        @php
-                                            $itemCurrency = $income->currency ?? ($income->invoice->currency ?? 'INR');
-                                            $itemSymbol = ($itemCurrency == 'USD' ? '$' : ($itemCurrency == 'EUR' ? '€' : ($itemCurrency == 'GBP' ? '£' : '₹')));
-                                            $displayBaseAmount = $income->actual_amount ?? 0;
-                                        @endphp
-                                        <strong class="{{ $displayBaseAmount > 0 ? 'text-success' : 'text-muted' }}">
-                                            {{ $itemSymbol }}{{ number_format($displayBaseAmount, 2) }}
-                                        </strong>
-                                    </td>
+                                <td>
+                                    @php
+                                    $itemCurrency = $income->currency ?? ( $income->invoice->currency ?? 'INR' );
+                                    $itemSymbol = ( $itemCurrency == 'USD' ? '$' : ( $itemCurrency == 'EUR' ? '€' : ( $itemCurrency == 'GBP' ? '£' : '₹' ) ) );
+                                    @endphp
+                                    <strong>₹{{ number_format ( $income->amount, 2 ) }}</strong>
+                                </td>
+                                <td>
+                                    @php
+                                    $itemCurrency = $income->currency ?? ( $income->invoice->currency ?? 'INR' );
+                                    $itemSymbol = ( $itemCurrency == 'USD' ? '$' : ( $itemCurrency == 'EUR' ? '€' : ( $itemCurrency == 'GBP' ? '£' : '₹' ) ) );
+                                    $displayBaseAmount = $income->actual_amount ?? 0;
+                                    @endphp
+                                    <strong class="{{ $displayBaseAmount > 0 ? 'text-success' : 'text-muted' }}">
+                                        {{ $itemSymbol }}{{ number_format ( $displayBaseAmount, 2 ) }}
+                                    </strong>
+                                </td>
 
-                                    <td>
-                                        <span class="badge {{ $income->invoice_id ? 'bg-info' : 'bg-secondary' }}">
-                                            {{ $income->invoice_id ? 'Standard' : 'Non-Standard' }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        @php
-                                            $statusColors = [
-                                                'received' => 'success',
-                                                'pending' => 'warning',
-                                                'upcoming' => 'info',
-                                                'overdue' => 'danger',
-                                            ];
-                                            $statusText = [
-                                                'received' => 'Paid',
-                                                'pending' => 'Pending',
-                                                'upcoming' => 'Upcoming',
-                                                'overdue' => 'Overdue',
-                                            ];
-                                        @endphp
-                                        <span class="badge bg-{{ $statusColors[$income->status] ?? 'secondary' }}">
-                                            {{ $statusText[$income->status] ?? ucfirst($income->status) }}
-                                        </span>
-                                    </td>
-                                    <td>{{ \Carbon\Carbon::parse($income->created_at)->format('d M Y') }}</td>
-                                    <td>
-                                        <span class="badge {{ $income->mail_status ? 'bg-success' : 'bg-secondary' }}">
-                                            {{ $income->mail_status ? 'Yes' : 'No' }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <div class="btn-group btn-group-sm">
-                                            @if (!in_array($income->status, ['received', 'settle']))
+                                <td>
+                                    <span class="badge {{ $income->invoice_id ? 'bg-info' : 'bg-secondary' }}">
+                                        {{ $income->invoice_id ? 'Standard' : 'Non-Standard' }}
+                                    </span>
+                                </td>
+                                <td>
+                                    @php
+                                    $statusColors = [
+                                    'received' => 'success',
+                                    'pending' => 'warning',
+                                    'upcoming' => 'info',
+                                    'overdue' => 'danger',
+                                    ];
+                                    $statusText = [
+                                    'received' => 'Paid',
+                                    'pending' => 'Pending',
+                                    'upcoming' => 'Upcoming',
+                                    'overdue' => 'Overdue',
+                                    ];
+                                    @endphp
+                                    <span class="badge bg-{{ $statusColors[$income->status] ?? 'secondary' }}">
+                                        {{ $statusText[$income->status] ?? ucfirst ( $income->status ) }}
+                                    </span>
+                                </td>
+                                <td>{{ \Carbon\Carbon::parse ( $income->created_at )->format ( 'd M Y' ) }}</td>
+                                <td>
+                                    <span class="badge {{ $income->mail_status ? 'bg-success' : 'bg-secondary' }}">
+                                        {{ $income->mail_status ? 'Yes' : 'No' }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="btn-group">
+                                        @if (!in_array($income->status, ['received', 'settle']))
+                                        <button class="btn btn-outline-primary btn-xs"
+                                            onclick="openEditIncomeModal({{ $income->id }})">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        @endif
 
-                                                <button class="btn btn-sm btn-outline-primary"
-                                                    onclick="openEditIncomeModal({{ $income->id }})">
-                                                    <i class="fas fa-edit me-1"></i>
-                                                </button>
-                                            @endif
-                                            <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-secondary btn-xs"
+                                            onclick="viewProforma({{ $income->id }})">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
 
-                                                <button class="btn btn-outline-secondary"
-                                                    onclick="viewProforma({{ $income->id }})">
-                                                    <i class="fas fa-eye me-1"></i>
-
-                                                </button>
-                                                <button class="btn btn-sm btn-primary" data-bs-toggle="modal"
-                                                    data-bs-target="#sendInvoiceModal" data-income-id="{{ $income->id }}">
-                                                    <i class="fas fa-envelope"></i>
-                                                </button>
-
-                                                <!-- @if ($income->is_split || $income->parent_id)
-                                                    <button class="btn btn-outline-info btn-sm ms-1"
-                                                        onclick="viewSplitHistory({{ $income->id }})" title="View Split History">
-                                                        <i class="fas fa-code-branch"></i>
-                                                    </button>
-                                                @endif -->
-                                            </div>
-                                        </div>
-                                    </td>
-                                </tr>
+                                        <button class="btn btn-primary btn-xs"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#sendInvoiceModal"
+                                            data-income-id="{{ $income->id }}">
+                                            <i class="fas fa-envelope"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
                             @endforeach
                         </tbody>
                     </table>
                 </div>
 
                 <!-- Pagination -->
-                @if ($incomes->hasPages())
-                    <div class="pagination-container">
-                        <div class="pagination-info">
-                            Showing <span>{{ $incomes->firstItem() }}</span> to <span>{{ $incomes->lastItem() }}</span> of
-                            <span>{{ $incomes->total() }}</span> entries
-                        </div>
-                        <div class="pagination-links">
-                            {{ $incomes->appends(request()->query())->links('pagination::bootstrap-4') }}
-                        </div>
+                @if ( $incomes->hasPages () )
+                <div class="pagination-container">
+                    <div class="pagination-info">
+                        Showing <span>{{ $incomes->firstItem () }}</span> to <span>{{ $incomes->lastItem () }}</span> of
+                        <span>{{ $incomes->total () }}</span> entries
                     </div>
+                    <div class="pagination-links">
+                        {{ $incomes->appends ( request ()->query () )->links ( 'pagination::bootstrap-4' ) }}
+                    </div>
+                </div>
                 @endif
             </div>
         </div>
@@ -419,7 +519,8 @@
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Payment Date *</label>
-                                <input type="date" class="form-control" id="paymentDate" name="payment_date" max="{{ date('Y-m-d') }}" required>
+                                <input type="date" class="form-control" id="paymentDate" name="payment_date"
+                                    max="{{ date ( 'Y-m-d' ) }}" required>
                             </div>
                         </div>
 
@@ -468,8 +569,8 @@
                                 <label for="companyId" class="form-label">Company *</label>
                                 <select class="form-select" id="companyId" name="company_id" required>
                                     <option value="">Select Company</option>
-                                    @foreach ($companies as $company)
-                                        <option value="{{ $company->id }}">{{ $company->name }}</option>
+                                    @foreach ( $companies as $company )
+                                    <option value="{{ $company->id }}">{{ $company->name }}</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -489,7 +590,8 @@
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="mobileNumber" class="form-label">Mobile Number</label>
-                                <input type="text" class="form-control" id="mobileNumber" name="mobile_number" placeholder="Enter mobile number">
+                                <input type="text" class="form-control" id="mobileNumber" name="mobile_number"
+                                    placeholder="Enter mobile number">
                             </div>
 
                             <!-- Tax Section -->
@@ -520,44 +622,44 @@
 
                                 <!-- TDS Section -->
                                 <div id="addTdsSectionWrapper">
-                                <div class="d-flex justify-content-between mb-2">
-                                    <div class="form-check form-check-inline">
-                                        <input class="form-check-input" type="checkbox" name="apply_tds" id="applyTds"
-                                            value="1" checked>
-                                        <label class="form-check-label" for="applyTds">Apply TDS</label>
-                                    </div>
-                                </div>
-                                <div class="row mb-3">
-                                    <div class="col-md-6">
-                                        <label class="form-label">TDS %</label>
-                                        <div class="input-group">
-                                            <input type="number" class="form-control" id="tds_percentage"
-                                                name="tds_percentage" value="10" min="0" max="100" step="0.01">
-                                            <span class="input-group-text">%</span>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="checkbox" name="apply_tds"
+                                                id="applyTds" value="1" checked>
+                                            <label class="form-check-label" for="applyTds">Apply TDS</label>
                                         </div>
                                     </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label">TDS Amount</label>
-                                        <input type="number" class="form-control" id="tds_amount" name="tds_amount"
-                                            readonly>
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label">TDS %</label>
+                                            <div class="input-group">
+                                                <input type="number" class="form-control" id="tds_percentage"
+                                                    name="tds_percentage" value="10" min="0" max="100" step="0.01">
+                                                <span class="input-group-text">%</span>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">TDS Amount</label>
+                                            <input type="number" class="form-control" id="tds_amount" name="tds_amount"
+                                                readonly>
+                                        </div>
                                     </div>
-                                </div>
 
-                                <div class="row mb-3">
-                                    <div class="col-md-5">
-                                        <label class="form-label">TDS Status</label>
-                                        <select class="form-select" id="addTdsStatus" name="tds_status">
-                                            <option value="" selected disabled>Select Status</option>
-                                            <option value="received">Received</option>
-                                            <option value="not_received">Not Received</option>
-                                        </select>
+                                    <div class="row mb-3">
+                                        <div class="col-md-5">
+                                            <label class="form-label">TDS Status</label>
+                                            <select class="form-select" id="addTdsStatus" name="tds_status">
+                                                <option value="" selected disabled>Select Status</option>
+                                                <option value="received">Received</option>
+                                                <option value="not_received">Not Received</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-7">
+                                            <label class="form-label">Receipt</label>
+                                            <input type="file" id="addTdsReceipt" name="tds_receipt"
+                                                class="form-control" accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
+                                        </div>
                                     </div>
-                                    <div class="col-md-7">
-                                        <label class="form-label">Receipt</label>
-                                        <input type="file" id="addTdsReceipt" name="tds_receipt" class="form-control"
-                                            accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
-                                    </div>
-                                </div>
                                 </div>
 
                             </div>
@@ -566,12 +668,13 @@
                             <div class="row mb-3">
                                 <div class="col-md-6">
                                     <label class="form-label">Received Amount</label>
-                                    <input type="number" class="form-control" id="received_amount" name="received_amount"
-                                        step="0.01" value="0.00">
+                                    <input type="number" class="form-control" id="received_amount"
+                                        name="received_amount" step="0.01" value="0.00">
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">Payment Date</label>
-                                    <input type="date" class="form-control" id="received_date" name="received_date" max="{{ date('Y-m-d') }}">
+                                    <input type="date" class="form-control" id="received_date" name="received_date"
+                                        max="{{ date ( 'Y-m-d' ) }}">
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label">Balance</label>
@@ -592,13 +695,15 @@
                                 </select>
                             </div>
                             <div class="col-md-6 mb-3" id="addSettleNotesContainer" style="display:none;">
-                                <label for="addSettleNotes" class="form-label">Settle Notes <span class="text-danger">*</span></label>
-                                <textarea class="form-control" id="addSettleNotes" name="settle_notes" rows="1" placeholder="Enter notes for settled status..."></textarea>
+                                <label for="addSettleNotes" class="form-label">Settle Notes <span
+                                        class="text-danger">*</span></label>
+                                <textarea class="form-control" id="addSettleNotes" name="settle_notes" rows="1"
+                                    placeholder="Enter notes for settled status..."></textarea>
                             </div>
                             <div class="col-md-6 mb-3" id="dueDateContainer">
                                 <label for="dueDate" class="form-label">Due Date *</label>
                                 <input type="date" class="form-control" id="dueDate" name="due_date"
-                                    min="{{ date('Y-m-d') }}">
+                                    min="{{ date ( 'Y-m-d' ) }}">
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="mailStatus" class="form-label">Mail Status</label>
@@ -609,7 +714,8 @@
                             </div>
                             <div class="col-md-12 mb-3">
                                 <label for="notes" class="form-label">Notes</label>
-                                <textarea class="form-control" id="addNotes" name="notes" rows="3" placeholder="Add any additional notes..."></textarea>
+                                <textarea class="form-control" id="addNotes" name="notes" rows="3"
+                                    placeholder="Add any additional notes..."></textarea>
                             </div>
                         </div>
                     </div>
@@ -650,8 +756,8 @@
                                 <label class="form-label required">Company</label>
                                 <select class="form-select" id="editCompanyId" name="company_id" required>
                                     <option value="">Select Company</option>
-                                    @foreach ($companies as $company)
-                                        <option value="{{ $company->id }}">{{ $company->name }}</option>
+                                    @foreach ( $companies as $company )
+                                    <option value="{{ $company->id }}">{{ $company->name }}</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -687,7 +793,8 @@
 
                                 <div class="col-md-4 mb-3">
                                     <label class="form-label">Paid Date</label>
-                                    <input type="date" class="form-control" id="editPaidDate" name="received_date" max="{{ date('Y-m-d') }}" required>
+                                    <input type="date" class="form-control" id="editPaidDate" name="received_date"
+                                        max="{{ date ( 'Y-m-d' ) }}" required>
                                 </div>
                                 <div class="col-md-4 mb-3">
                                     <label class="form-label" id="editPaymentModeLabel">Payment Mode</label>
@@ -705,8 +812,8 @@
                                 <div class="col-md-4 mb-3">
                                     <label class="form-label">Upload Receipts</label>
                                     <div class="input-group">
-                                        <input type="file" class="form-control" id="editReceipts" name="receipts[]" required
-                                            multiple accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
+                                        <input type="file" class="form-control" id="editReceipts" name="receipts[]"
+                                            required multiple accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
                                         <label class="input-group-text" for="editReceipts">
                                             <i class="fas fa-paperclip"></i>
                                         </label>
@@ -739,7 +846,8 @@
                             <div class="col-md-4 upi-details" style="display: none;">
                                 <label class="form-label fw-bold text-uppercase small text-muted">UPI Phone *</label>
                                 <input type="text" class="form-control" id="editEditableUpiNumber" name="upi_number"
-                                    placeholder="Number" maxlength="10" pattern="[0-9]{10}" title="UPI phone number must be exactly 10 digits">
+                                    placeholder="Number" maxlength="10" pattern="[0-9]{10}"
+                                    title="UPI phone number must be exactly 10 digits">
                             </div>
                         </div>
                         <!-- Status & Dates -->
@@ -748,8 +856,8 @@
                                 <label class="form-label">Balance Amount</label>
                                 <div class="input-group">
                                     <span class="input-group-text">₹</span>
-                                    <input type="number" class="form-control" id="editBalanceAmount" name="balance_amount"
-                                        step="0.01" min="0" readonly>
+                                    <input type="number" class="form-control" id="editBalanceAmount"
+                                        name="balance_amount" step="0.01" min="0" readonly>
                                 </div>
                             </div>
                             <div class="col-md-4 mb-3">
@@ -764,14 +872,15 @@
                                 </select>
                             </div>
                             <div class="col-md-4 mb-3" id="editSettleNotesContainer" style="display:none;">
-                                <label class="form-label" for="editSettleNotes">Settle Notes <span class="text-danger">*</span></label>
+                                <label class="form-label" for="editSettleNotes">Settle Notes <span
+                                        class="text-danger">*</span></label>
                                 <textarea class="form-control" id="editSettleNotes" name="settle_notes" rows="1"
                                     placeholder="Enter notes for settled status..."></textarea>
                             </div>
                             <div class="col-md-4 mb-3" id="editDueDateContainer">
                                 <label class="form-label">Due Date *</label>
                                 <input type="date" class="form-control" id="editDueDate" name="due_date"
-                                    min="{{ date('Y-m-d') }}">
+                                    min="{{ date ( 'Y-m-d' ) }}">
                             </div>
 
                         </div>
@@ -785,8 +894,8 @@
                                 <!-- GST Section -->
                                 <div class="d-flex justify-content-between mb-2">
                                     <div class="form-check form-check-inline">
-                                        <input class="form-check-input" type="checkbox" name="apply_gst" id="editApplyGst"
-                                            value="1" checked>
+                                        <input class="form-check-input" type="checkbox" name="apply_gst"
+                                            id="editApplyGst" value="1" checked>
                                         <label class="form-check-label" for="editApplyGst">Apply GST</label>
                                     </div>
                                 </div>
@@ -812,8 +921,8 @@
                                 <!-- TDS Section -->
                                 <div class="d-flex justify-content-between mb-2">
                                     <div class="form-check form-check-inline">
-                                        <input class="form-check-input" type="checkbox" name="apply_tds" id="editApplyTds"
-                                            value="1" checked>
+                                        <input class="form-check-input" type="checkbox" name="apply_tds"
+                                            id="editApplyTds" value="1" checked>
                                         <label class="form-check-label" for="editApplyTds">Apply TDS</label>
                                     </div>
                                 </div>
@@ -888,7 +997,8 @@
         </div>
     </div>
     <!-- Add this modal to your HTML if not present -->
-    <div class="modal fade" id="viewInvoiceModal" tabindex="-1" aria-labelledby="viewInvoiceModalLabel" aria-hidden="true">
+    <div class="modal fade" id="viewInvoiceModal" tabindex="-1" aria-labelledby="viewInvoiceModalLabel"
+        aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
@@ -918,7 +1028,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <form id="sendInvoiceForm" method="POST" action="{{ route('income.send-email') }}">
+                    <form id="sendInvoiceForm" method="POST" action="{{ route ( 'income.send-email' ) }}">
                         @csrf
                         <input type="hidden" name="invoice_id" id="send_invoice_id">
                         <input type="hidden" name="income_id" id="send_income_id">
@@ -953,8 +1063,9 @@
                                 <textarea class="form-control" id="send_message" name="message" rows="6"
                                     required></textarea>
                                 {{-- <small class="text-muted">
-                                    Available variables: {client_name}, {invoice_no}, {due_date}, {amount}, {company_name}
-                                </small> --}}
+                                        Available variables: {client_name}, {invoice_no}, {due_date}, {amount},
+                                        {company_name}
+                                    </small> --}}
                             </div>
 
                             <div class="col-12">
@@ -1090,7 +1201,7 @@
             const form = selectElement.closest('form');
             const settleNotesEl = form.querySelector('[name="settle_notes"]');
             const settleNotesContainer = document.getElementById(inputId === 'dueDate' ? 'addSettleNotesContainer' : 'editSettleNotesContainer');
-            
+
             if (settleNotesEl && settleNotesContainer) {
                 const statusContainer = selectElement.closest('div[class^="col-"]');
                 const isStatusHidden = statusContainer && statusContainer.style.display === 'none';
@@ -1118,7 +1229,7 @@
             // Handle TDS Section Visibility
             const tdsSectionEl = form.querySelector('#addTdsSectionWrapper') || form.querySelector('#tdsSection');
             const receivedAmountEl = form.querySelector('[name="received_amount"]');
-            
+
             if (tdsSectionEl) {
                 const receivedAmount = receivedAmountEl ? (parseFloat(receivedAmountEl.value) || 0) : 0;
                 if (selectElement.value === 'settle' && receivedAmount <= 0) {
@@ -1134,7 +1245,7 @@
             document.getElementById('modalTitle').textContent = 'Add Non-standard Income';
             document.getElementById('incomeForm').reset();
             document.getElementById('incomeId').value = '';
-            document.getElementById('dueDate').value = '{{ date("Y-m-d") }}';
+            document.getElementById('dueDate').value = '{{ date ( "Y-m-d" ) }}';
             document.getElementById('status').value = 'due';
             document.getElementById('mailStatus').value = '0';
 
@@ -1234,7 +1345,7 @@
             receivedAmountInput.addEventListener('input', calculateIncomeTax);
 
             // Initialize calculation on modal show
-            incomeModal.addEventListener('show.bs.modal', function () {
+            incomeModal.addEventListener('show.bs.modal', function() {
                 // Set default date for due date
                 const dueDateInput = document.getElementById('dueDate');
                 if (dueDateInput && !dueDateInput.value) {
@@ -1257,12 +1368,12 @@
             });
 
             // Also handle the edit function
-            window.editIncome = async function (incomeId) {
+            window.editIncome = async function(incomeId) {
                 try {
                     console.log('Editing income ID:', incomeId);
 
                     const response = await fetch(
-                        `https://xhtmlreviews.in/beta-finance/manager/income/${incomeId}/edit`);
+                        `${window.APP_URL}/manager/income/${incomeId}/edit`);
                     const data = await response.json();
 
                     console.log('API Response:', data);
@@ -1368,7 +1479,7 @@
 
         }
         // Update the form submission handler
-        document.getElementById('incomeForm').addEventListener('submit', async function (e) {
+        document.getElementById('incomeForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             if (this.dataset.submitting === 'true') return;
             this.dataset.submitting = 'true';
@@ -1376,8 +1487,8 @@
             const formData = new FormData(this);
             const incomeId = document.getElementById('incomeId').value;
             const url = incomeId ?
-                `https://xhtmlreviews.in/beta-finance/manager/income/${incomeId}` :
-                'https://xhtmlreviews.in/beta-finance/manager/income';
+                `${window.APP_URL}/manager/income/${incomeId}` :
+                `${window.APP_URL}/manager/income`;
 
             // Add method spoofing for PUT
             if (incomeId) {
@@ -1472,7 +1583,7 @@
         async function openReceivePaymentModal(incomeId) {
             try {
                 const response = await fetch(
-                    `https://xhtmlreviews.in/beta-finance/manager/income/${incomeId}/details`);
+                    `${window.APP_URL}/manager/income/${incomeId}/details`);
                 const data = await response.json();
 
                 if (data.success) {
@@ -1527,7 +1638,7 @@
             receivedAmountInput.parentNode.replaceChild(newReceivedAmountInput, receivedAmountInput);
 
             // Add new event listener
-            document.getElementById('receivedAmount').addEventListener('input', function (e) {
+            document.getElementById('receivedAmount').addEventListener('input', function(e) {
                 const originalAmount = parseFloat(document.getElementById('originalAmount').value) || 0;
                 const receivedAmount = parseFloat(this.value) || 0;
                 const balance = Math.max(0, originalAmount - receivedAmount);
@@ -1554,7 +1665,7 @@
                 const newCreateNewProforma = createNewProforma.cloneNode(true);
                 createNewProforma.parentNode.replaceChild(newCreateNewProforma, createNewProforma);
 
-                document.getElementById('createNewProforma').addEventListener('change', function () {
+                document.getElementById('createNewProforma').addEventListener('change', function() {
                     document.getElementById('newProformaSection').style.display = this.checked ?
                         'block' : 'none';
                     if (!this.checked) {
@@ -1567,7 +1678,7 @@
         }
 
         // Handle receive payment form submission
-        document.getElementById('receivePaymentForm').addEventListener('submit', function (e) {
+        document.getElementById('receivePaymentForm').addEventListener('submit', function(e) {
             e.preventDefault();
             if (this.dataset.submitting === 'true') return;
 
@@ -1589,14 +1700,14 @@
             }
 
             if (!confirm(
-                'Are you sure you want to record this partial payment? This action cannot be undone.'
-            )) {
+                    'Are you sure you want to record this partial payment? This action cannot be undone.'
+                )) {
                 return;
             }
-            
+
             this.dataset.submitting = 'true';
             const submitBtn = this.querySelector('button[type="submit"]');
-            if(submitBtn) {
+            if (submitBtn) {
                 submitBtn.disabled = true;
                 submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
             }
@@ -1608,16 +1719,16 @@
             const createNewProforma = document.getElementById('createNewProforma').checked ? 1 : 0;
             formData.set('create_new_proforma', createNewProforma); // Override the string value
 
-            fetch(`https://xhtmlreviews.in/beta-finance/manager/income/${incomeId}/receive-payment`, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
-                        .getAttribute(
-                            'content')
-                }
-            })
+            fetch(`${window.APP_URL}/manager/income/${incomeId}/receive-payment`, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
+                            .getAttribute(
+                                'content')
+                    }
+                })
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
@@ -1627,11 +1738,11 @@
                     } else {
                         document.getElementById('receivePaymentForm').dataset.submitting = 'false';
                         const formSubmitBtn = document.getElementById('receivePaymentForm').querySelector('button[type="submit"]');
-                        if(formSubmitBtn) {
+                        if (formSubmitBtn) {
                             formSubmitBtn.disabled = false;
                             formSubmitBtn.innerHTML = 'Confirm Payment';
                         }
-                        
+
                         alert(data.message || 'Error recording payment');
                         // Show validation errors if any
                         if (data.errors) {
@@ -1653,7 +1764,7 @@
                 .catch(error => {
                     document.getElementById('receivePaymentForm').dataset.submitting = 'false';
                     const formSubmitBtn = document.getElementById('receivePaymentForm').querySelector('button[type="submit"]');
-                    if(formSubmitBtn) {
+                    if (formSubmitBtn) {
                         formSubmitBtn.disabled = false;
                         formSubmitBtn.innerHTML = 'Confirm Payment';
                     }
@@ -1674,22 +1785,22 @@
             notification.className =
                 `custom-notification alert alert-${type === 'success' ? 'success' : 'danger'}`;
             notification.style.cssText = `
-                                                                            position: fixed;
-                                                                            top: 20px;
-                                                                            right: 20px;
-                                                                            z-index: 9999;
-                                                                            padding: 15px 20px;
-                                                                            border-radius: 5px;
-                                                                            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-                                                                            min-width: 300px;
-                                                                            max-width: 400px;
-                                                                        `;
+                                                                                position: fixed;
+                                                                                top: 20px;
+                                                                                right: 20px;
+                                                                                z-index: 9999;
+                                                                                padding: 15px 20px;
+                                                                                border-radius: 5px;
+                                                                                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                                                                                min-width: 300px;
+                                                                                max-width: 400px;
+                                                                            `;
             notification.innerHTML = `
-                                                                            <div class="d-flex justify-content-between align-items-center">
-                                                                                <span>${message}</span>
-                                                                                <button type="button" class="btn-close" onclick="this.parentElement.parentElement.remove()"></button>
-                                                                            </div>
-                                                                        `;
+                                                                                <div class="d-flex justify-content-between align-items-center">
+                                                                                    <span>${message}</span>
+                                                                                    <button type="button" class="btn-close" onclick="this.parentElement.parentElement.remove()"></button>
+                                                                                </div>
+                                                                            `;
 
             document.body.appendChild(notification);
 
@@ -1701,11 +1812,11 @@
             }, 5000);
         }
 
-        document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('DOMContentLoaded', function() {
             // Ensure checkboxes send proper values
             const checkboxes = document.querySelectorAll('input[type="checkbox"]');
             checkboxes.forEach(checkbox => {
-                checkbox.addEventListener('change', function () {
+                checkbox.addEventListener('change', function() {
                     if (this.checked) {
                         this.value = '1';
                     } else {
@@ -1715,7 +1826,7 @@
             });
         });
         // Initialize on page load
-        document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('DOMContentLoaded', function() {
             console.log('Page loaded, income module initialized');
         });
     </script>
@@ -1751,7 +1862,7 @@
                     if (gstAmountField) gstAmountField.value = gstAmount.toFixed(2);
                     if (tdsAmountField) tdsAmountField.value = tdsAmount.toFixed(2);
                     if (grandTotalField) grandTotalField.value = grandTotal.toFixed(2);
-                    
+
                     // Hide amount_after_tds field if it exists
                     const amountAfterTDSField = document.getElementById('amount_after_tds');
                     if (amountAfterTDSField && amountAfterTDSField.parentElement) {
@@ -1866,7 +1977,7 @@
         }
 
         // Initialize when page loads
-        document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('DOMContentLoaded', function() {
             console.log('DOM loaded, initializing tax calculator...');
 
             // Add event listeners to all calculation inputs
@@ -1876,7 +1987,7 @@
                 const input = document.getElementById(id);
                 if (input) {
                     console.log('Adding listener to:', id);
-                    input.addEventListener('input', function (event) {
+                    input.addEventListener('input', function(event) {
                         if (id === 'received_amount') {
                             // When Amount Received changes, ONLY calculate balance
                             calculateBalance(true);
@@ -1896,7 +2007,7 @@
 
             if (gstCheckbox) {
                 console.log('Adding GST checkbox listener');
-                gstCheckbox.addEventListener('change', function () {
+                gstCheckbox.addEventListener('change', function() {
                     const gstPercentageInput = document.getElementById('gst_percentage');
                     if (gstPercentageInput) {
                         gstPercentageInput.disabled = !this.checked;
@@ -1907,7 +2018,7 @@
 
             if (tdsCheckbox) {
                 console.log('Adding TDS checkbox listener');
-                tdsCheckbox.addEventListener('change', function () {
+                tdsCheckbox.addEventListener('change', function() {
                     const tdsPercentageInput = document.getElementById('tds_percentage');
                     if (tdsPercentageInput) {
                         tdsPercentageInput.disabled = !this.checked;
@@ -1933,7 +2044,7 @@
             // Add listener for TDS Status in Add Modal
             const addTdsStatus = document.getElementById('addTdsStatus');
             if (addTdsStatus) {
-                addTdsStatus.addEventListener('change', function () {
+                addTdsStatus.addEventListener('change', function() {
                     handleTdsStatusBehavior('addTdsStatus', 'addTdsReceipt');
                 });
             }
@@ -2059,7 +2170,7 @@
                 console.log('Opening edit modal for income ID:', incomeId);
 
                 const response = await fetch(
-                    `https://xhtmlreviews.in/beta-finance/manager/income/${incomeId}/edit`
+                    `${window.APP_URL}/manager/income/${incomeId}/edit`
                 );
                 const data = await response.json();
 
@@ -2094,7 +2205,7 @@
 
                     // For foreign currency, the base amount input should be in INR
                     const isForeignCurrency = (income.currency !== 'INR');
-                    
+
                     if (isForeignCurrency) {
                         // The amount in INR before any received
                         document.getElementById('editPlannedAmount').value = parseFloat(income.planned_amount || income.amount || 0).toFixed(2);
@@ -2135,9 +2246,14 @@
                     const isStandardIncome = income.invoice_id && income.invoice_id > 0;
 
                     // Update Base Amount Currency Labels (revert to INR for the input, show breakdown for foreign)
-                    const currencySymbols = { 'USD': '$', 'EUR': '€', 'GBP': '£', 'INR': '₹' };
+                    const currencySymbols = {
+                        'USD': '$',
+                        'EUR': '€',
+                        'GBP': '£',
+                        'INR': '₹'
+                    };
                     const curSymbol = currencySymbols[income.currency] || '₹';
-                    
+
                     const baseAmountLabel = document.getElementById('editBaseAmountLabel');
                     if (baseAmountLabel) {
                         baseAmountLabel.innerHTML = `Base Amount (₹)`;
@@ -2146,7 +2262,7 @@
                     if (baseAmountSymbol) {
                         baseAmountSymbol.textContent = '₹';
                     }
-                    
+
                     const breakdownEl = document.getElementById('incomePlannedBreakdown');
                     if (breakdownEl) {
                         if (isForeignCurrency) {
@@ -2226,7 +2342,9 @@
                     if (gstCheckbox) {
                         gstCheckbox.checked = hasGst;
                         gstCheckbox.style.pointerEvents = 'none';
-                        gstCheckbox.onclick = function() { return false; };
+                        gstCheckbox.onclick = function() {
+                            return false;
+                        };
                     }
                     if (gstPercentageInput) {
                         gstPercentageInput.value = income.gst_percentage || 18;
@@ -2245,7 +2363,9 @@
                     if (tdsCheckbox) {
                         tdsCheckbox.checked = hasTds;
                         tdsCheckbox.style.pointerEvents = 'none';
-                        tdsCheckbox.onclick = function() { return false; };
+                        tdsCheckbox.onclick = function() {
+                            return false;
+                        };
                     }
                     if (tdsPercentageInput) {
                         tdsPercentageInput.value = income.tds_percentage || 10;
@@ -2321,7 +2441,7 @@
         async function viewSplitHistory(expenseId) {
             try {
                 const response = await fetch(
-                    `https://xhtmlreviews.in/beta-finance/manager/income/${expenseId}/split-history`);
+                    `${window.APP_URL}/manager/income/${expenseId}/split-history`);
                 const data = await response.json();
 
                 const splitHistoryContent = document.getElementById('splitHistoryContent');
@@ -2337,57 +2457,57 @@
                     // Show parent expense if this is a child
                     if (data.parent_expense) {
                         historyHTML += `
-                            <h6 class="mb-3">Original Income (Parent)</h6>
-                            <div class="table-responsive mb-4">
-                                <table class="table table-bordered text-center">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th>Base amount</th>
-                                            ${!isUSD ? `
-                                            <th>gst (${parseFloat(data.parent_expense.gst_percentage || 0)}%)</th>
-                                            <th>tds (${parseFloat(data.parent_expense.tds_percentage || 0)}%)</th>
-                                            ` : ''}
-                                            <th>receivable</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td>₹${parseFloat(data.parent_expense.original_total || 0).toFixed(2)}</td>
-                                            ${!isUSD ? `
-                                            <td>₹${parseFloat(data.parent_expense.gst_amount || 0).toFixed(2)}</td>
-                                            <td>₹${parseFloat(data.parent_expense.tds_amount || 0).toFixed(2)}</td>
-                                            ` : ''}
-                                            <td>₹${parseFloat(data.parent_expense.planned_amount || 0).toFixed(2)}</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        `;
+                                <h6 class="mb-3">Original Income (Parent)</h6>
+                                <div class="table-responsive mb-4">
+                                    <table class="table table-bordered text-center">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Base amount</th>
+                                                ${!isUSD ? `
+                                                <th>gst (${parseFloat(data.parent_expense.gst_percentage || 0)}%)</th>
+                                                <th>tds (${parseFloat(data.parent_expense.tds_percentage || 0)}%)</th>
+                                                ` : ''}
+                                                <th>receivable</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>₹${parseFloat(data.parent_expense.original_total || 0).toFixed(2)}</td>
+                                                ${!isUSD ? `
+                                                <td>₹${parseFloat(data.parent_expense.gst_amount || 0).toFixed(2)}</td>
+                                                <td>₹${parseFloat(data.parent_expense.tds_amount || 0).toFixed(2)}</td>
+                                                ` : ''}
+                                                <td>₹${parseFloat(data.parent_expense.planned_amount || 0).toFixed(2)}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            `;
                     }
 
                     // Show all children (split transactions)
                     if (data.children.length > 0) {
                         historyHTML += `
-                                <h6 class="mt-4 mb-3">Split Transactions:</h6>
-                                <div class="table-responsive">
-                                    <table class="table table-hover">
-                                        <thead>
-                                            <tr>
-                                                <th>Split #</th>
-                                                <th>Income ID</th>
-                                                <th>Amount</th>
-                                                ${!isUSD ? `
-                                                <th>GST Amount</th>
-                                                <th>TDS Amount</th>
-                                                ` : ''}
-                                                <th>Status</th>
-                                                <th>Created Date</th>
-                                                <th>Due Date</th>
-                                                <th>Paid Date</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                            `;
+                                    <h6 class="mt-4 mb-3">Split Transactions:</h6>
+                                    <div class="table-responsive">
+                                        <table class="table table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Split #</th>
+                                                    <th>Income ID</th>
+                                                    <th>Amount</th>
+                                                    ${!isUSD ? `
+                                                    <th>GST Amount</th>
+                                                    <th>TDS Amount</th>
+                                                    ` : ''}
+                                                    <th>Status</th>
+                                                    <th>Created Date</th>
+                                                    <th>Due Date</th>
+                                                    <th>Paid Date</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                `;
 
                         data.children.forEach((child, index) => {
                             const statusClass = {
@@ -2396,72 +2516,72 @@
                                 'pending': 'warning',
                                 'overdue': 'danger',
                                 'due': 'info'
-                            }[child.status] || 'secondary';
+                            } [child.status] || 'secondary';
 
                             historyHTML += `
-                                    <tr ${child.id == expenseId ? 'class="table-info"' : ''}>
-                                        <td>${index + 1}</td>
-                                        <td>
-                                            <span class="badge bg-${child.id == expenseId ? 'primary' : 'secondary'}">
-                                                #${child.id}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            ₹${parseFloat(child.planned_amount).toFixed(2)}
-                                            ${child.status === 'settle' && child.settle_notes ? `<div class="text-muted small mt-1">(${child.settle_notes})</div>` : ''}
-                                        </td>
-                                        ${!isUSD ? `
-                                        <td>₹${parseFloat(child.gst_amount || 0).toFixed(2)}</td>
-                                        <td>₹${parseFloat(child.tds_amount || 0).toFixed(2)}</td>
-                                        ` : ''}
-                                        <td>
-                                            <span class="badge bg-${statusClass}">
-                                                ${child.status}
-                                            </span>
-                                        </td>
-                                        <td>${new Date(child.created_at).toLocaleDateString()}</td>
-                                        <td>${child.due_date ? new Date(child.due_date).toLocaleDateString() : '-'}</td>
-                                        <td>${child.paid_date!='N/A'&& child.paid_date ? new Date(child.paid_date).toLocaleDateString() : '-'}</td>
-                                    </tr>
-                                `;
-                            
+                                        <tr ${child.id == expenseId ? 'class="table-info"' : ''}>
+                                            <td>${index + 1}</td>
+                                            <td>
+                                                <span class="badge bg-${child.id == expenseId ? 'primary' : 'secondary'}">
+                                                    #${child.id}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                ₹${parseFloat(child.planned_amount).toFixed(2)}
+                                                ${child.status === 'settle' && child.settle_notes ? `<div class="text-muted small mt-1">(${child.settle_notes})</div>` : ''}
+                                            </td>
+                                            ${!isUSD ? `
+                                            <td>₹${parseFloat(child.gst_amount || 0).toFixed(2)}</td>
+                                            <td>₹${parseFloat(child.tds_amount || 0).toFixed(2)}</td>
+                                            ` : ''}
+                                            <td>
+                                                <span class="badge bg-${statusClass}">
+                                                    ${child.status}
+                                                </span>
+                                            </td>
+                                            <td>${new Date(child.created_at).toLocaleDateString()}</td>
+                                            <td>${child.due_date ? new Date(child.due_date).toLocaleDateString() : '-'}</td>
+                                            <td>${child.paid_date != 'N/A' && child.paid_date ? new Date(child.paid_date).toLocaleDateString() : '-'}</td>
+                                        </tr>
+                                    `;
+
 
                         });
 
                         historyHTML += `
-                                        </tbody>
-                                    </table>
-                                </div>
-                            `;
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                `;
                     }
 
                     // Show summary
                     if (data.summary) {
                         historyHTML += `
-                            <h6 class="mt-4 mb-3">Split Summary</h6>
-                            <div class="table-responsive">
-                                <table class="table table-bordered text-center">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th>Original Receivable Amount</th>
-                                            <th>Total Paid</th>
-                                            <th>Total Balance</th>
-                                            ${!isUSD ? `<th>Tds Bal. Amount</th>` : ''}
-                                            <th>Split Count</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td>₹${parseFloat(data.summary.original_amount || 0).toFixed(2)}</td>
-                                            <td class="text-success">₹${parseFloat(data.summary.total_paid || 0).toFixed(2)}</td>
-                                            <td class="text-warning">₹${parseFloat(data.summary.total_balance || 0).toFixed(2)}</td>
-                                            ${!isUSD ? `<td>₹${parseFloat(data.summary.tds_balance || 0).toFixed(2)}</td>` : ''}
-                                            <td>${data.summary.split_count}</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        `;
+                                <h6 class="mt-4 mb-3">Split Summary</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-bordered text-center">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Original Receivable Amount</th>
+                                                <th>Total Paid</th>
+                                                <th>Total Balance</th>
+                                                ${!isUSD ? `<th>Tds Bal. Amount</th>` : ''}
+                                                <th>Split Count</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>₹${parseFloat(data.summary.original_amount || 0).toFixed(2)}</td>
+                                                <td class="text-success">₹${parseFloat(data.summary.total_paid || 0).toFixed(2)}</td>
+                                                <td class="text-warning">₹${parseFloat(data.summary.total_balance || 0).toFixed(2)}</td>
+                                                ${!isUSD ? `<td>₹${parseFloat(data.summary.tds_balance || 0).toFixed(2)}</td>` : ''}
+                                                <td>${data.summary.split_count}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            `;
                     }
 
                     splitHistoryContent.innerHTML = historyHTML;
@@ -2491,7 +2611,7 @@
             const tdsAmountInput = document.getElementById('editTdsAmount');
             const balanceAmountInput = document.getElementById('editBalanceAmount');
 
-            window.recalculateEditIncome = function (init = false) {
+            window.recalculateEditIncome = function(init = false) {
                 if (paidAmountInput) {
                     if (init && parseFloat(paidAmountInput.value) === 0) {
                         calculateEditTaxAndBalance('init');
@@ -2513,7 +2633,7 @@
 
                 const foreignHtml = el.dataset.foreignHtml;
                 let html = foreignHtml ? `<span class="badge bg-light text-dark border">${foreignHtml}</span>` : `<span class="badge bg-light text-dark border">Base: ₹${baseAmount.toFixed(2)}</span>`;
-                
+
                 if (gstAmount > 0) html += ` <span class="text-muted mx-1">+</span> <span class="badge bg-info text-dark">GST: ₹${gstAmount.toFixed(2)}</span>`;
                 if (isSplit && tdsAmount > 0) {
                     html += ` <span class="text-muted mx-1">-</span> <span class="badge bg-danger text-white">TDS: ₹${tdsAmount.toFixed(2)}</span>`;
@@ -2537,7 +2657,7 @@
                     plannedAmountInput.value = maxBase.toFixed(2);
                 }
                 let paidAmount = parseFloat(paidAmountInput.value) || 0;
-                
+
                 const applyGst = gstCheckbox ? gstCheckbox.checked : false;
                 const applyTds = tdsCheckbox ? tdsCheckbox.checked : false;
                 const gstPercentage = applyGst ? (parseFloat(gstPercentageInput ? gstPercentageInput.value : 0) || 0) : 0;
@@ -2545,28 +2665,28 @@
 
                 const gstAmount = (baseAmount * gstPercentage) / 100;
                 const tdsAmount = (baseAmount * tdsPercentage) / 100;
-                
+
                 if (gstAmountInput) gstAmountInput.value = gstAmount.toFixed(2);
                 if (tdsAmountInput) tdsAmountInput.value = tdsAmount.toFixed(2);
 
                 const conversionCost = parseFloat(document.getElementById('editOriginalAmount').dataset.conversionCost || 0);
                 const plannedAmount = baseAmount + gstAmount;
                 let netPayable = plannedAmount - tdsAmount - conversionCost;
-                
+
                 // Use original exact net amount if base hasn't been manually altered and taxes haven't changed, 
                 // to prevent floating point/rounding issues from conversion_cost
                 const originalBase = parseFloat(document.getElementById('editOriginalAmount').dataset.originalBase || 0);
                 const originalNet = parseFloat(document.getElementById('editOriginalAmount').dataset.originalTotal || 0);
                 const originalGst = parseFloat(document.getElementById('editOriginalAmount').dataset.originalGst || 0);
                 const originalTds = parseFloat(document.getElementById('editOriginalAmount').dataset.originalTds || 0);
-                
-                if (Math.abs(baseAmount - originalBase) < 0.01 && 
-                    Math.abs(gstAmount - originalGst) < 0.01 && 
-                    Math.abs(tdsAmount - originalTds) < 0.01 && 
+
+                if (Math.abs(baseAmount - originalBase) < 0.01 &&
+                    Math.abs(gstAmount - originalGst) < 0.01 &&
+                    Math.abs(tdsAmount - originalTds) < 0.01 &&
                     originalNet > 0) {
                     netPayable = originalNet;
                 }
-                
+
                 updateBreakdownText('incomePlannedBreakdown', baseAmount, gstAmount, tdsAmount, conversionCost, false);
 
                 if (source === 'init') {
@@ -2599,15 +2719,15 @@
                 }
                 const oldNetPayable = parseFloat(document.getElementById('editOriginalAmount').dataset.originalTotal || 0);
                 const effectiveTotalPayable = Math.max(netPayable, oldNetPayable);
-                
+
                 // Balance calculation matching expense logic to capture difference
                 let balance = effectiveTotalPayable - paidAmount;
                 // If paidAmount was automatically reduced, we need to subtract the difference from the original paid amount
                 // But wait, if paidAmount is 915.26, effectiveTotalPayable is 1080, balance is 1080 - 915.26 = 164.74.
                 // This perfectly matches the user's explicit example.
-                
+
                 const balanceVal = Math.max(0, balance);
-                
+
                 if (balanceAmountInput) {
                     balanceAmountInput.value = balanceVal.toFixed(2);
 
@@ -2669,14 +2789,14 @@
                     calculateEditTaxAndBalance('paid');
                     toggleRequiredFields();
                 });
-                
+
                 // Trigger once on init
                 toggleRequiredFields();
             }
 
 
             if (gstCheckbox) {
-                gstCheckbox.addEventListener('change', function () {
+                gstCheckbox.addEventListener('change', function() {
                     if (gstPercentageInput) {
                         gstPercentageInput.disabled = !this.checked;
                     }
@@ -2685,7 +2805,7 @@
             }
 
             if (tdsCheckbox) {
-                tdsCheckbox.addEventListener('change', function () {
+                tdsCheckbox.addEventListener('change', function() {
                     if (tdsPercentageInput) {
                         tdsPercentageInput.disabled = !this.checked;
                     }
@@ -2705,7 +2825,7 @@
 
             const editStatus = document.getElementById('editStatus');
             if (editStatus) {
-                editStatus.addEventListener('change', function () {
+                editStatus.addEventListener('change', function() {
                     handleStatusBehavior('income-edit');
                     if (this.value === 'settle') {
                         // We don't auto-fill paid amount on settle anymore, to allow writing off balance
@@ -2721,7 +2841,7 @@
 
             const editTdsStatus = document.getElementById('editTdsStatus');
             if (editTdsStatus) {
-                editTdsStatus.addEventListener('change', function () {
+                editTdsStatus.addEventListener('change', function() {
                     handleTdsStatusBehavior('editTdsStatus', 'editTdsReceipt');
                 });
             }
@@ -2746,7 +2866,7 @@
         }
 
         // Handle edit form submission
-        document.getElementById('editIncomeForm')?.addEventListener('submit', async function (e) {
+        document.getElementById('editIncomeForm')?.addEventListener('submit', async function(e) {
             e.preventDefault();
             if (this.dataset.submitting === 'true') return;
             this.dataset.submitting = 'true';
@@ -2759,7 +2879,7 @@
             if (plannedAmountInput) {
                 const baseAmount = parseFloat(plannedAmountInput.value) || 0;
                 const minVal = parseFloat(plannedAmountInput.min) || 0;
-                
+
                 // Max validation removed so Base Amount is fully editable
                 if (baseAmount < minVal) {
                     alert(`Base Amount cannot be less than ${minVal}.`);
@@ -2804,7 +2924,7 @@
             }
 
             const formData = new FormData(this);
-            const url = `https://xhtmlreviews.in/beta-finance/manager/income/${incomeId}`;
+            const url = `${window.APP_URL}/manager/income/${incomeId}`;
 
             // Show loading state
             const submitBtn = document.getElementById('editSubmitBtn');
@@ -2883,14 +3003,14 @@
 
             try {
                 const response = await fetch(
-                    `https://xhtmlreviews.in/beta-finance/manager/receipts/${receiptId}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute(
-                            'content') || '',
-                        'Accept': 'application/json'
+                    `${window.APP_URL}/manager/receipts/${receiptId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute(
+                                'content') || '',
+                            'Accept': 'application/json'
+                        }
                     }
-                }
                 );
 
                 const data = await response.json();
@@ -2913,19 +3033,19 @@
             const notification = document.createElement('div');
             notification.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show`;
             notification.style.cssText = `
-                                                                        position: fixed;
-                                                                        top: 20px;
-                                                                        right: 20px;
-                                                                        z-index: 9999;
-                                                                        min-width: 300px;
-                                                                        max-width: 400px;
-                                                                    `;
+                                                                            position: fixed;
+                                                                            top: 20px;
+                                                                            right: 20px;
+                                                                            z-index: 9999;
+                                                                            min-width: 300px;
+                                                                            max-width: 400px;
+                                                                        `;
             notification.innerHTML = `
-                                                                        <div class="d-flex justify-content-between align-items-center">
-                                                                            <span>${message}</span>
-                                                                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                                                                        </div>
-                                                                    `;
+                                                                            <div class="d-flex justify-content-between align-items-center">
+                                                                                <span>${message}</span>
+                                                                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                                                            </div>
+                                                                        `;
 
             document.body.appendChild(notification);
 
@@ -2944,7 +3064,7 @@
             console.log('Fetching invoice data for ID:', id);
             showLoadingState(true);
 
-            fetch(`https://xhtmlreviews.in/beta-finance/manager/getIncome/${id}`)
+            fetch(`${window.APP_URL}/manager/getIncome/${id}`)
                 .then(response => {
                     console.log('Response status:', response.status);
                     if (!response.ok) {
@@ -2978,13 +3098,13 @@
             const content = document.getElementById('invoiceDetailsContent');
             if (content && isLoading) {
                 content.innerHTML = `
-                        <div class="text-center py-5">
-                            <div class="spinner-border text-primary" role="status">
-                                <span class="visually-hidden">Loading...</span>
+                            <div class="text-center py-5">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <p class="mt-3">Loading invoice details...</p>
                             </div>
-                            <p class="mt-3">Loading invoice details...</p>
-                        </div>
-                    `;
+                        `;
             }
         }
 
@@ -3074,13 +3194,13 @@
             }
 
             return lineItems.map(item => `
-                    <tr>
-                        <td>${escapeHtml(item.description || 'Item')}</td>
-                        <td class="text-end">${item.quantity || 1}</td>
-                        <td class="text-end">${formatCurrency(item.rate || 0, currency)}</td>
-                        <td class="text-end">${formatCurrency(item.amount || 0, currency)}</td>
-                    </tr>
-                `).join('');
+                        <tr>
+                            <td>${escapeHtml(item.description || 'Item')}</td>
+                            <td class="text-end">${item.quantity || 1}</td>
+                            <td class="text-end">${formatCurrency(item.rate || 0, currency)}</td>
+                            <td class="text-end">${formatCurrency(item.amount || 0, currency)}</td>
+                        </tr>
+                    `).join('');
         }
 
         // Function to render GST details
@@ -3088,34 +3208,34 @@
             if (!gstItems.length) return '';
 
             return `
-                    <div class="mt-4">
-                        <h6 class="fw-bold">GST Details</h6>
-                        <table class="table table-sm table-bordered">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>GST Type</th>
-                                    <th class="text-end">Percentage</th>
-                                    <th class="text-end">Amount</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${gstItems.map(tax => `
+                        <div class="mt-4">
+                            <h6 class="fw-bold">GST Details</h6>
+                            <table class="table table-sm table-bordered">
+                                <thead class="table-light">
                                     <tr>
-                                        <td>${escapeHtml(tax.tax_type?.toUpperCase() || 'GST')}</td>
-                                        <td class="text-end">${(parseFloat(tax.tax_percentage) || 0).toFixed(2)}%</td>
-                                        <td class="text-end">${formatCurrency(tax.tax_amount || 0)}</td>
+                                        <th>GST Type</th>
+                                        <th class="text-end">Percentage</th>
+                                        <th class="text-end">Amount</th>
                                     </tr>
-                                `).join('')}
-                            </tbody>
-                            <tfoot class="table-light">
-                                <tr>
-                                    <th colspan="2" class="text-end">Total GST:</th>
-                                    <td class="text-end"><strong>${formatCurrency(gstTotal)}</strong></td>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
-                `;
+                                </thead>
+                                <tbody>
+                                    ${gstItems.map(tax => `
+                                        <tr>
+                                            <td>${escapeHtml(tax.tax_type?.toUpperCase() || 'GST')}</td>
+                                            <td class="text-end">${(parseFloat(tax.tax_percentage) || 0).toFixed(2)}%</td>
+                                            <td class="text-end">${formatCurrency(tax.tax_amount || 0)}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                                <tfoot class="table-light">
+                                    <tr>
+                                        <th colspan="2" class="text-end">Total GST:</th>
+                                        <td class="text-end"><strong>${formatCurrency(gstTotal)}</strong></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    `;
         }
 
         // Function to render TDS details
@@ -3123,34 +3243,34 @@
             if (!tdsItems.length) return '';
 
             return `
-                    <div class="mt-3">
-                        <h6 class="fw-bold text-danger">TDS Details</h6>
-                        <table class="table table-sm table-bordered">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>TDS Type</th>
-                                    <th class="text-end">Percentage</th>
-                                    <th class="text-end">Amount</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${tdsItems.map(tax => `
+                        <div class="mt-3">
+                            <h6 class="fw-bold text-danger">TDS Details</h6>
+                            <table class="table table-sm table-bordered">
+                                <thead class="table-light">
                                     <tr>
-                                        <td>${escapeHtml(tax.tax_type?.toUpperCase() || 'TDS')}</td>
-                                        <td class="text-end">${(parseFloat(tax.tax_percentage) || 0).toFixed(2)}%</td>
-                                        <td class="text-end text-danger">-${formatCurrency(tax.tax_amount || 0)}</td>
+                                        <th>TDS Type</th>
+                                        <th class="text-end">Percentage</th>
+                                        <th class="text-end">Amount</th>
                                     </tr>
-                                `).join('')}
-                            </tbody>
-                            <tfoot class="table-light">
-                                <tr>
-                                    <th colspan="2" class="text-end">Total TDS Deduction:</th>
-                                    <td class="text-end"><strong class="text-danger">-${formatCurrency(tdsTotal)}</strong></td>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
-                `;
+                                </thead>
+                                <tbody>
+                                    ${tdsItems.map(tax => `
+                                        <tr>
+                                            <td>${escapeHtml(tax.tax_type?.toUpperCase() || 'TDS')}</td>
+                                            <td class="text-end">${(parseFloat(tax.tax_percentage) || 0).toFixed(2)}%</td>
+                                            <td class="text-end text-danger">-${formatCurrency(tax.tax_amount || 0)}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                                <tfoot class="table-light">
+                                    <tr>
+                                        <th colspan="2" class="text-end">Total TDS Deduction:</th>
+                                        <td class="text-end"><strong class="text-danger">-${formatCurrency(tdsTotal)}</strong></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    `;
         }
 
         // Function to render conversion details for USD invoices
@@ -3161,38 +3281,38 @@
             const convertedAmount = parseFloat(invoice.invoice_converted_amount || invoice.converted_amount || 0);
             const conversionRate = originalAmount > 0 ? (convertedAmount / originalAmount) : 0;
             const displayConversionCost = parseFloat(invoice.original_conversion_cost || invoice.conversion_cost || 0);
-            
+
             return `
-                    <div class="card mb-4 border-info">
-                        <div class="card-header bg-info text-white">
-                            <i class="fas fa-exchange-alt me-2"></i>Currency Conversion Details
-                        </div>
-                        <div class="card-body">
-                            <div class="row text-center">
-                                <div class="col-md-4">
-                                    <small class="text-muted d-block">Original Amount</small>
-                                    <strong class="fs-5">${formatCurrency(originalAmount, 'USD')}</strong>
-                                </div>
-                                <div class="col-md-4">
-                                    <small class="text-muted d-block">Conversion Rate</small>
-                                    <strong>1 USD = ${formatCurrency(conversionRate)}</strong>
-                                </div>
-                                <div class="col-md-4">
-                                    <small class="text-muted d-block">Converted Amount</small>
-                                    <strong class="fs-5 text-primary">${formatCurrency(convertedAmount)}</strong>
-                                </div>
+                        <div class="card mb-4 border-info">
+                            <div class="card-header bg-info text-white">
+                                <i class="fas fa-exchange-alt me-2"></i>Currency Conversion Details
                             </div>
-                            ${displayConversionCost > 0 ? `
-                                <div class="row mt-3">
-                                    <div class="col-12 text-center">
-                                        <small class="text-muted">Conversion Cost:</small>
-                                        <strong>${formatCurrency(displayConversionCost)}</strong>
+                            <div class="card-body">
+                                <div class="row text-center">
+                                    <div class="col-md-4">
+                                        <small class="text-muted d-block">Original Amount</small>
+                                        <strong class="fs-5">${formatCurrency(originalAmount, 'USD')}</strong>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <small class="text-muted d-block">Conversion Rate</small>
+                                        <strong>1 USD = ${formatCurrency(conversionRate)}</strong>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <small class="text-muted d-block">Converted Amount</small>
+                                        <strong class="fs-5 text-primary">${formatCurrency(convertedAmount)}</strong>
                                     </div>
                                 </div>
-                            ` : ''}
+                                ${displayConversionCost > 0 ? `
+                                    <div class="row mt-3">
+                                        <div class="col-12 text-center">
+                                            <small class="text-muted">Conversion Cost:</small>
+                                            <strong>${formatCurrency(displayConversionCost)}</strong>
+                                        </div>
+                                    </div>
+                                ` : ''}
+                            </div>
                         </div>
-                    </div>
-                `;
+                    `;
         }
 
         // Main render function
@@ -3220,8 +3340,8 @@
 
             if (!invoice.invoice_id) {
                 netPayable = parseFloat(invoice.amount || 0);
-            } 
-            
+            }
+
             // If the original currency was USD, it's always converted to INR for display/payment
             if (invoice.currency === 'USD') {
                 displayCurrency = 'INR';
@@ -3233,84 +3353,80 @@
             // original_base_amount = base amount of the root invoice, schedule_amount = base + GST (planned amount)
             const baseAmountForSplit = parseFloat(invoice.original_base_amount) || parseFloat(invoice.actual_amount) || subtotal || parseFloat(invoice.schedule_amount) || 0;
             const originalConversionCost = parseFloat(invoice.original_conversion_cost || invoice.conversion_cost || 0);
-            
+
             // Prefer original_total_amount from backend to avoid floating point math discrepancies
-            const originalNetAmount = invoice.original_total_amount 
-                ? parseFloat(invoice.original_total_amount) 
-                : (baseAmountForSplit + (parseFloat(invoice.original_gst_total) || 0) - (parseFloat(invoice.original_tds_total) || 0) - (isUSD ? originalConversionCost : 0));
-                
+            const originalNetAmount = invoice.original_total_amount ?
+                parseFloat(invoice.original_total_amount) :
+                (baseAmountForSplit + (parseFloat(invoice.original_gst_total) || 0) - (parseFloat(invoice.original_tds_total) || 0) - (isUSD ? originalConversionCost : 0));
+
             const totalSettledOverall = parseFloat(invoice.total_settled_amount) || 0;
             const pendingAmount = originalNetAmount - (parseFloat(invoice.total_paid_amount) || 0) - totalSettledOverall;
 
             const currentSplitBase = parseFloat(invoice.actual_amount) || subtotal;
-            const actualConversionRate = (invoice.currency === 'USD' && parseFloat(invoice.original_currency_amount || 0) > 0) 
-                ? (parseFloat(invoice.invoice_converted_amount || invoice.converted_amount || 0) / parseFloat(invoice.original_currency_amount)) 
-                : 1;
-                
+            const actualConversionRate = (invoice.currency === 'USD' && parseFloat(invoice.original_currency_amount || 0) > 0) ?
+                (parseFloat(invoice.invoice_converted_amount || invoice.converted_amount || 0) / parseFloat(invoice.original_currency_amount)) :
+                1;
+
             const currentSplitBaseDisplay = currentSplitBase;
             const plannedAmtStr = isUSD ? ` (${Math.round(parseFloat(invoice.planned_amount || (parseFloat(invoice.amount || 0) + parseFloat(invoice.conversion_cost || 0)) || 0))})` : '';
 
             const currentSplitSummaryHtml = isSplit ? `
-                    <div class="d-flex justify-content-between mb-1">
-                        <span class="small fw-bold text-primary">Current Split Details</span>
-                    </div>
-                    <div class="d-flex justify-content-between mb-1">
-                        <span class="small text-muted">This Split (Base):</span>
-                        <span class="small fw-bold">${formatCurrency(currentSplitBaseDisplay, invoice.currency || displayCurrency)}${plannedAmtStr}</span>
-                    </div>
-                    ${(gstTotal > 0) ? `
-                    <div class="d-flex justify-content-between mb-1">
-                        <span class="small text-muted">+ GST:</span>
-                        <span class="small fw-bold">${formatCurrency(gstTotal, displayCurrency)}</span>
-                    </div>
-                    ` : ''}
-                    ${(tdsTotal > 0) ? `
-                    <div class="d-flex justify-content-between mb-1">
-                        <span class="small text-muted">- TDS:</span>
-                        <span class="small fw-bold text-danger">-${formatCurrency(tdsTotal, displayCurrency)}</span>
-                    </div>
-                    ` : ''}
-                    ${(isUSD && parseFloat(invoice.conversion_cost || 0) > 0) ? `
-                    <div class="d-flex justify-content-between mb-1">
-                        <span class="small text-muted">This Split Conversion Cost:</span>
-                        <span class="small fw-bold text-danger">-${formatCurrency(parseFloat(invoice.conversion_cost), displayCurrency)}</span>
-                    </div>
-                    ` : ''}
-                    <div class="d-flex justify-content-between mb-2">
-                        <span class="small text-muted">This Split Total:</span>
-                        <span class="small fw-bold">${formatCurrency(netPayable, displayCurrency)}</span>
-                    </div>
-                    <hr class="my-1 border-secondary border-opacity-25">
-                    <div class="d-flex justify-content-between mb-1">
-                        <span class="small text-muted">Total Paid Overall:</span>
-                        <span class="small fw-bold text-success">${formatCurrency(invoice.total_paid_amount, displayCurrency)}</span>
-                    </div>
-                    ${(totalSettledOverall > 0) ? `
-                    <div class="d-flex justify-content-between mb-1">
-                        <span class="small text-muted">Total Settled Overall:</span>
-                        <span class="small fw-bold text-danger">-${formatCurrency(totalSettledOverall, displayCurrency)}</span>
-                    </div>
-                    ` : ''}
-                    <div class="d-flex justify-content-between mb-2">
-                        <span class="small text-muted">Total Pending Overall:</span>
-                        <span class="small fw-bold text-danger">${formatCurrency(parseFloat(pendingAmount), displayCurrency)}</span>
-                    </div>
-                    <div class="text-center mt-2">
-                        <button class="btn btn-sm btn-outline-secondary w-100" onclick="viewSplitHistory(${invoice.id})" data-bs-dismiss="modal">
-                            <i class="bi bi-clock-history me-1"></i>View Full Split History
-                        </button>
-                    </div>
-                    </div>
-                    ` : '';
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="small fw-bold text-primary">Current Split Details</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="small text-muted">This Split (Base):</span>
+                            <span class="small fw-bold">${formatCurrency(currentSplitBaseDisplay, invoice.currency || displayCurrency)}${plannedAmtStr}</span>
+                        </div>
+                        ${(gstTotal > 0) ? `
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="small text-muted">+ GST:</span>
+                            <span class="small fw-bold">${formatCurrency(gstTotal, displayCurrency)}</span>
+                        </div>
+                        ` : ''}
+                        ${(tdsTotal > 0) ? `
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="small text-muted">- TDS:</span>
+                            <span class="small fw-bold text-danger">-${formatCurrency(tdsTotal, displayCurrency)}</span>
+                        </div>
+                        ` : ''}
+                        ${(isUSD && parseFloat(invoice.conversion_cost || 0) > 0) ? `
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="small text-muted">This Split Conversion Cost:</span>
+                            <span class="small fw-bold text-danger">-${formatCurrency(parseFloat(invoice.conversion_cost), displayCurrency)}</span>
+                        </div>
+                        ` : ''}
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="small text-muted">This Split Total:</span>
+                            <span class="small fw-bold">${formatCurrency(netPayable, displayCurrency)}</span>
+                        </div>
+                        <hr class="my-1 border-secondary border-opacity-25">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="small text-muted">Total Paid Overall:</span>
+                            <span class="small fw-bold text-success">${formatCurrency(invoice.total_paid_amount, displayCurrency)}</span>
+                        </div>
+                        ${(totalSettledOverall > 0) ? `
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="small text-muted">Total Settled Overall:</span>
+                            <span class="small fw-bold text-danger">-${formatCurrency(totalSettledOverall, displayCurrency)}</span>
+                        </div>
+                        ` : ''}
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="small text-muted">Total Pending Overall:</span>
+                            <span class="small fw-bold text-danger">${formatCurrency(parseFloat(pendingAmount), displayCurrency)}</span>
+                        </div>
+                       
+                        </div>
+                        ` : '';
 
             // Calculate mathematical total
             const mathematicalTotal = isSplit ? originalNetAmount : (
-                baseAmountForSplit 
-                + (parseFloat(invoice.original_gst_total) || gstTotal || 0) 
-                - (parseFloat(invoice.original_tds_total) || tdsTotal || 0) 
-                - (isUSD ? originalConversionCost : 0)
+                baseAmountForSplit +
+                (parseFloat(invoice.original_gst_total) || gstTotal || 0) -
+                (parseFloat(invoice.original_tds_total) || tdsTotal || 0) -
+                (isUSD ? originalConversionCost : 0)
             );
-            
+
             const settledAmount = Math.max(0, mathematicalTotal - netPayable);
 
             // Format status badge
@@ -3319,256 +3435,256 @@
 
             // Build HTML
             const html = `
-                    <div class="invoice-container shadow-none border-0 p-3">
-                        <!-- Header with Company & Client Info -->
-                        <div class="row g-4 mb-4">
-                            <div class="col-lg-8">
-                                <div class="d-flex align-items-center mb-3">
-                                    <i class="bi bi-receipt fs-2 me-2 text-primary"></i>
-                                    <h4 class="section-title mb-0">Invoice Details</h4>
+                        <div class="invoice-container shadow-none border-0 p-3">
+                            <!-- Header with Company & Client Info -->
+                            <div class="row g-4 mb-4">
+                                <div class="col-lg-8">
+                                    <div class="d-flex align-items-center mb-3">
+                                        <i class="bi bi-receipt fs-2 me-2 text-primary"></i>
+                                        <h4 class="section-title mb-0">Invoice Details</h4>
+                                    </div>
+
+                                    <table class="table table-sm info-table">
+                                        <tr>
+                                            <th width="160"><i class="bi bi-hash me-1"></i>Invoice Number</th>
+                                            <td><span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2">${escapeHtml(invoice.invoice_number || 'N/A')}</span></td>
+                                        </tr>
+                                        <tr>
+                                            <th><i class="bi bi-building me-1"></i>Company</th>
+                                            <td><strong>${escapeHtml(invoice.company?.name || 'N/A')}</strong></td>
+                                        </tr>
+                                        <tr>
+                                            <th><i class="bi bi-person me-1"></i>Client</th>
+                                            <td>${escapeHtml(invoice.client_details?.name || 'N/A')}</td>
+                                        </tr>
+                                        <tr>
+                                            <th><i class="bi bi-envelope me-1"></i>Email</th>
+                                            <td><a href="mailto:${escapeHtml(invoice.client_details?.email || '')}" class="text-decoration-none">${escapeHtml(invoice.client_details?.email || 'N/A')}</a></td>
+                                        </tr>
+                                        ${invoice.client_details?.gstin ? `
+                                        <tr>
+                                            <th><i class="bi bi-upc-scan me-1"></i>GSTIN</th>
+                                            <td><code class="bg-light px-2 py-1 rounded">${escapeHtml(invoice.client_details.gstin)}</code></td>
+                                        </tr>
+                                        ` : ''}
+                                        ${!isUSD && invoice.tax_type && (gstTotal > 0 || tdsTotal > 0) ? `
+                                        <tr>
+                                            <th><i class="bi bi-calculator me-1"></i>Tax Type</th>
+                                            <td><span class="tax-badge bg-info bg-opacity-10 text-info">${escapeHtml(invoice.tax_type)}</span></td>
+                                        </tr>
+                                        ` : ''}
+                                        <tr>
+                                            <th><i class="bi bi-calendar-event me-1"></i>Due Date</th>
+                                            <td>
+                                                <span class="${new Date(invoice.due_date) < new Date() ? 'text-danger' : 'text-success'}">
+                                                    <i class="bi bi-clock me-1"></i>${formatDate(invoice.due_date)}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    </table>
                                 </div>
 
-                                <table class="table table-sm info-table">
-                                    <tr>
-                                        <th width="160"><i class="bi bi-hash me-1"></i>Invoice Number</th>
-                                        <td><span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2">${escapeHtml(invoice.invoice_number || 'N/A')}</span></td>
-                                    </tr>
-                                    <tr>
-                                        <th><i class="bi bi-building me-1"></i>Company</th>
-                                        <td><strong>${escapeHtml(invoice.company?.name || 'N/A')}</strong></td>
-                                    </tr>
-                                    <tr>
-                                        <th><i class="bi bi-person me-1"></i>Client</th>
-                                        <td>${escapeHtml(invoice.client_details?.name || 'N/A')}</td>
-                                    </tr>
-                                    <tr>
-                                        <th><i class="bi bi-envelope me-1"></i>Email</th>
-                                        <td><a href="mailto:${escapeHtml(invoice.client_details?.email || '')}" class="text-decoration-none">${escapeHtml(invoice.client_details?.email || 'N/A')}</a></td>
-                                    </tr>
-                                    ${invoice.client_details?.gstin ? `
-                                    <tr>
-                                        <th><i class="bi bi-upc-scan me-1"></i>GSTIN</th>
-                                        <td><code class="bg-light px-2 py-1 rounded">${escapeHtml(invoice.client_details.gstin)}</code></td>
-                                    </tr>
-                                    ` : ''}
-                                    ${!isUSD && invoice.tax_type && (gstTotal > 0 || tdsTotal > 0) ? `
-                                    <tr>
-                                        <th><i class="bi bi-calculator me-1"></i>Tax Type</th>
-                                        <td><span class="tax-badge bg-info bg-opacity-10 text-info">${escapeHtml(invoice.tax_type)}</span></td>
-                                    </tr>
-                                    ` : ''}
-                                    <tr>
-                                        <th><i class="bi bi-calendar-event me-1"></i>Due Date</th>
-                                        <td>
-                                            <span class="${new Date(invoice.due_date) < new Date() ? 'text-danger' : 'text-success'}">
-                                                <i class="bi bi-clock me-1"></i>${formatDate(invoice.due_date)}
+                                <div class="col-lg-4">
+                                    <div class="detail-card d-flex flex-column justify-content-center">
+                                        <div class="text-center p-3">
+                                            <span class="badge bg-${statusClass} status-badge mb-3">
+                                                <i class="bi bi-${statusClass === 'success' ? 'check-circle' : statusClass === 'warning' ? 'exclamation-circle' : 'clock-history'} me-1"></i>
+                                                ${statusText}
                                             </span>
-                                        </td>
-                                    </tr>
-                                </table>
-                            </div>
-
-                            <div class="col-lg-4">
-                                <div class="detail-card d-flex flex-column justify-content-center">
-                                    <div class="text-center p-3">
-                                        <span class="badge bg-${statusClass} status-badge mb-3">
-                                            <i class="bi bi-${statusClass === 'success' ? 'check-circle' : statusClass === 'warning' ? 'exclamation-circle' : 'clock-history'} me-1"></i>
-                                            ${statusText}
-                                        </span>
-                                        <div class="mt-2">
-                                            <small class="text-white-50 d-block text-uppercase" style="letter-spacing: 1px;">Document Type</small>
-                                            <h4 class="text-white mb-0 fw-bold">
-                                                <i class="bi bi-file-text me-2"></i>
-                                                ${(invoice.type || 'invoice').toUpperCase()}
-                                            </h4>
+                                            <div class="mt-2">
+                                                <small class="text-white-50 d-block text-uppercase" style="letter-spacing: 1px;">Document Type</small>
+                                                <h4 class="text-white mb-0 fw-bold">
+                                                    <i class="bi bi-file-text me-2"></i>
+                                                    ${(invoice.type || 'invoice').toUpperCase()}
+                                                </h4>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <!-- Currency Conversion Alert -->
-                        ${renderConversionDetails(invoice)}
+                            <!-- Currency Conversion Alert -->
+                            ${renderConversionDetails(invoice)}
 
-                        <!-- Line Items Section -->
-                        ${invoice.line_items && invoice.line_items.length ? `
-                        <div class="mt-4">
-                            <h6 class="section-title">
-                                <i class="bi bi-list-ul me-2"></i>
-                                Line Items
-                            </h6>
-                            <div class="table-responsive">
-                                <table class="table table-items">
-                                    <thead class="bg-light">
-                                        <tr>
-                                            <th width="45%">Description</th>
-                                            <th width="15%" class="text-end">Quantity</th>
-                                            <th width="20%" class="text-end">Rate (${invoice.currency || 'INR'})</th>
-                                            <th width="20%" class="text-end">Amount (${invoice.currency || 'INR'})</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${renderLineItems(invoice.line_items, invoice.currency)}
-                                    </tbody>
-                                    <tfoot>
-                                        <tr class="border-top">
-                                            <td colspan="3" class="text-end fw-semibold pt-3">Subtotal</td>
-                                            <td class="text-end fw-bold pt-3">${formatCurrency(isUSD ? parseFloat(invoice.invoice?.converted_amount || invoice.invoice_converted_amount || invoice.planned_amount || (parseFloat(invoice.amount || 0) + parseFloat(invoice.conversion_cost || 0)) || baseAmountForSplit) : baseAmountForSplit, displayCurrency)}</td>
-                                        </tr>
-                                        ${(invoice.original_gst_total > 0 || gstTotal > 0) ? `
-                                        <tr>
-                                            <td colspan="3" class="text-end text-muted">GST <span class="small">(Included)</span></td>
-                                            <td class="text-end">${formatCurrency(invoice.original_gst_total || gstTotal, displayCurrency)}</td>
-                                        </tr>` : ''}
-                                        ${(invoice.original_tds_total > 0 || tdsTotal > 0) ? `
-                                        <tr>
-                                            <td colspan="3" class="text-end text-danger">TDS <span class="small">(Deducted)</span></td>
-                                            <td class="text-end text-danger">-${formatCurrency(invoice.original_tds_total || tdsTotal, displayCurrency)}</td>
-                                        </tr>` : ''}
-                                        ${(isUSD && originalConversionCost > 0) ? `
-                                        <tr>
-                                            <td colspan="3" class="text-end text-danger">Conversion Cost <span class="small">(Deducted)</span></td>
-                                            <td class="text-end text-danger">-${formatCurrency(originalConversionCost, displayCurrency)}</td>
-                                        </tr>` : ''}
-                                        <tr class="total-row bg-light">
-                                            <td colspan="3" class="text-end fs-5 fw-bold py-3">Total Receivable</td>
-                                            <td class="text-end fs-5 fw-bold text-success py-3">
-                                                ${formatCurrency(isSplit ? originalNetAmount : mathematicalTotal, displayCurrency)}
-                                            </td>
-                                        </tr>
-                                        ${(!isSplit && settledAmount > 0) ? `
-                                        <tr>
-                                            <td colspan="3" class="text-end text-muted fw-bold">Settled Amount / Written off</td>
-                                            <td class="text-end text-danger fw-bold">-${formatCurrency(settledAmount, displayCurrency)}</td>
-                                        </tr>
-                                        <tr class="total-row bg-light border-top border-secondary">
-                                            <td colspan="3" class="text-end fs-5 fw-bold py-3">Final Amount Received</td>
-                                            <td class="text-end fs-5 fw-bold text-success py-3">
-                                                ${formatCurrency(netPayable, displayCurrency)}
-                                            </td>
-                                        </tr>
-                                        ` : ''}
-                                        ${isSplit ? `
-                                        <tr>
-                                            <td colspan="4" class="p-0 border-0">
-                                                <div class="bg-white border-top p-3">
-                                                    ${currentSplitSummaryHtml}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        ` : ''}
-                                    </tfoot>
-                                </table>
+                            <!-- Line Items Section -->
+                            ${invoice.line_items && invoice.line_items.length ? `
+                            <div class="mt-4">
+                                <h6 class="section-title">
+                                    <i class="bi bi-list-ul me-2"></i>
+                                    Line Items
+                                </h6>
+                                <div class="table-responsive">
+                                    <table class="table table-items">
+                                        <thead class="bg-light">
+                                            <tr>
+                                                <th width="45%">Description</th>
+                                                <th width="15%" class="text-end">Quantity</th>
+                                                <th width="20%" class="text-end">Rate (${invoice.currency || 'INR'})</th>
+                                                <th width="20%" class="text-end">Amount (${invoice.currency || 'INR'})</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${renderLineItems(invoice.line_items, invoice.currency)}
+                                        </tbody>
+                                        <tfoot>
+                                            <tr class="border-top">
+                                                <td colspan="3" class="text-end fw-semibold pt-3">Subtotal</td>
+                                                <td class="text-end fw-bold pt-3">${formatCurrency(isUSD ? parseFloat(invoice.invoice?.converted_amount || invoice.invoice_converted_amount || invoice.planned_amount || (parseFloat(invoice.amount || 0) + parseFloat(invoice.conversion_cost || 0)) || baseAmountForSplit) : baseAmountForSplit, displayCurrency)}</td>
+                                            </tr>
+                                            ${(invoice.original_gst_total > 0 || gstTotal > 0) ? `
+                                            <tr>
+                                                <td colspan="3" class="text-end text-muted">GST <span class="small">(Included)</span></td>
+                                                <td class="text-end">${formatCurrency(invoice.original_gst_total || gstTotal, displayCurrency)}</td>
+                                            </tr>` : ''}
+                                            ${(invoice.original_tds_total > 0 || tdsTotal > 0) ? `
+                                            <tr>
+                                                <td colspan="3" class="text-end text-danger">TDS <span class="small">(Deducted)</span></td>
+                                                <td class="text-end text-danger">-${formatCurrency(invoice.original_tds_total || tdsTotal, displayCurrency)}</td>
+                                            </tr>` : ''}
+                                            ${(isUSD && originalConversionCost > 0) ? `
+                                            <tr>
+                                                <td colspan="3" class="text-end text-danger">Conversion Cost <span class="small">(Deducted)</span></td>
+                                                <td class="text-end text-danger">-${formatCurrency(originalConversionCost, displayCurrency)}</td>
+                                            </tr>` : ''}
+                                            <tr class="total-row bg-light">
+                                                <td colspan="3" class="text-end fs-5 fw-bold py-3">Total Receivable</td>
+                                                <td class="text-end fs-5 fw-bold text-success py-3">
+                                                    ${formatCurrency(isSplit ? originalNetAmount : mathematicalTotal, displayCurrency)}
+                                                </td>
+                                            </tr>
+                                            ${(!isSplit && settledAmount > 0) ? `
+                                            <tr>
+                                                <td colspan="3" class="text-end text-muted fw-bold">Settled Amount / Written off</td>
+                                                <td class="text-end text-danger fw-bold">-${formatCurrency(settledAmount, displayCurrency)}</td>
+                                            </tr>
+                                            <tr class="total-row bg-light border-top border-secondary">
+                                                <td colspan="3" class="text-end fs-5 fw-bold py-3">Final Amount Received</td>
+                                                <td class="text-end fs-5 fw-bold text-success py-3">
+                                                    ${formatCurrency(netPayable, displayCurrency)}
+                                                </td>
+                                            </tr>
+                                            ` : ''}
+                                            ${isSplit ? `
+                                            <tr>
+                                                <td colspan="4" class="p-0 border-0">
+                                                    <div class="bg-white border-top p-3">
+                                                        ${currentSplitSummaryHtml}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            ` : ''}
+                                        </tfoot>
+                                    </table>
+                                </div>
                             </div>
-                        </div>
-                        ` : `
-                        <!-- Summary for No Line Items -->
-                        <div class="alert alert-info" role="alert">
-                            <div class="d-flex align-items-center mb-2">
-                                <i class="bi bi-info-circle-fill me-2 fs-5"></i>
-                                <strong class="fs-5">Invoice Summary</strong>
-                            </div>
-                            <div class="ms-4">
-                                ${(!isUSD && (parseFloat(invoice.original_gst_total) > 0 || parseFloat(invoice.original_tds_total) > 0 || gstTotal > 0 || tdsTotal > 0)) ? `
-                                    <div class="d-flex justify-content-between mb-1 text-muted">
-                                        <span>Base Amount:</span>
-                                        <span>${formatCurrency(isSplit ? baseAmountForSplit : parseFloat(invoice.original_currency_amount || (netPayable - gstTotal + tdsTotal)), displayCurrency)}</span>
-                                    </div>
-                                    ${(isSplit ? (parseFloat(invoice.original_gst_total) > 0) : (gstTotal > 0)) ? `
-                                    <div class="d-flex justify-content-between mb-1 text-muted">
-                                        <span>+ GST:</span>
-                                        <span>${formatCurrency(isSplit ? parseFloat(invoice.original_gst_total) : gstTotal, displayCurrency)}</span>
-                                    </div>
+                            ` : `
+                            <!-- Summary for No Line Items -->
+                            <div class="alert alert-info" role="alert">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="bi bi-info-circle-fill me-2 fs-5"></i>
+                                    <strong class="fs-5">Invoice Summary</strong>
+                                </div>
+                                <div class="ms-4">
+                                    ${(!isUSD && (parseFloat(invoice.original_gst_total) > 0 || parseFloat(invoice.original_tds_total) > 0 || gstTotal > 0 || tdsTotal > 0)) ? `
+                                        <div class="d-flex justify-content-between mb-1 text-muted">
+                                            <span>Base Amount:</span>
+                                            <span>${formatCurrency(isSplit ? baseAmountForSplit : parseFloat(invoice.original_currency_amount || (netPayable - gstTotal + tdsTotal)), displayCurrency)}</span>
+                                        </div>
+                                        ${(isSplit ? (parseFloat(invoice.original_gst_total) > 0) : (gstTotal > 0)) ? `
+                                        <div class="d-flex justify-content-between mb-1 text-muted">
+                                            <span>+ GST:</span>
+                                            <span>${formatCurrency(isSplit ? parseFloat(invoice.original_gst_total) : gstTotal, displayCurrency)}</span>
+                                        </div>
+                                        ` : ''}
+                                        ${(isSplit ? (parseFloat(invoice.original_tds_total) > 0) : (tdsTotal > 0)) ? `
+                                        <div class="d-flex justify-content-between mb-2 text-danger">
+                                            <span>- TDS:</span>
+                                            <span>${formatCurrency(isSplit ? parseFloat(invoice.original_tds_total) : tdsTotal, displayCurrency)}</span>
+                                        </div>
+                                        ` : ''}
+                                        <hr class="my-2 border-secondary opacity-25">
                                     ` : ''}
-                                    ${(isSplit ? (parseFloat(invoice.original_tds_total) > 0) : (tdsTotal > 0)) ? `
-                                    <div class="d-flex justify-content-between mb-2 text-danger">
-                                        <span>- TDS:</span>
-                                        <span>${formatCurrency(isSplit ? parseFloat(invoice.original_tds_total) : tdsTotal, displayCurrency)}</span>
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span class="fs-6 fw-bold">Total Receivable:</span>
+                                        <span class="fs-4 fw-bold text-success">${formatCurrency(isSplit ? originalNetAmount : mathematicalTotal, displayCurrency)}</span>
                                     </div>
-                                    ` : ''}
+                                    ${(!isSplit && settledAmount > 0) ? `
+                                    <div class="d-flex justify-content-between align-items-center mb-2 text-danger">
+                                        <span class="fw-bold">Settled Amount / Written off:</span>
+                                        <span class="fw-bold">-${formatCurrency(settledAmount, displayCurrency)}</span>
+                                    </div>
                                     <hr class="my-2 border-secondary opacity-25">
-                                ` : ''}
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <span class="fs-6 fw-bold">Total Receivable:</span>
-                                    <span class="fs-4 fw-bold text-success">${formatCurrency(isSplit ? originalNetAmount : mathematicalTotal, displayCurrency)}</span>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="fs-6 fw-bold">Final Amount Received:</span>
+                                        <span class="fs-4 fw-bold text-success">${formatCurrency(netPayable, displayCurrency)}</span>
+                                    </div>
+                                    ` : ''}
+                                    ${isSplit ? `
+                                    <div class="mt-3 pt-2 border-top border-secondary border-opacity-25">
+                                        ${currentSplitSummaryHtml}
+                                    </div>
+                                    ` : ''}
                                 </div>
-                                ${(!isSplit && settledAmount > 0) ? `
-                                <div class="d-flex justify-content-between align-items-center mb-2 text-danger">
-                                    <span class="fw-bold">Settled Amount / Written off:</span>
-                                    <span class="fw-bold">-${formatCurrency(settledAmount, displayCurrency)}</span>
-                                </div>
-                                <hr class="my-2 border-secondary opacity-25">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <span class="fs-6 fw-bold">Final Amount Received:</span>
-                                    <span class="fs-4 fw-bold text-success">${formatCurrency(netPayable, displayCurrency)}</span>
-                                </div>
-                                ` : ''}
-                                ${isSplit ? `
-                                <div class="mt-3 pt-2 border-top border-secondary border-opacity-25">
-                                    ${currentSplitSummaryHtml}
-                                </div>
-                                ` : ''}
                             </div>
-                        </div>
-                        `}
+                            `}
 
-                        <!-- Tax Details Cards -->
-                        ${!isUSD ? `
-                        <div class="row g-3 mt-2">
-                            ${gstItems && gstItems.length > 0 ? `
-                            <div class="col-md-6">
-                                <div class="tax-section bg-light border p-3 rounded">
-                                    <h6 class="fw-bold mb-3">
-                                        <i class="bi bi-percent me-2 text-primary"></i>
-                                        GST Breakdown
-                                    </h6>
-                                    ${renderGstDetails(gstItems, gstTotal)}
+                            <!-- Tax Details Cards -->
+                            ${!isUSD ? `
+                            <div class="row g-3 mt-2">
+                                ${gstItems && gstItems.length > 0 ? `
+                                <div class="col-md-6">
+                                    <div class="tax-section bg-light border p-3 rounded">
+                                        <h6 class="fw-bold mb-3">
+                                            <i class="bi bi-percent me-2 text-primary"></i>
+                                            GST Breakdown
+                                        </h6>
+                                        ${renderGstDetails(gstItems, gstTotal)}
+                                    </div>
                                 </div>
-                            </div>
-                            ` : ''}
-                            ${tdsItems && tdsItems.length > 0 ? `
-                            <div class="col-md-6">
-                                <div class="tax-section bg-light border p-3 rounded">
-                                    <h6 class="fw-bold mb-3">
-                                        <i class="bi bi-file-spreadsheet me-2 text-warning"></i>
-                                        TDS Details
-                                    </h6>
-                                    ${renderTdsDetails(tdsItems, tdsTotal)}
+                                ` : ''}
+                                ${tdsItems && tdsItems.length > 0 ? `
+                                <div class="col-md-6">
+                                    <div class="tax-section bg-light border p-3 rounded">
+                                        <h6 class="fw-bold mb-3">
+                                            <i class="bi bi-file-spreadsheet me-2 text-warning"></i>
+                                            TDS Details
+                                        </h6>
+                                        ${renderTdsDetails(tdsItems, tdsTotal)}
+                                    </div>
                                 </div>
+                                ` : ''}
                             </div>
                             ` : ''}
-                        </div>
-                        ` : ''}
 
-                        <!-- Purpose / Comment -->
-                        ${invoice.purpose_comment ? `
-                        <div class="comment-box mt-4 p-3 bg-light rounded border-start border-warning border-4">
-                            <h6 class="fw-bold mb-2">
-                                <i class="bi bi-chat-left-text me-2"></i>
-                                Purpose / Comments
-                            </h6>
-                            <div class="mb-0 text-muted">${escapeHtml(invoice.purpose_comment)}</div>
-                        </div>
-                        ` : ''}
+                            <!-- Purpose / Comment -->
+                            ${invoice.purpose_comment ? `
+                            <div class="comment-box mt-4 p-3 bg-light rounded border-start border-warning border-4">
+                                <h6 class="fw-bold mb-2">
+                                    <i class="bi bi-chat-left-text me-2"></i>
+                                    Purpose / Comments
+                                </h6>
+                                <div class="mb-0 text-muted">${escapeHtml(invoice.purpose_comment)}</div>
+                            </div>
+                            ` : ''}
 
-                        <!-- Terms & Conditions -->
-                        ${invoice.terms_conditions ? `
-                        <div class="terms-box mt-3 p-3 bg-light rounded border-start border-secondary border-4">
-                            <h6 class="fw-bold mb-2">
-                                <i class="bi bi-file-ruled me-2"></i>
-                                Terms & Conditions
-                            </h6>
-                            <div class="small text-muted" style="white-space: pre-line;">${escapeHtml(invoice.terms_conditions)}</div>
-                        </div>
-                        ` : ''}
+                            <!-- Terms & Conditions -->
+                            ${invoice.terms_conditions ? `
+                            <div class="terms-box mt-3 p-3 bg-light rounded border-start border-secondary border-4">
+                                <h6 class="fw-bold mb-2">
+                                    <i class="bi bi-file-ruled me-2"></i>
+                                    Terms & Conditions
+                                </h6>
+                                <div class="small text-muted" style="white-space: pre-line;">${escapeHtml(invoice.terms_conditions)}</div>
+                            </div>
+                            ` : ''}
 
-                        <!-- Footer Note -->
-                        <div class="text-center text-muted small mt-4 pt-3 border-top">
-                            <div class="mb-1"><i class="bi bi-shield-check me-1"></i> This is a computer generated invoice. No signature required.</div>
-                            ${invoice.created_at ? `<span><i class="bi bi-calendar3 me-1"></i>Generated: ${formatDate(invoice.created_at)}</span>` : ''}
+                            <!-- Footer Note -->
+                            <div class="text-center text-muted small mt-4 pt-3 border-top">
+                                <div class="mb-1"><i class="bi bi-shield-check me-1"></i> This is a computer generated invoice. No signature required.</div>
+                                ${invoice.created_at ? `<span><i class="bi bi-calendar3 me-1"></i>Generated: ${formatDate(invoice.created_at)}</span>` : ''}
+                            </div>
                         </div>
-                    </div>
-                    `;
+                        `;
 
             content.innerHTML = html;
 
@@ -3600,29 +3716,29 @@
             if (content) {
                 const printWindow = window.open('', '_blank');
                 printWindow.document.write(`
-                                                                        <!DOCTYPE html>
-                                                                        <html>
-                                                                        <head>
-                                                                            <title>Invoice Print</title>
-                                                                            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-                                                                            <style>
-                                                                                @media print {
-                                                                                    body { margin: 0; padding: 20px; }
-                                                                                    .no-print { display: none !important; }
-                                                                                }
-                                                                                .invoice-header { border-bottom: 2px solid #000; margin-bottom: 20px; padding-bottom: 10px; }
-                                                                                .total-row { font-weight: bold; }
-                                                                            </style>
-                                                                        </head>
-                                                                        <body>
-                                                                            ${content.innerHTML}
-                                                                            <div class="text-center mt-4 no-print">
-                                                                                <button class="btn btn-primary" onclick="window.print()">Print</button>
-                                                                                <button class="btn btn-secondary" onclick="window.close()">Close</button>
-                                                                            </div>
-                                                                        </body>
-                                                                        </html>
-                                                                    `);
+                                                                            <!DOCTYPE html>
+                                                                            <html>
+                                                                            <head>
+                                                                                <title>Invoice Print</title>
+                                                                                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+                                                                                <style>
+                                                                                    @media print {
+                                                                                        body { margin: 0; padding: 20px; }
+                                                                                        .no-print { display: none !important; }
+                                                                                    }
+                                                                                    .invoice-header { border-bottom: 2px solid #000; margin-bottom: 20px; padding-bottom: 10px; }
+                                                                                    .total-row { font-weight: bold; }
+                                                                                </style>
+                                                                            </head>
+                                                                            <body>
+                                                                                ${content.innerHTML}
+                                                                                <div class="text-center mt-4 no-print">
+                                                                                    <button class="btn btn-primary" onclick="window.print()">Print</button>
+                                                                                    <button class="btn btn-secondary" onclick="window.close()">Close</button>
+                                                                                </div>
+                                                                            </body>
+                                                                            </html>
+                                                                        `);
                 printWindow.document.close();
             }
         }
@@ -3664,13 +3780,13 @@
 
         function downloadProforma(id) {
             // First get the invoice_id from income
-            fetch(`https://xhtmlreviews.in/beta-finance/manager/getIncome/${id}`)
+            fetch(`${window.APP_URL}/manager/getIncome/${id}`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.success && data.income && data.income.invoice_id) {
                         // Use the invoice_id to download
                         window.open(
-                            `https://xhtmlreviews.in/beta-finance/admin/income/${data.income.invoice_id}/download`,
+                            `${window.APP_URL}/admin/income/${data.income.invoice_id}/download`,
                             '_blank');
                     } else {
                         alert('No invoice found for this income');
@@ -3683,21 +3799,21 @@
         }
 
         // Updated modal handling with income ID
-        document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('DOMContentLoaded', function() {
             const sendInvoiceModal = document.getElementById('sendInvoiceModal');
 
             if (sendInvoiceModal) {
                 const sendConfirmBtn = document.getElementById('send_confirm_btn');
 
                 // Modal show event - now using income ID
-                sendInvoiceModal.addEventListener('show.bs.modal', async function (event) {
+                sendInvoiceModal.addEventListener('show.bs.modal', async function(event) {
                     const button = event.relatedTarget;
                     const incomeId = button.dataset.incomeId;
 
                     // Fetch income and invoice details
                     try {
                         const response = await fetch(
-                            `https://xhtmlreviews.in/beta-finance/manager/getIncome/${incomeId}`);
+                            `${window.APP_URL}/manager/getIncome/${incomeId}`);
                         const data = await response.json();
 
                         if (data.success && data.invoice) {
@@ -3737,10 +3853,10 @@
                                 try {
                                     formattedDueDate = new Date(invoice.due_date).toLocaleDateString(
                                         'en-IN', {
-                                        day: 'numeric',
-                                        month: 'short',
-                                        year: 'numeric'
-                                    });
+                                            day: 'numeric',
+                                            month: 'short',
+                                            year: 'numeric'
+                                        });
                                 } catch (e) {
                                     console.error('Error formatting due date:', e);
                                 }
@@ -3757,7 +3873,7 @@
                             // should always state the FULL payable amount of the invoice, not a split portion.
                             let displayAmount = 0;
                             const isForeignCurrency = (invoice.currency && invoice.currency !== 'INR');
-                            
+
                             if (isForeignCurrency && parseFloat(invoice.original_currency_amount) > 0) {
                                 // For foreign currencies, the original total is exactly this field
                                 displayAmount = parseFloat(invoice.original_currency_amount);
@@ -3766,28 +3882,28 @@
                                 const originalBaseTotal = parseFloat(invoice.original_base_amount) || 0;
                                 const originalGstTotal = parseFloat(invoice.original_gst_total) || 0;
                                 const originalTdsTotal = parseFloat(invoice.original_tds_total) || 0;
-                                
+
                                 displayAmount = originalBaseTotal + originalGstTotal - originalTdsTotal;
-                                
+
                                 // Fallback
                                 if (displayAmount <= 0) {
                                     displayAmount = parseFloat(invoice.total_amount || invoice.amount || income?.amount || 0);
                                 }
                             }
-                                
+
                             const defaultMessage = `Dear ${clientName},
 
-                                            ${invoiceType === 'proforma' ? 'Please find attached the proforma invoice' : 'Please find attached your invoice'} for ${invoice.currency == 'USD' ? '$' : (invoice.currency == 'EUR' ? '€' : (invoice.currency == 'GBP' ? '£' : '₹'))}${parseFloat(displayAmount).toFixed(2)}.
+                                                ${invoiceType === 'proforma' ? 'Please find attached the proforma invoice' : 'Please find attached your invoice'} for ${invoice.currency == 'USD' ? '$' : (invoice.currency == 'EUR' ? '€' : (invoice.currency == 'GBP' ? '£' : '₹'))}${parseFloat(displayAmount).toFixed(2)}.
 
-                                            Invoice Details:
-                                            - Invoice Number: ${invoice.invoice_number || ''}
-                                            - Amount: ${invoice.currency == 'USD' ? '$' : (invoice.currency == 'EUR' ? '€' : (invoice.currency == 'GBP' ? '£' : '₹'))}${parseFloat(displayAmount).toFixed(2)}
-                                            ${invoice.due_date ? `- Due Date: ${formattedDueDate}` : ''}
+                                                Invoice Details:
+                                                - Invoice Number: ${invoice.invoice_number || ''}
+                                                - Amount: ${invoice.currency == 'USD' ? '$' : (invoice.currency == 'EUR' ? '€' : (invoice.currency == 'GBP' ? '£' : '₹'))}${parseFloat(displayAmount).toFixed(2)}
+                                                ${invoice.due_date ? `- Due Date: ${formattedDueDate}` : ''}
 
-                                            Please let us know if you have any questions.
+                                                Please let us know if you have any questions.
 
-                                            Best regards,
-                                            ${companyName}`;
+                                                Best regards,
+                                                ${companyName}`;
 
                             document.getElementById('send_message').value = defaultMessage;
 
@@ -3803,7 +3919,7 @@
                 });
 
                 // Confirm send invoice
-                sendConfirmBtn.addEventListener('click', function () {
+                sendConfirmBtn.addEventListener('click', function() {
                     const form = document.getElementById('sendInvoiceForm');
                     if (!form) {
                         alert('Form not found');
@@ -3818,15 +3934,15 @@
                     submitBtn.disabled = true;
 
                     fetch(form.action, {
-                        method: 'POST',
-                        body: formData,
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'Accept': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
-                                .content
-                        }
-                    })
+                            method: 'POST',
+                            body: formData,
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
+                                    .content
+                            }
+                        })
                         .then(response => {
                             if (!response.ok) {
                                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -4277,5 +4393,16 @@
             color: #212529 !important;
             background-color: #fff !important;
         }
+
+        .btn-xs {
+            padding: 2px 6px !important;
+            font-size: 15px !important;
+            line-height: 1.2 !important;
+            border-radius: 4px !important;
+        }
+
+        .btn-xs i {
+            font-size: 15px;
+        }
     </style>
-@endsection
+    @endsection

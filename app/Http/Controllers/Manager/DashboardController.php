@@ -130,22 +130,38 @@ class DashboardController extends Controller
             ->where('status', 'received')
             ->sum('amount');
 
+ $totalReceivableIncome = Income::whereIn('company_id', $companyIds)
+            ->whereBetween('created_at', [$startDate, $endDate])
+            // ->where('status', 'received')
+            ->sum('amount');
+
         $totalExpenses = Expense::whereIn('company_id', $companyIds)
             ->whereBetween('created_at', [$startDate, $endDate])
             ->where('status', 'paid')
             ->sum('planned_amount');
 
-        $upcomingPayments = UpcomingPayment::whereIn('company_id', $companyIds)
+ $totalPayableExpenses = Expense::whereIn('company_id', $companyIds)
+            ->whereBetween('created_at', [$startDate, $endDate])
+            // ->where('status', 'paid')
+            ->sum('planned_amount');
+
+        // $upcomingPayments = UpcomingPayment::whereIn('company_id', $companyIds)
+        //     ->whereIn('status', ['upcoming', 'pending'])
+        //     ->whereBetween('due_date', [now(), now()->addDays(7)])
+        //     ->sum('amount');
+$upcomingPayments = Expense::whereIn('company_id', $companyIds)
+            ->whereBetween('created_at', [$startDate, $endDate])
             ->whereIn('status', ['upcoming', 'pending'])
             ->whereBetween('due_date', [now(), now()->addDays(7)])
-            ->sum('amount');
-
+            ->sum('planned_amount');    
         return [
             'totalIncome' => $totalIncome ?? 0,
             'totalExpenses' => $totalExpenses ?? 0,
             'netProfit' => ($totalIncome ?? 0) - ($totalExpenses ?? 0),
             'upcomingPayments' => $upcomingPayments ?? 0,
-            'periodLabel' => $this->getPeriodLabel($dateRange)
+            'periodLabel' => $this->getPeriodLabel($dateRange),
+            'totalReceivableIncome' => $totalReceivableIncome ?? 0,
+            'totalPayableExpenses' => $totalPayableExpenses ?? 0,
         ];
     }
 
@@ -164,15 +180,26 @@ class DashboardController extends Controller
             ->where('status', 'received')
             ->sum('amount');
 
+ $totalReceivableIncome = Income::whereIn('company_id', $companyIds)
+            ->whereBetween('created_at', [$startDate, $endDate])
+            // ->where('status', 'received')
+            ->sum('amount');
+
         $totalExpenses = Expense::whereIn('company_id', $companyIds)
             ->whereBetween('created_at', [$startDate, $endDate])
             ->where('status', 'paid')
             ->sum('planned_amount');
 
+ $totalPayableExpenses = Expense::whereIn('company_id', $companyIds)
+            ->whereBetween('created_at', [$startDate, $endDate])
+            // ->where('status', 'paid')
+            ->sum('planned_amount');
         return [
             'totalIncome' => $totalIncome ?? 0,
             'totalExpenses' => $totalExpenses ?? 0,
-            'netProfit' => ($totalIncome ?? 0) - ($totalExpenses ?? 0)
+            'netProfit' => ($totalIncome ?? 0) - ($totalExpenses ?? 0),
+            'totalReceivableIncome' => $totalReceivableIncome ?? 0,
+            'totalPayableExpenses' => $totalPayableExpenses ?? 0,
         ];
     }
 

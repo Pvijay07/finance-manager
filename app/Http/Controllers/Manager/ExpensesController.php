@@ -1345,9 +1345,15 @@ class ExpensesController extends Controller
       $isSplitPayment = $paidAmount > 0 && !$isFullyPaid;
       
       if ($request->status === 'settle' && !$isSplitPayment) {
-          $plannedAmount = $paidAmount;
-          $netPayableAmount = $paidAmount;
-          $request->merge(['apply_gst' => 0, 'apply_tds' => 0, 'gst_amount' => 0, 'tds_amount' => 0, 'grand_total' => $paidAmount]);
+          $originalBaseAmount = round($oldOriginalBaseAmount - $oldTdsAmount, 2);
+          $paidBaseAmount = $originalBaseAmount;
+          $oldOriginalBaseAmount = $originalBaseAmount;
+          
+          $plannedAmount = $oldNetPayableAmount;
+          $netPayableAmount = $oldNetPayableAmount;
+          $originalPlannedAmount = $oldNetPayableAmount;
+
+          $request->merge(['apply_gst' => 0, 'apply_tds' => 0, 'gst_amount' => 0, 'tds_amount' => 0, 'grand_total' => $oldNetPayableAmount]);
           $originalGstAmount = 0;
           $originalTdsAmount = 0;
       }
@@ -1419,7 +1425,7 @@ class ExpensesController extends Controller
         ];
 
         // Handle paid date for regular updates
-        if ($actualStatus === 'paid') {
+        if ($actualStatus === 'paid' || $actualStatus === 'settle') {
           $expenseData['paid_date'] = $request->paid_date ?? now()->format('Y-m-d');
         } elseif ($request->paid_date) {
           $expenseData['paid_date'] = $request->paid_date;
@@ -1783,7 +1789,7 @@ class ExpensesController extends Controller
         $exists = file_exists($serverPath);
         \Log::info('  - File exists on server: ' . ($exists ? 'YES' : 'NO'));
 
-        $fileUrl = asset('public/' . $receipt->file_path);
+        $fileUrl = asset($receipt->file_path);
 
         return [
           'id' => $receipt->id,

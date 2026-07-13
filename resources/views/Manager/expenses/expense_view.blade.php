@@ -187,7 +187,7 @@
                         <tr>
                             <th class="ps-4">Split #</th>
                             <th>Expense ID</th>
-                            <th>Paid Amt</th>
+                            <th>Payable Amt</th>
                             <th>Base Amount (-TDS)</th>
                             <th>GST Amount</th>
                             <th>Status</th>

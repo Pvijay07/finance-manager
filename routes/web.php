@@ -19,6 +19,7 @@ use App\Http\Controllers\Manager\ExpensesController;
 use App\Http\Controllers\Manager\ExpenseTypeController as ManagerExpenseTypeController;
 use App\Http\Controllers\Manager\IncomeController;
 use App\Http\Controllers\Manager\LoansController;
+use App\Http\Controllers\Manager\LoanManagementController;
 use App\Http\Controllers\Manager\NonStandardExpensesController;
 use App\Http\Controllers\Manager\ReportController;
 use App\Http\Controllers\Manager\StandardExpensesController as ManagerStandardExpensesController;
@@ -278,6 +279,16 @@ Route::middleware(['auth', 'role:manager'])->prefix('manager')->group(function (
 
         // Stats
         Route::get('/stats', [LoansController::class, 'getStats'])->name('manager.loans.stats');
+    });
+
+    // Loan Management V2 (Comprehensive) Routes
+    Route::prefix('loan-management')->group(function () {
+        Route::get('/', [LoanManagementController::class, 'index'])->name('manager.loan-management.index');
+        Route::get('/create', [LoanManagementController::class, 'create'])->name('manager.loan-management.create');
+        Route::post('/', [LoanManagementController::class, 'store'])->name('manager.loan-management.store');
+        Route::get('/{id}', [LoanManagementController::class, 'show'])->name('manager.loan-management.show');
+        Route::post('/{id}/payment', [LoanManagementController::class, 'recordPayment'])->name('manager.loan-management.payment');
+        Route::post('/{id}/close', [LoanManagementController::class, 'closeLoan'])->name('manager.loan-management.close');
     });
 
     // Salary Module Routes

@@ -440,7 +440,7 @@
             attachmentsList.innerHTML =
                 '<div class="text-center py-3"><i class="fas fa-spinner fa-spin"></i> Loading attachments...</div>';
 
-            fetch(`{{ url('https://xhtmlreviews.in/beta-finance/manager/tds/attachments') }}/${invoiceId}`)
+            fetch(`{{ url('manager/tds/attachments') }}/${invoiceId}`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.success && data.attachments && data.attachments.length > 0) {
@@ -600,7 +600,7 @@
 
             try {
                 // Create download URL - FIXED: Use correct route
-                const downloadUrl = `https://xhtmlreviews.in/beta-finance/manager/taxes/${taxId}/download-tds-proof`;
+                const downloadUrl = `${window.APP_URL}/manager/taxes/${taxId}/download-tds-proof`;
 
                 // Create temporary iframe
                 const iframe = document.createElement('iframe');
@@ -680,7 +680,7 @@
             event.target.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
             event.target.disabled = true;
 
-            fetch(`{{ url('https://xhtmlreviews.in/beta-finance/manager/taxes') }}/${taxId}/download-tds-proof`, {
+            fetch(`{{ url('manager/taxes') }}/${taxId}/download-tds-proof`, {
                 headers: {
                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
                 }

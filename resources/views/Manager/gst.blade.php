@@ -337,7 +337,7 @@
             const gstin = document.getElementById('gstin_filter').value;
 
             window.location.href =
-                `{{ url('https://xhtmlreviews.in/beta-finance/manager/gst/export') }}/${type}?company=${company}&period=${period}&gstin=${gstin}`;
+                `{{ url('manager/gst/export') }}/${type}?company=${company}&period=${period}&gstin=${gstin}`;
         }
     </script>
 @endsection

@@ -684,11 +684,9 @@
 
 <!-- Partial Payment / Split Modal -->
 
-<div class="modal" id="partialPaymentModal"
-    style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1050;">
-    <div class="modal-dialog">
-        <div class="modal-content"
-            style="background: white; width: 90%; max-width: 800px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); position: fixed; left: 50%; transform: translate(-50%, -50%); top: 50%;">
+<div class="modal fade" id="partialPaymentModal" tabindex="-1" aria-labelledby="partialPaymentLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
             <div class="modal-header">
                 <div>
                     <h5 class="modal-title" id="partialPaymentLabel">Record Payment – Partial Amount Received</h5>
@@ -888,15 +886,9 @@
 </div>
 
 <!-- View Invoice Modal -->
-<div class="modal" id="viewInvoiceModal"
-    style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1050;">
-    <div class="modal-dialog">
-
-        <div class="modal-content" style="background: white; width: 90%; max-width: 800px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); position
-                                                        : fixed;
-                                                            left: 50%;
-                                                            transform: translate(-50%, -50%);
-                                                            top: 50%;">
+<div class="modal fade" id="viewInvoiceModal" tabindex="-1" aria-labelledby="viewInvoiceModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Invoice Details</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -915,11 +907,10 @@
 </div>
 
 <!-- Send Invoice Modal -->
-<div class="modal" id="sendInvoiceModal"
-    style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1050;">
-    <div class="modal-dialog">
-        <div class="modal-content"
-            style="background: white; width: 90%; max-width: 800px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); position: fixed; left: 50%; transform: translate(-50%, -50%); top: 50%;">
+<!-- Send Invoice Modal -->
+<div class="modal fade" id="sendInvoiceModal" tabindex="-1" aria-labelledby="sendInvoiceLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
             <div class="modal-header">
                 <div>
                     <h5 class="modal-title" id="sendInvoiceLabel">Send Invoice via Email</h5>
@@ -1012,11 +1003,9 @@
 
 
 <!-- Edit Invoice Modal -->
-<div class="modal fade" id="editInvoiceModal" tabindex="-1" aria-labelledby="editInvoiceModalLabel" aria-hidden="true"
-    style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1050;">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable">
-        <div class="modal-content"
-            style="background: white; width: 90%; max-width: 800px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); position: fixed; left: 50%; transform: translate(-50%, -50%); top: 50%;">
+<div class="modal fade" id="editInvoiceModal" tabindex="-1" aria-labelledby="editInvoiceModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title" id="editInvoiceModalLabel">
                     <i class="fas fa-edit me-2"></i>Edit Proforma Invoice
@@ -2982,7 +2971,7 @@
 
     // View proforma function
     function viewProforma(id) {
-        fetch(`https://xhtmlreviews.in/beta-finance/admin/invoices/${id}`)
+        fetch(`${window.APP_URL}/admin/invoices/${id}`)
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
@@ -3182,8 +3171,9 @@
                                                     `;
 
                     content.innerHTML = html;
-                    const modal = new bootstrap.Modal(document.getElementById('viewInvoiceModal'));
-                    document.getElementById('viewInvoiceModal').dataset.invoiceId = id;
+                    const modalEl = document.getElementById('viewInvoiceModal');
+                    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                    modalEl.dataset.invoiceId = id;
                     modal.show();
                 }
             });
@@ -3191,16 +3181,16 @@
 
     // Download functions
     function downloadProforma(id) {
-        window.open(`https://xhtmlreviews.in/beta-finance/admin/invoices/${id}/download?type=proforma`, '_blank');
+        window.open(`${window.APP_URL}/admin/invoices/${id}/download?type=proforma`, '_blank');
     }
 
     function downloadInvoice(id) {
-        window.open(`https://xhtmlreviews.in/beta-finance/admin/invoices/${id}/download?type=invoice`, '_blank');
+        window.open(`${window.APP_URL}/admin/invoices/${id}/download?type=invoice`, '_blank');
     }
 
     // Print invoice
     // function printInvoice(id) {
-    //     window.open(`https://xhtmlreviews.in/beta-finance/admin/invoices/${id}/download?type=invoice`, '_blank');
+    //     window.open(`${window.APP_URL}/admin/invoices/${id}/download?type=invoice`, '_blank');
     //     // const modalContent = document.getElementById('invoiceDetailsContent').innerHTML;
     //     // const printWindow = window.open('', '_blank');
     //     // printWindow.document.write(`
@@ -3239,7 +3229,7 @@
             alert('Invoice ID not found');
             return;
         }
-        window.open(`https://xhtmlreviews.in/beta-finance/admin/invoices/${invoiceId}/download?type=invoice`, '_blank');
+        window.open(`${window.APP_URL}/admin/invoices/${invoiceId}/download?type=invoice`, '_blank');
     }
     // Filter invoices
     function filterInvoices() {
@@ -3857,7 +3847,7 @@
                     }, 100);
 
                     // Show modal
-                    const modal = new bootstrap.Modal(document.getElementById('editInvoiceModal'));
+                    const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('editInvoiceModal'));
                     modal.show();
                 }
             })

@@ -243,6 +243,8 @@ class InvoiceManagementController extends Controller
         'line_items'                 => json_encode($lineItemsWithAmounts),
         'invoice_number'             => $invoiceNumber,
         'original_amount'            => $request->currency === 'INR' ? $subtotal : $request->converted_amount ?? 0,
+        'currency'                 => $request->currency,
+
       ]);
 
       // Handle GST tax for income

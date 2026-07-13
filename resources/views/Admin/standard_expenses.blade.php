@@ -541,27 +541,23 @@
             </div>
         </div>
     </div>
-    <div id="editModal" class="modal"
-        style="display: none; position: fixed; z-index: 1050; left: 0; top: 0; width: 100%; height: 100%; overflow: auto;">
-        <div class="modal-content"
-            style="background-color: #fefefe; margin: 5% auto; padding: 0; border: 1px solid #888; width: 90%; max-width: 800px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-            <div class="modal-header"
-                style="padding: 20px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center;">
-                <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #1a1a1a;">Edit Standard Expense
-                </h3>
-                <span class="close-modal" onclick="closeEditModal()"
-                    style="font-size: 24px; font-weight: bold; color: #6b7280; cursor: pointer; padding: 0 10px;">&times;</span>
-            </div>
-            <div class="modal-body" style="padding: 20px; max-height: 70vh; overflow-y: auto;">
-                <!-- The edit form will be loaded here -->
-                <div id="editFormContainer"></div>
-            </div>
-            <div class="modal-footer" style="padding: 15px 20px; border-top: 1px solid #e5e7eb; text-align: right;">
-                <button type="button" onclick="closeEditModal()" class="btn btn-outline"
-                    style="padding: 8px 20px; margin-right: 10px; border: 1px solid #ddd; background: white;color:#000; border-radius: 4px; cursor: pointer;">Cancel</button>
-                <button type="button" onclick="submitEditForm()" class="btn btn-primary"
-                    style="padding: 8px 30px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">Update
-                    Expense</button>
+    <div id="editModal" class="modal fade" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content" style="border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+                <div class="modal-header" style="padding: 20px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center;">
+                    <h3 class="modal-title" id="editModalLabel" style="margin: 0; font-size: 18px; font-weight: 600; color: #1a1a1a;">Edit Standard Expense</h3>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" onclick="closeEditModal()"></button>
+                </div>
+                <div class="modal-body" style="padding: 20px; max-height: 70vh; overflow-y: auto;">
+                    <!-- The edit form will be loaded here -->
+                    <div id="editFormContainer"></div>
+                </div>
+                <div class="modal-footer" style="padding: 15px 20px; border-top: 1px solid #e5e7eb; text-align: right;">
+                    <button type="button" onclick="closeEditModal()" class="btn btn-outline" data-bs-dismiss="modal"
+                        style="padding: 8px 20px; margin-right: 10px; border: 1px solid #ddd; background: white;color:#000; border-radius: 4px; cursor: pointer;">Cancel</button>
+                    <button type="button" onclick="submitEditForm()" class="btn btn-primary"
+                        style="padding: 8px 30px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">Update Expense</button>
+                </div>
             </div>
         </div>
     </div>
@@ -906,7 +902,7 @@
             // Show loading
             categorySelect.innerHTML = '<option value="">Loading categories...</option>';
 
-            fetch('https://xhtmlreviews.in/beta-finance/admin/standard-expenses/get-categories', {
+            fetch(`${window.APP_URL}/admin/standard-expenses/get-categories`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1317,14 +1313,14 @@
 
                 // Load expense data
                 const expenseResponse = await fetch(
-                    `https://xhtmlreviews.in/beta-finance/admin/standard-expenses/${id}`);
+                    `${window.APP_URL}/admin/standard-expenses/${id}`);
                 const expenseData = await expenseResponse.json();
 
                 // Load tax data
                 let taxData = {};
                 try {
                     const taxResponse = await fetch(
-                        `https://xhtmlreviews.in/beta-finance/admin/standard-expenses/${id}/taxes`);
+                        `${window.APP_URL}/admin/standard-expenses/${id}/taxes`);
                     if (taxResponse.ok) {
                         taxData = await taxResponse.json();
                     }
@@ -1342,7 +1338,8 @@
                 document.getElementById('editFormContainer').innerHTML = editFormHtml;
 
                 // Show the modal
-                document.getElementById('editModal').style.display = 'block';
+                const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('editModal'));
+                modal.show();
 
                 // Initialize form functionality
                 initializeEditForm(id, expenseData);
@@ -1542,7 +1539,7 @@
             // Set form action
             const form = document.getElementById('editTemplateForm');
             if (form) {
-                form.action = `https://xhtmlreviews.in/beta-finance/admin/standard-expenses/${id}`;
+                form.action = `${window.APP_URL}/admin/standard-expenses/${id}`;
             }
 
             // Set category dropdown
@@ -1662,7 +1659,7 @@
 
             categorySelect.innerHTML = '<option value="">Loading categories...</option>';
 
-            fetch('https://xhtmlreviews.in/beta-finance/admin/standard-expenses/get-categories', {
+            fetch(`${window.APP_URL}/admin/standard-expenses/get-categories`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1895,24 +1892,13 @@
 
         // Modal functions
         function closeEditModal() {
-            document.getElementById('editModal').style.display = 'none';
+            const modalEl = document.getElementById('editModal');
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) {
+                modal.hide();
+            }
             document.getElementById('editFormContainer').innerHTML = '';
         }
-
-        // Close modal when clicking outside
-        window.onclick = function (event) {
-            const modal = document.getElementById('editModal');
-            if (event.target == modal) {
-                closeEditModal();
-            }
-        }
-
-        // Close modal with Escape key
-        document.addEventListener('keydown', function (event) {
-            if (event.key === 'Escape') {
-                closeEditModal();
-            }
-        });
 
         function filterTemplates() {
             const direction = document.getElementById('directionFilter').value.toLowerCase();
@@ -2174,10 +2160,6 @@
     </style>
     <style>
         /* Modal Styles */
-        .modal {
-            animation: fadeIn 0.3s ease;
-        }
-
         .modal-content {
             animation: slideIn 0.3s ease;
         }

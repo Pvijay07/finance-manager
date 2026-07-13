@@ -632,7 +632,7 @@
             // Load Company Data for Edit
             function loadCompanyData(companyId) {
                 $.ajax({
-                    url: `https://xhtmlreviews.in/beta-finance/admin/companies/${companyId}/edit`,
+                    url: `${window.APP_URL}/admin/companies/${companyId}/edit`,
                     method: 'GET',
                     headers: {
                         'X-CSRF-TOKEN': csrfToken
@@ -1125,18 +1125,20 @@
             position: relative;
             display: flex;
             align-items: center;
-            margin-right: 15px;
             background: #fff;
             border: 1px solid #ddd;
             border-radius: 4px;
-            padding: 5px 10px;
+            padding: 0 12px;
             min-width: 250px;
+            height: 38px;
+            box-sizing: border-box;
         }
 
         #search-form {
             display: flex;
             align-items: center;
             flex: 1;
+            height: 100%;
         }
 
         .search-icon {
@@ -1149,10 +1151,11 @@
             border: none;
             outline: none;
             flex: 1;
-            padding: 4px 0;
+            padding: 0;
             font-size: 14px;
             background: transparent;
             width: 100%;
+            height: 100%;
         }
 
         .search-input:focus {
@@ -1281,9 +1284,31 @@
             color: #333;
         }
 
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .table-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #333;
+        }
+
         .table-actions {
             display: flex;
             align-items: center;
+            gap: 15px;
+        }
+
+        #add-company-btn {
+            height: 38px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
         }
 
         @media (max-width: 768px) {
@@ -1441,11 +1466,11 @@
 
         .input-with-icon .form-control,
         .select-with-icon .form-control {
-            padding-left: 40px;
+            padding-left: 40px !important;
         }
 
         .textarea-with-icon .form-control {
-            padding-left: 40px;
+            padding-left: 40px !important;
         }
 
         .select-arrow {

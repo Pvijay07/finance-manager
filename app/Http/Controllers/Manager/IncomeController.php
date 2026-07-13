@@ -124,7 +124,8 @@ class IncomeController extends Controller
       $query->where('status', $status);
     }
 
-    $incomes = $query->paginate(20);
+    $perPage = $request->get('per_page', 10);
+    $incomes = $query->paginate($perPage);
     $companies = Company::where('manager_id', $user->id)
       ->where('status', 'active')
       ->get();
@@ -597,6 +598,7 @@ class IncomeController extends Controller
         $newIncome->amount = $balanceAmount;
         $newIncome->planned_amount = $request->status === 'settle' ? $balanceAmount : $balancePlannedAmount;
         $newIncome->actual_amount = $balanceBaseAmountToSave;
+        $newIncome->original_amount = $balanceBaseAmount;
         $newIncome->balance_amount = $request->status === 'settle' ? 0 : $balanceAmount;
         $newIncome->status = $request->status === 'settle' ? 'settle' : 'pending';
         $newIncome->income_date = $request->new_due_date ?? now()->addDays(30)->format('Y-m-d');
@@ -1070,14 +1072,45 @@ class IncomeController extends Controller
       
       $oldNetPayableAmount = floatval($income->amount);
       $effectiveTotalPayable = max($payableAmountTotal, $oldNetPayableAmount);
-
+      
       $isSplitPayment = ($validated['status'] === 'due' || $validated['status'] === 'settle') &&
         $receivedAmount > 0 &&
         $receivedAmount < $effectiveTotalPayable;
         
 
       $originalActualAmount = floatval($income->actual_amount);
-      $oldOriginalBaseAmount = floatval($income->original_amount ?? $income->actual_amount ?? 0);
+      $oldOriginalBaseAmount = floatval(($income->parent_id && ($income->original_amount ?? 0) > ($income->amount ?? 0)) ? $income->actual_amount : ($income->original_amount ?? $income->actual_amount ?? 0));
+      $oldTdsTax = Tax::where('taxable_type', Income::class)
+        ->where('taxable_id', $income->id)
+        ->where('tax_type', 'tds')
+        ->first();
+      $oldTdsAmount = $oldTdsTax ? floatval($oldTdsTax->tax_amount) : 0;
+
+      if ($validated['status'] === 'settle' && !$isSplitPayment) {
+          $actualTotalBase = round($oldOriginalBaseAmount - $oldTdsAmount, 2);
+          $paidBaseAmount = $actualTotalBase;
+          $oldOriginalBaseAmount = $actualTotalBase;
+          $originalActualAmount = $actualTotalBase;
+          
+          $gstAmountTotal = 0;
+          $tdsAmountTotal = 0;
+          $gstAmountForCurrent = 0;
+          $tdsAmountForCurrent = 0;
+          
+          $plannedAmountTotal = $oldNetPayableAmount;
+          $payableAmountTotal = $oldNetPayableAmount;
+          $effectiveTotalPayable = $oldNetPayableAmount;
+          
+          $request->merge([
+              'apply_gst' => 0, 
+              'apply_tds' => 0, 
+              'gst_amount' => 0, 
+              'tds_amount' => 0, 
+              'grand_total' => $oldNetPayableAmount,
+              'amount' => $actualTotalBase
+          ]);
+      }
+
       $effectiveTotalBase = max($actualTotalBase, $oldOriginalBaseAmount);
       
       $isForeignCurrency = ($income->invoice && $income->invoice->currency != 'INR') || ($income->currency && $income->currency != 'INR');
@@ -1153,8 +1186,7 @@ class IncomeController extends Controller
       // Update income
       $income->update($incomeData);
 
-      // Handle GST tax
-      $skipMainTaxes = ($validated['status'] === 'settle' && $receivedAmount <= 0);
+      $skipMainTaxes = ($validated['status'] === 'settle');
       if ($request->boolean('apply_gst') && !$skipMainTaxes) {
         $gstPercentage = $validated['gst_percentage'] ?? 0;
         Tax::updateOrCreate(
@@ -1224,12 +1256,12 @@ class IncomeController extends Controller
       // Create new income for balance if this is a split payment
       $newIncomeId = null;
       if ($isSplitPayment && $balanceAmount > 0) {
-
         $newIncome = $income->replicate();
         unset($newIncome->paid_date);
         $newIncome->party_name = $income->party_name;
         $newIncome->amount = $balanceAmount;
         $newIncome->actual_amount = $balanceBaseAmountToSave;
+        $newIncome->original_amount = $balanceBaseAmount;
         $newIncome->planned_amount = $validated['status'] === 'settle' ? $balanceAmount : $balancePlannedAmount;
         $newIncome->balance_amount = $validated['status'] === 'settle' ? 0 : $balanceAmount;
         $newIncome->status = $validated['status'] === 'settle' ? 'settle' : 'pending';

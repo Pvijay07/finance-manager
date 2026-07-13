@@ -330,7 +330,7 @@
         }
 
         function editExpense(expenseId) {
-            fetch(`https://xhtmlreviews.in/beta-finance/manager/non-standard-expenses/${expenseId}/edit`)
+            fetch(`${window.APP_URL}/manager/non-standard-expenses/${expenseId}/edit`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
@@ -370,7 +370,7 @@
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
             submitBtn.disabled = true;
 
-            fetch(`https://xhtmlreviews.in/beta-finance/manager/non-standard-expenses/${expenseId}`, {
+            fetch(`${window.APP_URL}/manager/non-standard-expenses/${expenseId}`, {
                     method: 'POST',
                     body: formData,
                     headers: {
@@ -401,7 +401,7 @@
 
         function markAsPaid(expenseId) {
             if (confirm('Mark this expense as paid?')) {
-                fetch(`https://xhtmlreviews.in/beta-finance/manager/non-standard-expenses/${expenseId}/mark-paid`, {
+                fetch(`${window.APP_URL}/manager/non-standard-expenses/${expenseId}/mark-paid`, {
                         method: 'POST',
                         headers: {
                             'X-CSRF-TOKEN': '{{ csrf_token() }}',
@@ -426,7 +426,7 @@
 
         function deleteExpense(expenseId) {
             if (confirm('Are you sure you want to delete this expense?')) {
-                fetch(`https://xhtmlreviews.in/beta-finance/manager/non-standard-expenses/${expenseId}`, {
+                fetch(`${window.APP_URL}/manager/non-standard-expenses/${expenseId}`, {
                         method: 'DELETE',
                         headers: {
                             'X-CSRF-TOKEN': '{{ csrf_token() }}',

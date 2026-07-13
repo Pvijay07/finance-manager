@@ -1207,6 +1207,29 @@ class ExpensesController extends Controller
         $paidAmount < $netPayableAmount;
       $balanceAmount = $netPayableAmount - $paidAmount;
 
+      $oldOriginalBaseAmount = floatval($expense->original_amount ?? $expense->actual_amount);
+      $oldTdsTax = Tax::where('taxable_type', Expense::class)
+        ->where('taxable_id', $expense->id)
+        ->where('tax_type', 'tds')
+        ->first();
+      $oldTdsAmount = $oldTdsTax ? floatval($oldTdsTax->tax_amount) : 0;
+
+      if ($request->status === 'settle' && !$isSplitPayment) {
+          $originalPlannedAmount = $expense->planned_amount - $oldTdsAmount;
+          $paidAmount = round($oldOriginalBaseAmount - $oldTdsAmount, 2);
+          
+          $plannedAmount = $originalPlannedAmount;
+          $netPayableAmount = $originalPlannedAmount;
+          $balanceAmount = 0;
+          
+          $gstAmountForCurrent = 0;
+          $tdsAmountForCurrent = 0;
+          $gstPercentage = 0;
+          $tdsPercentage = 0;
+          
+          $request->merge(['apply_gst' => 0, 'apply_tds' => 0, 'gst_amount' => 0, 'tds_amount' => 0]);
+      }
+
       // If split payment, calculate proportional taxes
       $gstAmountForCurrent = $originalGstAmount;
       $tdsAmountForCurrent = $originalTdsAmount;
@@ -1247,17 +1270,17 @@ class ExpensesController extends Controller
           'expense_name'   => $request->expense_name ?? $expense->expense_name,
           'planned_amount' => $originalPlannedAmount,
           'actual_amount'  => $paidAmount,
-          'status'         => 'paid',
+          'status'         => ($request->status === 'settle') ? 'settle' : 'paid',
           'party_name'     => $request->party_name ?? $expense->party_name,
           'mobile_number'  => $request->mobile_number ?? $expense->mobile_number,
           'notes'          => $request->notes ?? $expense->notes,
           'due_date'       => $request->due_date ?? $expense->due_date,
           'is_split'       => false,
-          'balance_amount' => $balanceAmount
+          'balance_amount' => ($request->status === 'settle') ? 0 : $balanceAmount
         ];
 
         // Handle paid date for regular updates
-        if ($request->status === 'paid') {
+        if ($request->status === 'paid' || $request->status === 'settle') {
           $expenseData['paid_date'] = $request->paid_date ?? now()->format('Y-m-d');
         } elseif ($request->paid_date) {
           $expenseData['paid_date'] = $request->paid_date;

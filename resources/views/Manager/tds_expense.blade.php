@@ -551,7 +551,7 @@
     }
 
     function downloadTdsProofById(id) {
-        window.location.href = `https://xhtmlreviews.in/beta-finance/manager/taxes/${id}/download-tds-proof`;
+        window.location.href = `${window.APP_URL}/manager/taxes/${id}/download-tds-proof`;
     }
 
     function updatePerPage() {
