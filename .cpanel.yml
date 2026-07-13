@@ -1,0 +1,5 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/u506206132/domains/xhtmlreviews.in/public_html/beta-finance
+    - /bin/rsync -avz --exclude '.git' --exclude '.cpanel.yml' ./ $DEPLOYPATH
