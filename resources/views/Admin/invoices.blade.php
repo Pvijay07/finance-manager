@@ -3188,33 +3188,7 @@
         window.open(`${window.APP_URL}/admin/invoices/${id}/download?type=invoice`, '_blank');
     }
 
-    // Print invoice
-    // function printInvoice(id) {
-    //     window.open(`${window.APP_URL}/admin/invoices/${id}/download?type=invoice`, '_blank');
-    //     // const modalContent = document.getElementById('invoiceDetailsContent').innerHTML;
-    //     // const printWindow = window.open('', '_blank');
-    //     // printWindow.document.write(`
-    //     //                                 <html>
-    //     //                                     <head>
-    //     //                                         <title>Invoice Print</title>
-    //     //                                         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    //     //                                         <style>
-    //     //                                             @media print {
-    //     //                                                 @page { margin: 20px; }
-    //     //                                                 body { margin: 0; }
-    //     //                                             }
-    //     //                                         </style>
-    //     //                                     </head>
-    //     //                                     <body>
-    //     //                                         ${modalContent}
-    //     //                                         <script>
-    //     //                                             window.onload = function() { window.print(); window.close(); }
-    //     //                                         <\/script>
-    //     //                                     </body>
-    //     //                                 </html>
-    //     //                             `);
-    //     // printWindow.document.close();
-    // }
+
     
     function printInvoice() {
         const modal = document.getElementById('viewInvoiceModal');
