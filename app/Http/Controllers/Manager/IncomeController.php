@@ -36,7 +36,9 @@ class IncomeController extends Controller
 
     // Filter by user's managed companies
     $query->whereHas('company', function ($q) use ($user) {
-      $q->where('manager_id', $user->id);
+      if (!$user->isAdmin() && !$user->isCA()) {
+        $q->forManager($user);
+      }
     });
 
     // Apply company filter
@@ -126,15 +128,17 @@ class IncomeController extends Controller
 
     $perPage = $request->get('per_page', 10);
     $incomes = $query->paginate($perPage);
-    $companies = Company::where('manager_id', $user->id)
-      ->where('status', 'active')
-      ->get();
+    $companies = ($user->isAdmin() || $user->isCA())
+      ? Company::where('status', 'active')->get()
+      : Company::forManager($user)->where('status', 'active')->get();
     $statuses = ['pending', 'received', 'overdue', 'upcoming'];
 
     // Create a helper function for statistics queries
     $statsQuery = function ($conditions = []) use ($user, $statsStartDate, $statsEndDate, $companyId, $currency) {
       $query = Income::whereHas('company', function ($q) use ($user) {
-        $q->where('manager_id', $user->id);
+        if (!$user->isAdmin() && !$user->isCA()) {
+          $q->forManager($user);
+        }
       });
 
       // Apply date range
@@ -176,7 +180,9 @@ class IncomeController extends Controller
 
       // All-time overdue (not filtered by date range) - FIXED
       'allTimeOverdue' => Income::whereHas('company', function ($q) use ($user, $companyId) {
-        $q->where('manager_id', $user->id);
+        if (!$user->isAdmin() && !$user->isCA()) {
+          $q->forManager($user);
+        }
         if ($companyId) {
           $q->where('id', $companyId);
         }
@@ -189,7 +195,9 @@ class IncomeController extends Controller
         })
         ->sum('amount') ?? 0,
       'allTimeOverdueItems' => Income::whereHas('company', function ($q) use ($user, $companyId) {
-        $q->where('manager_id', $user->id);
+        if (!$user->isAdmin() && !$user->isCA()) {
+          $q->forManager($user);
+        }
         if ($companyId) {
           $q->where('id', $companyId);
         }
@@ -1825,9 +1833,10 @@ class IncomeController extends Controller
     $companyId = $request->get('company');
     $sort = $request->get('sort', 'name');
 
-    $query = Company::where('manager_id', $user->id)
-      ->where('status', 'active')
-      ->with(['incomes', 'expenses']);
+    $query = ($user->isAdmin() || $user->isCA())
+      ? Company::where('status', 'active')
+      : Company::forManager($user)->where('status', 'active');
+    $query->with(['incomes', 'expenses']);
 
     if ($companyId) {
       $query->where('id', $companyId);

@@ -31,7 +31,9 @@ class ExpensesController extends Controller
     $query = Expense::with(['company', 'categoryRelation', 'receipts', 'parent', 'children']);
     // Apply company filter - only show expenses from companies where user is manager
     $query->whereHas('company', function ($q) use ($user) {
-      $q->where('manager_id', $user->id);
+      if (!$user->isAdmin() && !$user->isCA()) {
+        $q->forManager($user);
+      }
     });
 
     // Apply specific company filter if selected
@@ -114,7 +116,9 @@ class ExpensesController extends Controller
 
     // Apply the same filters to stats query, including user's companies
     $statsQuery->whereHas('company', function ($q) use ($user) {
-      $q->where('manager_id', $user->id);
+      if (!$user->isAdmin() && !$user->isCA()) {
+        $q->forManager($user);
+      }
     });
 
     if ($companyId) {
@@ -159,7 +163,9 @@ class ExpensesController extends Controller
     // Total overdue (all time) - only for user's companies
     $totalOverdueQuery = Expense::where('status', 'overdue');
     $totalOverdueQuery->whereHas('company', function ($q) use ($user) {
-      $q->where('manager_id', $user->id);
+      if (!$user->isAdmin() && !$user->isCA()) {
+        $q->forManager($user);
+      }
     });
 
     if ($companyId) {
@@ -182,7 +188,9 @@ class ExpensesController extends Controller
     $next7DaysQuery = Expense::whereBetween('due_date', [$next7DaysStart, $next7DaysEnd]);
 
     $next7DaysQuery->whereHas('company', function ($q) use ($user) {
-      $q->where('manager_id', $user->id);
+      if (!$user->isAdmin() && !$user->isCA()) {
+        $q->forManager($user);
+      }
     });
 
     if ($companyId) {
@@ -201,9 +209,9 @@ class ExpensesController extends Controller
     $next7DaysCount = $next7DaysQuery->count();
 
     // Get companies where the user is the manager (not all companies)
-    $companies = Company::where('manager_id', $user->id)
-      ->where('status', 'active')
-      ->get();
+    $companies = ($user->isAdmin() || $user->isCA())
+      ? Company::where('status', 'active')->get()
+      : Company::forManager($user)->where('status', 'active')->get();
 
     $categories = Category::where(['is_active' => true, 'category_type' => 'not_standard'])->get();
 
@@ -375,7 +383,9 @@ class ExpensesController extends Controller
 
     // Apply company filter - only show expenses from companies where user is manager
     $query->whereHas('company', function ($q) use ($user) {
-      $q->where('manager_id', $user->id);
+      if (!$user->isAdmin() && !$user->isCA()) {
+        $q->forManager($user);
+      }
     });
 
     // Apply company filter if specifically selected
@@ -530,7 +540,9 @@ class ExpensesController extends Controller
 
     // Apply company filter - only show expenses from companies where user is manager
     $query->whereHas('company', function ($q) use ($user) {
-      $q->where('manager_id', $user->id);
+      if (!$user->isAdmin() && !$user->isCA()) {
+        $q->forManager($user);
+      }
     });
 
     // Apply company filter if specifically selected

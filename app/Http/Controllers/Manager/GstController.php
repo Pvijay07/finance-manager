@@ -57,13 +57,11 @@ class GSTController extends Controller
 
         // For regular managers
         if ($specificCompanyId && $specificCompanyId !== 'all') {
-            $hasAccess = Company::where('id', $specificCompanyId)
-                ->where('manager_id', $user->id)
-                ->exists();
+            $hasAccess = Company::forManager($user)->where('id', $specificCompanyId)->exists();
             return $hasAccess ? [$specificCompanyId] : [];
         }
 
-        return Company::where('manager_id', $user->id)
+        return Company::forManager($user)
             ->where('status', 'active')
             ->pluck('id')
             ->toArray();
@@ -80,7 +78,7 @@ class GSTController extends Controller
             return Company::where('status', 'active')->get(['id', 'name']);
         }
 
-        return Company::where('manager_id', $user->id)
+        return Company::forManager($user)
             ->where('status', 'active')
             ->get(['id', 'name']);
     }

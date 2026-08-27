@@ -50,9 +50,13 @@ class TDSController extends Controller
 
         if ($specificCompanyId && $specificCompanyId !== 'all') {
             // Verify the user has access to this specific company
-            $hasAccess = Company::where('id', $specificCompanyId)
-                ->where('manager_id', $user->id)
-                ->exists();
+            if ($user->isAdmin() || $user->isCA()) {
+                $hasAccess = Company::where('id', $specificCompanyId)->exists();
+            } else {
+                $hasAccess = Company::forManager($user)
+                    ->where('id', $specificCompanyId)
+                    ->exists();
+            }
 
             if ($hasAccess) {
                 return [$specificCompanyId];
@@ -67,7 +71,7 @@ class TDSController extends Controller
             return Company::where('status', 'active')->pluck('id')->toArray();
         }
 
-        return Company::where('manager_id', $user->id)
+        return Company::forManager($user)
             ->where('status', 'active')
             ->pluck('id')
             ->toArray();
@@ -84,7 +88,7 @@ class TDSController extends Controller
             return Company::where('status', 'active')->orderBy('name')->get();
         }
 
-        return Company::where('manager_id', $user->id)
+        return Company::forManager($user)
             ->where('status', 'active')
             ->orderBy('name')
             ->get();

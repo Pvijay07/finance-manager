@@ -12,7 +12,7 @@ class CompanyController extends Controller
 {
 public function index(Request $request)
 {
-    $query = Company::with(['manager', 'managers']);
+    $query = Company::with(['manager', 'managers', 'users']);
     
     // Search functionality
     if ($request->has('search') && !empty($request->search)) {
@@ -22,7 +22,7 @@ public function index(Request $request)
               ->orWhereHas('manager', function($q) use ($search) {
                   $q->where('name', 'LIKE', "%{$search}%");
               })
-              ->orWhereHas('managers', function($q) use ($search) {
+              ->orWhereHas('users', function($q) use ($search) {
                   $q->where('name', 'LIKE', "%{$search}%");
               });
         });
@@ -39,7 +39,7 @@ public function index(Request $request)
     $query->orderBy($sortBy, $sortOrder);
     
     $companies = $query->paginate(10);
-    $managers  = User::where('role', 'manager')->get();
+    $managers  = User::whereIn('role', ['manager', 'user'])->get();
     
     return view('Admin.company', compact('companies', 'managers'));
 }
@@ -85,7 +85,6 @@ public function index(Request $request)
 
       if (!empty($managerIds)) {
         User::whereIn('id', $managerIds)
-          ->where('role', 'manager')
           ->update(['company_id' => $company->id]);
       }
 
@@ -106,9 +105,9 @@ public function index(Request $request)
   public function edit($id)
   {
     try {
-      $company = Company::with('managers')->findOrFail($id);
+      $company = Company::with(['manager', 'managers', 'users'])->findOrFail($id);
 
-      $managerIds = $company->managers->pluck('id')->toArray();
+      $managerIds = $company->users->pluck('id')->toArray();
       if ($company->manager_id && !in_array($company->manager_id, $managerIds)) {
         $managerIds[] = (int) $company->manager_id;
       }
@@ -170,14 +169,12 @@ public function index(Request $request)
       if ($managerIds !== null) {
         // Unassign managers previously assigned to this company who are not in the new list
         User::where('company_id', $company->id)
-          ->where('role', 'manager')
           ->whereNotIn('id', $managerIds)
           ->update(['company_id' => null]);
 
         // Assign selected managers to this company
         if (!empty($managerIds)) {
           User::whereIn('id', $managerIds)
-            ->where('role', 'manager')
             ->update(['company_id' => $company->id]);
         }
       }
@@ -275,13 +272,11 @@ public function index(Request $request)
 
       if ($managerIds !== null) {
         User::where('company_id', $company->id)
-          ->where('role', 'manager')
           ->whereNotIn('id', $managerIds)
           ->update(['company_id' => null]);
 
         if (!empty($managerIds)) {
           User::whereIn('id', $managerIds)
-            ->where('role', 'manager')
             ->update(['company_id' => $company->id]);
         }
       }

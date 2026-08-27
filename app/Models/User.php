@@ -89,22 +89,15 @@ class User extends Authenticatable
 
     public function canAccessCompany($companyId)
     {
-        if ($this->role === 'admin') return true;
-        if ($this->role === 'ca') return true;
+        if ($this->isAdmin() || $this->isCA()) return true;
         if ($this->company_id == $companyId) return true;
 
-        return Company::where('id', $companyId)
-            ->where(function ($q) {
-                $q->where('manager_id', $this->id)
-                  ->orWhereHas('managers', function ($mq) {
-                      $mq->where('users.id', $this->id);
-                  });
-            })->exists();
+        return Company::forManager($this)->where('id', $companyId)->exists();
     }
 
     public function hasPermission($permission)
     {
-        if ($this->role === 'admin') {
+        if ($this->isAdmin()) {
             return true;
         }
 
@@ -140,14 +133,19 @@ class User extends Authenticatable
             'ca'      => 'CA'
         ];
 
-        return '<span class="role-badge ' . ($badges[$this->role] ?? '') . '">' . ($labels[$this->role] ?? $this->role) . '</span>';
+        $roleKey = strtolower($this->role ?? '');
+        return '<span class="role-badge ' . ($badges[$roleKey] ?? '') . '">' . ($labels[$roleKey] ?? $this->role) . '</span>';
     }
     public function isAdmin()
     {
-        return $this->role === 'Admin' || $this->role === 'Super Admin';
+        return in_array(strtolower($this->role ?? ''), ['admin', 'super admin']);
     }
     public function isCA()
     {
-        return $this->role === 'CA';
+        return strtolower($this->role ?? '') === 'ca';
+    }
+    public function isManager()
+    {
+        return strtolower($this->role ?? '') === 'manager';
     }
 }

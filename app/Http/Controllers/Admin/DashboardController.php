@@ -72,7 +72,7 @@ class DashboardController extends Controller
             return Company::where('status', 'active')->pluck('id');
         }
 
-        return Company::where('manager_id', $user->id)
+        return Company::forManager($user)
             ->where('status', 'active')
             ->pluck('id');
     }

@@ -174,6 +174,7 @@ Route::middleware(['auth', 'role:manager'])->prefix('manager')->group(function (
     Route::post('/invoices', [InvoiceController::class, 'store'])->name('manager.invoices.store');
     Route::put('/invoices/{invoice}/mark-paid', [InvoiceController::class, 'markPaid'])->name('manager.invoices.mark-paid');
     Route::get('/invoices/{id}', [IncomeController::class, 'getInvoiceDetails'])->name('invoices.view');
+    Route::get('/invoices/{id}/download', [IncomeController::class, 'download'])->name('manager.invoices.download');
 
     // Standard Expenses Routes
     Route::prefix('standard-expenses')->group(function () {

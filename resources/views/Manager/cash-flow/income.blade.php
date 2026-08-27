@@ -3691,6 +3691,7 @@
             // Show the modal
             const modalElement = document.getElementById('viewInvoiceModal');
             if (modalElement) {
+                modalElement.dataset.invoiceId = invoice.id || '';
                 const modal = new bootstrap.Modal(modalElement);
                 modal.show();
             } else {
@@ -3712,34 +3713,12 @@
 
         // Add print function
         function printInvoice() {
-            const content = document.getElementById('invoiceDetailsContent');
-            if (content) {
-                const printWindow = window.open('', '_blank');
-                printWindow.document.write(`
-                                                                            <!DOCTYPE html>
-                                                                            <html>
-                                                                            <head>
-                                                                                <title>Invoice Print</title>
-                                                                                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-                                                                                <style>
-                                                                                    @media print {
-                                                                                        body { margin: 0; padding: 20px; }
-                                                                                        .no-print { display: none !important; }
-                                                                                    }
-                                                                                    .invoice-header { border-bottom: 2px solid #000; margin-bottom: 20px; padding-bottom: 10px; }
-                                                                                    .total-row { font-weight: bold; }
-                                                                                </style>
-                                                                            </head>
-                                                                            <body>
-                                                                                ${content.innerHTML}
-                                                                                <div class="text-center mt-4 no-print">
-                                                                                    <button class="btn btn-primary" onclick="window.print()">Print</button>
-                                                                                    <button class="btn btn-secondary" onclick="window.close()">Close</button>
-                                                                                </div>
-                                                                            </body>
-                                                                            </html>
-                                                                        `);
-                printWindow.document.close();
+            const modal = document.getElementById('viewInvoiceModal');
+            const invoiceId = modal ? modal.dataset.invoiceId : null;
+            if (invoiceId) {
+                window.open(`${window.APP_URL}/manager/income/${invoiceId}/download?type=invoice`, '_blank');
+            } else {
+                window.print();
             }
         }
 

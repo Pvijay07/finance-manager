@@ -99,8 +99,8 @@ class DashboardController extends Controller
             if ($user->isAdmin() || $user->isCA()) {
                 $hasAccess = Company::where('id', $specificCompanyId)->exists();
             } else {
-                $hasAccess = Company::where('id', $specificCompanyId)
-                    ->where('manager_id', $user->id)
+                $hasAccess = Company::forManager($user)
+                    ->where('id', $specificCompanyId)
                     ->exists();
             }
             
@@ -111,7 +111,7 @@ class DashboardController extends Controller
             return Company::where('status', 'active')->pluck('id')->toArray();
         }
 
-        return Company::where('manager_id', $user->id)
+        return Company::forManager($user)
             ->where('status', 'active')
             ->pluck('id')
             ->toArray();
@@ -375,7 +375,7 @@ class DashboardController extends Controller
             return Company::where('status', 'active')->get(['id', 'name']);
         }
 
-        return Company::where('manager_id', $user->id)
+        return Company::forManager($user)
             ->where('status', 'active')
             ->get(['id', 'name']);
     }

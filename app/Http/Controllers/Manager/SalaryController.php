@@ -21,7 +21,11 @@ class SalaryController extends Controller
 {
     private function getManagerCompanies()
     {
-        return Company::where('manager_id', Auth::id())->where('status', 'active')->get();
+        $user = Auth::user();
+        if ($user && ($user->isAdmin() || $user->isCA())) {
+            return Company::where('status', 'active')->get();
+        }
+        return Company::forManager(Auth::id())->where('status', 'active')->get();
     }
 
     public function dashboard(Request $request)

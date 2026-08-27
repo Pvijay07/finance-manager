@@ -145,7 +145,10 @@
                             </td>
                             <td>
                                 @php
-                                    $assignedManagers = $company->managers->isNotEmpty() ? $company->managers : ($company->manager ? collect([$company->manager]) : collect());
+                                    $assignedManagers = $company->users->isNotEmpty() ? $company->users : ($company->manager ? collect([$company->manager]) : collect());
+                                    if ($company->manager && !$assignedManagers->contains('id', $company->manager->id)) {
+                                        $assignedManagers = collect([$company->manager])->merge($assignedManagers);
+                                    }
                                 @endphp
                                 @if ($assignedManagers->isNotEmpty())
                                     <div class="manager-chips-container">
