@@ -96,9 +96,13 @@ class DashboardController extends Controller
     {
         if ($specificCompanyId) {
             // Verify the user has access to this specific company
-            $hasAccess = Company::where('id', $specificCompanyId)
-                ->where('manager_id', $user->id)
-                ->exists();
+            if ($user->isAdmin() || $user->isCA()) {
+                $hasAccess = Company::where('id', $specificCompanyId)->exists();
+            } else {
+                $hasAccess = Company::where('id', $specificCompanyId)
+                    ->where('manager_id', $user->id)
+                    ->exists();
+            }
             
             return $hasAccess ? [$specificCompanyId] : [];
         }
@@ -121,7 +125,9 @@ class DashboardController extends Controller
                 'totalExpenses' => 0,
                 'netProfit' => 0,
                 'upcomingPayments' => 0,
-                'periodLabel' => $this->getPeriodLabel($dateRange)
+                'periodLabel' => $this->getPeriodLabel($dateRange),
+                'totalReceivableIncome' => 0,
+                'totalPayableExpenses' => 0,
             ];
         }
 
@@ -130,7 +136,7 @@ class DashboardController extends Controller
             ->where('status', 'received')
             ->sum('amount');
 
- $totalReceivableIncome = Income::whereIn('company_id', $companyIds)
+        $totalReceivableIncome = Income::whereIn('company_id', $companyIds)
             ->whereBetween('created_at', [$startDate, $endDate])
             // ->where('status', 'received')
             ->sum('amount');
@@ -140,7 +146,7 @@ class DashboardController extends Controller
             ->where('status', 'paid')
             ->sum('planned_amount');
 
- $totalPayableExpenses = Expense::whereIn('company_id', $companyIds)
+        $totalPayableExpenses = Expense::whereIn('company_id', $companyIds)
             ->whereBetween('created_at', [$startDate, $endDate])
             // ->where('status', 'paid')
             ->sum('planned_amount');
@@ -149,7 +155,7 @@ class DashboardController extends Controller
         //     ->whereIn('status', ['upcoming', 'pending'])
         //     ->whereBetween('due_date', [now(), now()->addDays(7)])
         //     ->sum('amount');
-$upcomingPayments = Expense::whereIn('company_id', $companyIds)
+        $upcomingPayments = Expense::whereIn('company_id', $companyIds)
             ->whereBetween('created_at', [$startDate, $endDate])
             ->whereIn('status', ['upcoming', 'pending'])
             ->whereBetween('due_date', [now(), now()->addDays(7)])
@@ -171,7 +177,9 @@ $upcomingPayments = Expense::whereIn('company_id', $companyIds)
             return [
                 'totalIncome' => 0,
                 'totalExpenses' => 0,
-                'netProfit' => 0
+                'netProfit' => 0,
+                'totalReceivableIncome' => 0,
+                'totalPayableExpenses' => 0,
             ];
         }
 
@@ -180,7 +188,7 @@ $upcomingPayments = Expense::whereIn('company_id', $companyIds)
             ->where('status', 'received')
             ->sum('amount');
 
- $totalReceivableIncome = Income::whereIn('company_id', $companyIds)
+        $totalReceivableIncome = Income::whereIn('company_id', $companyIds)
             ->whereBetween('created_at', [$startDate, $endDate])
             // ->where('status', 'received')
             ->sum('amount');
@@ -190,7 +198,7 @@ $upcomingPayments = Expense::whereIn('company_id', $companyIds)
             ->where('status', 'paid')
             ->sum('planned_amount');
 
- $totalPayableExpenses = Expense::whereIn('company_id', $companyIds)
+        $totalPayableExpenses = Expense::whereIn('company_id', $companyIds)
             ->whereBetween('created_at', [$startDate, $endDate])
             // ->where('status', 'paid')
             ->sum('planned_amount');

@@ -63,12 +63,12 @@
                         </div>
                     </div>
                     <div class="summary-body">
-                        <h4 class="font-headline-md text-headline-md text-success mt-xs mb-2">₹{{ number_format($currentStats['totalIncome'], 2) }}</h4>
+                        <h4 class="font-headline-md text-headline-md text-success mt-xs mb-2">₹{{ number_format($currentStats['totalIncome'] ?? 0, 2) }}</h4>
                         <div class="mt-md d-flex justify-content-between align-items-center gap-sm">
-                            <span class="font-data-mono text-data-mono text-on-surface-variant">{{ $currentStats['periodLabel'] }}</span>
+                            <span class="font-data-mono text-data-mono text-on-surface-variant">{{ $currentStats['periodLabel'] ?? 'This Month' }}</span>
                             @php
-                                $incomeChange = $previousStats['totalIncome'] > 0 
-                                    ? (($currentStats['totalIncome'] - $previousStats['totalIncome']) / $previousStats['totalIncome']) * 100 
+                                $incomeChange = ($previousStats['totalIncome'] ?? 0) > 0 
+                                    ? ((($currentStats['totalIncome'] ?? 0) - ($previousStats['totalIncome'] ?? 0)) / ($previousStats['totalIncome'] ?? 1)) * 100 
                                     : 0;
                             @endphp
                             <span class="font-label-sm text-label-sm {{ $incomeChange >= 0 ? 'text-success' : 'text-danger' }}">
@@ -89,12 +89,12 @@
                         </div>
                     </div>
                     <div class="summary-body">
-                        <h4 class="font-headline-md text-headline-md text-success mt-xs mb-2">₹{{ number_format($currentStats['totalReceivableIncome'], 2) }}</h4>
+                        <h4 class="font-headline-md text-headline-md text-success mt-xs mb-2">₹{{ number_format($currentStats['totalReceivableIncome'] ?? 0, 2) }}</h4>
                         <div class="mt-md d-flex justify-content-between align-items-center gap-sm">
-                            <span class="font-data-mono text-data-mono text-on-surface-variant">{{ $currentStats['periodLabel'] }}</span>
+                            <span class="font-data-mono text-data-mono text-on-surface-variant">{{ $currentStats['periodLabel'] ?? 'This Month' }}</span>
                             @php
-                                $incomeChange = $previousStats['totalReceivableIncome'] > 0 
-                                    ? (($currentStats['totalReceivableIncome'] - $previousStats['totalReceivableIncome']) / $previousStats['totalReceivableIncome']) * 100 
+                                $incomeChange = ($previousStats['totalReceivableIncome'] ?? 0) > 0 
+                                    ? ((($currentStats['totalReceivableIncome'] ?? 0) - ($previousStats['totalReceivableIncome'] ?? 0)) / ($previousStats['totalReceivableIncome'] ?? 1)) * 100 
                                     : 0;
                             @endphp
                             <span class="font-label-sm text-label-sm {{ $incomeChange >= 0 ? 'text-success' : 'text-danger' }}">
@@ -116,12 +116,12 @@
                         </div>
                     </div>
                     <div class="summary-body">
-                        <h4 class="font-headline-md text-headline-md text-danger mt-xs mb-2">₹{{ number_format($currentStats['totalExpenses'], 2) }}</h4>
+                        <h4 class="font-headline-md text-headline-md text-danger mt-xs mb-2">₹{{ number_format($currentStats['totalExpenses'] ?? 0, 2) }}</h4>
                         <div class="mt-md d-flex justify-content-between align-items-center gap-sm">
-                            <span class="font-data-mono text-data-mono text-on-surface-variant">{{ $currentStats['periodLabel'] }}</span>
+                            <span class="font-data-mono text-data-mono text-on-surface-variant">{{ $currentStats['periodLabel'] ?? 'This Month' }}</span>
                             @php
-                                $expenseChange = $previousStats['totalExpenses'] > 0 
-                                    ? (($currentStats['totalExpenses'] - $previousStats['totalExpenses']) / $previousStats['totalExpenses']) * 100 
+                                $expenseChange = ($previousStats['totalExpenses'] ?? 0) > 0 
+                                    ? ((($currentStats['totalExpenses'] ?? 0) - ($previousStats['totalExpenses'] ?? 0)) / ($previousStats['totalExpenses'] ?? 1)) * 100 
                                     : 0;
                             @endphp
                             <span class="font-label-sm text-label-sm {{ $expenseChange <= 0 ? 'text-success' : 'text-danger' }}">
@@ -142,12 +142,12 @@
                         </div>
                     </div>
                     <div class="summary-body">
-                        <h4 class="font-headline-md text-headline-md text-danger mt-xs mb-2">₹{{ number_format($currentStats['totalPayableExpenses'], 2) }}</h4>
+                        <h4 class="font-headline-md text-headline-md text-danger mt-xs mb-2">₹{{ number_format($currentStats['totalPayableExpenses'] ?? 0, 2) }}</h4>
                         <div class="mt-md d-flex justify-content-between align-items-center gap-sm">
-                            <span class="font-data-mono text-data-mono text-on-surface-variant">{{ $currentStats['periodLabel'] }}</span>
+                            <span class="font-data-mono text-data-mono text-on-surface-variant">{{ $currentStats['periodLabel'] ?? 'This Month' }}</span>
                             @php
-                                $expenseChange = $previousStats['totalPayableExpenses'] > 0 
-                                    ? (($currentStats['totalPayableExpenses'] - $previousStats['totalPayableExpenses']) / $previousStats['totalPayableExpenses']) * 100 
+                                $expenseChange = ($previousStats['totalPayableExpenses'] ?? 0) > 0 
+                                    ? ((($currentStats['totalPayableExpenses'] ?? 0) - ($previousStats['totalPayableExpenses'] ?? 0)) / ($previousStats['totalPayableExpenses'] ?? 1)) * 100 
                                     : 0;
                             @endphp
                             <span class="font-label-sm text-label-sm {{ $expenseChange <= 0 ? 'text-success' : 'text-danger' }}">
@@ -169,15 +169,15 @@
                         </div>
                     </div>
                     <div class="summary-body">
-                        <h4 class="font-headline-md text-headline-md {{ $currentStats['netProfit'] >= 0 ? 'text-success' : 'text-danger' }} mt-xs mb-2">
-                            ₹{{ number_format(abs($currentStats['netProfit']), 2) }}
+                        <h4 class="font-headline-md text-headline-md {{ ($currentStats['netProfit'] ?? 0) >= 0 ? 'text-success' : 'text-danger' }} mt-xs mb-2">
+                            ₹{{ number_format(abs($currentStats['netProfit'] ?? 0), 2) }}
                         </h4>
                         <div class="mt-md d-flex justify-content-between align-items-center gap-sm">
-                            <span class="font-data-mono text-data-mono text-on-surface-variant">{{ $currentStats['periodLabel'] }}</span>
+                            <span class="font-data-mono text-data-mono text-on-surface-variant">{{ $currentStats['periodLabel'] ?? 'This Month' }}</span>
                             @php
-                                $profitChange = $previousStats['netProfit'] != 0 
-                                    ? (($currentStats['netProfit'] - $previousStats['netProfit']) / abs($previousStats['netProfit'])) * 100 
-                                    : ($currentStats['netProfit'] > 0 ? 100 : -100);
+                                $profitChange = ($previousStats['netProfit'] ?? 0) != 0 
+                                    ? ((($currentStats['netProfit'] ?? 0) - ($previousStats['netProfit'] ?? 0)) / abs($previousStats['netProfit'] ?? 1)) * 100 
+                                    : (($currentStats['netProfit'] ?? 0) > 0 ? 100 : -100);
                             @endphp
                             <span class="font-label-sm text-label-sm {{ $profitChange >= 0 ? 'text-success' : 'text-danger' }}">
                                 {{ $profitChange >= 0 ? '+' : '' }}{{ number_format($profitChange, 1) }}%
@@ -199,7 +199,7 @@
                         </div>
                     </div>
                     <div class="summary-body">
-                        <h4 class="font-headline-md text-headline-md text-warning mt-xs mb-2">₹{{ number_format($currentStats['upcomingPayments'], 2) }}</h4>
+                        <h4 class="font-headline-md text-headline-md text-warning mt-xs mb-2">₹{{ number_format($currentStats['upcomingPayments'] ?? 0, 2) }}</h4>
                         <div class="mt-md d-flex justify-content-between align-items-center gap-sm">
                             <span class="font-data-mono text-data-mono text-on-surface-variant">This Month</span>
                             @php
