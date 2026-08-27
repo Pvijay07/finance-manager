@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\ExpenseTypeController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\PasswordController;
 
 use App\Http\Controllers\CA\StatementController;
 use App\Http\Controllers\Manager\DashboardController;
@@ -40,6 +41,20 @@ Route::get('/{role}/login', [LoginController::class, 'showLoginForm'])
 Route::post('/{role}/login', [LoginController::class, 'login'])
     ->where('role', 'admin|manager|ca');
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
+
+// Forgot Password / Password Reset Routes
+Route::get('/forgot-password', [PasswordController::class, 'showForgotForm'])->name('password.request');
+Route::get('/{role}/forgot-password', [PasswordController::class, 'showForgotForm'])
+    ->where('role', 'admin|manager|ca')
+    ->name('role.password.request');
+Route::post('/forgot-password', [PasswordController::class, 'sendResetLink'])->name('password.email');
+Route::get('/reset-password/{token}', [PasswordController::class, 'showResetForm'])->name('password.reset');
+Route::post('/reset-password', [PasswordController::class, 'resetPassword'])->name('password.update');
+
+// Password Change Route (Authenticated)
+Route::middleware('auth')->group(function () {
+    Route::post('/change-password', [PasswordController::class, 'update'])->name('password.change');
+});
 
 // Admin Routes
 

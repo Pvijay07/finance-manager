@@ -219,7 +219,10 @@
       
 
         <div class="mt-6 pt-6 space-y-2 px-2" style="border-top: 1px solid #334155;">
-            
+            <a class="flex items-center gap-md px-md py-3 rounded-xl hover:text-white transition-all cursor-pointer text-decoration-none" style="color: #94a3b8;" onmouseover="this.style.backgroundColor='#334155'; this.style.color='white'" onmouseout="this.style.backgroundColor='transparent'; this.style.color='#94a3b8'" onclick="openChangePasswordModal()">
+                <span class="material-symbols-outlined text-[20px]">lock_reset</span>
+                <span class="font-label-md text-label-md">Change Password</span>
+            </a>
             <form action="{{ route('logout') }}" method="POST" class="m-0 p-0" id="logout-form">
                 @csrf
                 <a class="flex items-center gap-md px-md py-3 rounded-xl hover:text-white transition-all cursor-pointer text-decoration-none" style="color: #94a3b8;" onmouseover="this.style.backgroundColor='#334155'; this.style.color='white'" onmouseout="this.style.backgroundColor='transparent'; this.style.color='#94a3b8'" onclick="document.getElementById('logout-form').submit();">
@@ -244,14 +247,40 @@
             <div class="flex items-center gap-lg">
                 <button class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:bg-surface-container-low p-sm rounded-full transition-colors border-0 bg-transparent">notifications</button>
                 <button class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:bg-surface-container-low p-sm rounded-full transition-colors border-0 bg-transparent">settings</button>
-                <div class="flex items-center gap-sm pl-md border-l border-outline-variant">
-                    <div class="text-right hidden sm:block">
-                        <p class="font-label-md text-label-md font-bold mb-0">{{ Auth::user()->name }}</p>
-                        <p class="text-[10px] text-on-surface-variant uppercase tracking-wider mb-0">{{ Auth::user()->role ?? 'Admin' }}</p>
+                <div class="dropdown">
+                    <div class="flex items-center gap-sm pl-md border-l border-outline-variant cursor-pointer" data-bs-toggle="dropdown" aria-expanded="false" style="cursor: pointer;">
+                        <div class="text-right hidden sm:block">
+                            <p class="font-label-md text-label-md font-bold mb-0 text-slate-800">{{ Auth::user()->name }}</p>
+                            <p class="text-[10px] text-on-surface-variant uppercase tracking-wider mb-0">{{ Auth::user()->role ?? 'Admin' }}</p>
+                        </div>
+                        <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #4f46e5, #818cf8); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 1rem; box-shadow: 0 2px 6px rgba(79, 70, 229, 0.3);">
+                            {{ strtoupper(substr(Auth::user()->name, 0, 2)) }}
+                        </div>
+                        <i class="fas fa-chevron-down text-slate-400 text-xs ml-1"></i>
                     </div>
-                    <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #4f46e5, #818cf8); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 1rem;">
-                        {{ strtoupper(substr(Auth::user()->name, 0, 2)) }}
-                    </div>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 p-2 mt-2" style="border-radius: 14px; min-width: 220px; z-index: 1050;">
+                        <li class="px-3 py-2 border-bottom mb-1">
+                            <p class="font-bold text-sm text-slate-800 mb-0">{{ Auth::user()->name }}</p>
+                            <p class="text-xs text-slate-500 mb-0">{{ Auth::user()->email }}</p>
+                            <span class="badge bg-primary-subtle text-primary text-[10px] mt-1 text-uppercase">{{ Auth::user()->role ?? 'Admin' }}</span>
+                        </li>
+                        <li>
+                            <a class="dropdown-item d-flex align-items-center gap-2 py-2 rounded-2 text-slate-700 hover:bg-slate-50" href="javascript:void(0)" onclick="openChangePasswordModal()">
+                                <i class="fas fa-key text-primary" style="width: 18px;"></i>
+                                <span class="font-medium text-sm">Change Password</span>
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider my-1"></li>
+                        <li>
+                            <form action="{{ route('logout') }}" method="POST" class="m-0 p-0">
+                                @csrf
+                                <button type="submit" class="dropdown-item d-flex align-items-center gap-2 py-2 rounded-2 text-danger hover:bg-red-50 w-100 border-0 bg-transparent">
+                                    <i class="fas fa-sign-out-alt text-danger" style="width: 18px;"></i>
+                                    <span class="font-medium text-sm">Sign Out</span>
+                                </button>
+                            </form>
+                        </li>
+                    </ul>
                 </div>
             </div>
         </header>
@@ -325,6 +354,7 @@
             }
         });
     </script>
+    @include('partials.change_password_modal')
 </body>
 
 </html>

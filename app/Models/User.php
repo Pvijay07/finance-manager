@@ -91,7 +91,15 @@ class User extends Authenticatable
     {
         if ($this->role === 'admin') return true;
         if ($this->role === 'ca') return true;
-        return $this->company_id == $companyId;
+        if ($this->company_id == $companyId) return true;
+
+        return Company::where('id', $companyId)
+            ->where(function ($q) {
+                $q->where('manager_id', $this->id)
+                  ->orWhereHas('managers', function ($mq) {
+                      $mq->where('users.id', $this->id);
+                  });
+            })->exists();
     }
 
     public function hasPermission($permission)

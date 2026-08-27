@@ -12,7 +12,7 @@ class CompanyController extends Controller
 {
 public function index(Request $request)
 {
-    $query = Company::with('manager');
+    $query = Company::with(['manager', 'managers']);
     
     // Search functionality
     if ($request->has('search') && !empty($request->search)) {
@@ -20,6 +20,9 @@ public function index(Request $request)
         $query->where(function($q) use ($search) {
             $q->where('name', 'LIKE', "%{$search}%")
               ->orWhereHas('manager', function($q) use ($search) {
+                  $q->where('name', 'LIKE', "%{$search}%");
+              })
+              ->orWhereHas('managers', function($q) use ($search) {
                   $q->where('name', 'LIKE', "%{$search}%");
               });
         });
@@ -44,15 +47,17 @@ public function index(Request $request)
   {
     try {
       $validator = Validator::make($request->all(), [
-        // 'code'       => 'required|string|max:255|unique:companies,code',
-        'name'       => 'required|string|max:255',
-        'email'      => 'nullable|email|max:255',
-        'manager_id' => 'nullable|integer|exists:users,id',
-        'currency'   => 'required|string|max:10',
-        'website'    => 'nullable|max:255',
-        'address'    => 'nullable|string|max:500',
-        'status'     => 'required|in:active,inactive',
-        'logo'       => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048'
+        // 'code'          => 'required|string|max:255|unique:companies,code',
+        'name'          => 'required|string|max:255',
+        'email'         => 'nullable|email|max:255',
+        'manager_id'    => 'nullable|integer|exists:users,id',
+        'manager_ids'   => 'nullable|array',
+        'manager_ids.*' => 'integer|exists:users,id',
+        'currency'      => 'required|string|max:10',
+        'website'       => 'nullable|max:255',
+        'address'       => 'nullable|string|max:500',
+        'status'        => 'required|in:active,inactive',
+        'logo'          => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048'
       ]);
 
       if ($validator->fails()) {
@@ -64,9 +69,25 @@ public function index(Request $request)
       }
 
       $validated = $validator->validated();
+
+      $managerIds = $request->input('manager_ids', []);
+      if (empty($managerIds) && $request->filled('manager_id')) {
+        $managerIds = [$request->manager_id];
+      }
+      $managerIds = array_values(array_filter(array_map('intval', (array) $managerIds)));
+
+      $validated['manager_id'] = !empty($managerIds) ? $managerIds[0] : null;
+      unset($validated['manager_ids']);
+
       $validated = $this->handleLogoUpload($request, $validated);
 
       $company = Company::create($validated);
+
+      if (!empty($managerIds)) {
+        User::whereIn('id', $managerIds)
+          ->where('role', 'manager')
+          ->update(['company_id' => $company->id]);
+      }
 
       return response()->json([
         'success' => true,
@@ -85,11 +106,18 @@ public function index(Request $request)
   public function edit($id)
   {
     try {
-      $company = Company::findOrFail($id);
+      $company = Company::with('managers')->findOrFail($id);
+
+      $managerIds = $company->managers->pluck('id')->toArray();
+      if ($company->manager_id && !in_array($company->manager_id, $managerIds)) {
+        $managerIds[] = (int) $company->manager_id;
+      }
+      $managerIds = array_values(array_unique($managerIds));
 
       return response()->json([
-        'success' => true,
-        'company' => $company
+        'success'     => true,
+        'company'     => $company,
+        'manager_ids' => $managerIds
       ]);
     } catch (\Exception $e) {
       return response()->json([
@@ -105,14 +133,17 @@ public function index(Request $request)
       $company = Company::findOrFail($id);
 
       $validator = Validator::make($request->all(), [
-        'name'       => 'required|string|max:255',
-        'email'      => 'nullable|email|max:255',
-        'manager_id' => 'nullable|integer|exists:users,id',
-        'currency'   => 'required|string|max:10',
-        'website'    => 'nullable|url|max:255',
-        'address'    => 'nullable|string|max:500',
-        'status'     => 'required|in:active,inactive',
+        'name'          => 'required|string|max:255',
+        'email'         => 'nullable|email|max:255',
+        'manager_id'    => 'nullable|integer|exists:users,id',
+        'manager_ids'   => 'nullable|array',
+        'manager_ids.*' => 'integer|exists:users,id',
+        'currency'      => 'required|string|max:10',
+        'website'       => 'nullable|url|max:255',
+        'address'       => 'nullable|string|max:500',
+        'status'        => 'required|in:active,inactive',
       ]);
+
       if ($validator->fails()) {
         return response()->json([
           'success' => false,
@@ -122,7 +153,34 @@ public function index(Request $request)
       }
 
       $validated = $validator->validated();
+
+      $managerIds = $request->input('manager_ids');
+      if ($managerIds === null && $request->has('manager_id')) {
+        $managerIds = $request->filled('manager_id') ? [$request->manager_id] : [];
+      }
+      $managerIds = $managerIds !== null ? array_values(array_filter(array_map('intval', (array) $managerIds))) : null;
+
+      if ($managerIds !== null) {
+        $validated['manager_id'] = !empty($managerIds) ? $managerIds[0] : null;
+      }
+      unset($validated['manager_ids']);
+
       $company->update($validated);
+
+      if ($managerIds !== null) {
+        // Unassign managers previously assigned to this company who are not in the new list
+        User::where('company_id', $company->id)
+          ->where('role', 'manager')
+          ->whereNotIn('id', $managerIds)
+          ->update(['company_id' => null]);
+
+        // Assign selected managers to this company
+        if (!empty($managerIds)) {
+          User::whereIn('id', $managerIds)
+            ->where('role', 'manager')
+            ->update(['company_id' => $company->id]);
+        }
+      }
 
       return response()->json([
         'success' => true,
@@ -156,6 +214,11 @@ public function index(Request $request)
         Storage::disk('public')->delete($company->logo);
       }
 
+      // Unassign any managers from this company
+      User::where('company_id', $company->id)
+        ->where('role', 'manager')
+        ->update(['company_id' => null]);
+
       $company->delete();
 
       return response()->json([
@@ -177,6 +240,8 @@ public function index(Request $request)
       $validator = Validator::make($request->all(), [
         'company_id'           => 'required|exists:companies,id',
         'manager_id'           => 'nullable|exists:users,id',
+        'manager_ids'          => 'nullable|array',
+        'manager_ids.*'        => 'integer|exists:users,id',
         'financial_year_start' => 'required|date',
         'currency'             => 'required|string|max:10',
         'status'               => 'required|in:active,inactive'
@@ -193,12 +258,33 @@ public function index(Request $request)
       $validated = $validator->validated();
       $company = Company::findOrFail($validated['company_id']);
 
+      $managerIds = $request->input('manager_ids');
+      if ($managerIds === null && $request->has('manager_id')) {
+        $managerIds = $request->filled('manager_id') ? [$request->manager_id] : [];
+      }
+      $managerIds = $managerIds !== null ? array_values(array_filter(array_map('intval', (array) $managerIds))) : null;
+
+      $primaryManagerId = $managerIds !== null ? (!empty($managerIds) ? $managerIds[0] : null) : ($validated['manager_id'] ?? $company->manager_id);
+
       $company->update([
-        'manager_id'           => $validated['manager_id'],
+        'manager_id'           => $primaryManagerId,
         'financial_year_start' => $validated['financial_year_start'],
         'currency'             => $validated['currency'],
         'status'               => $validated['status']
       ]);
+
+      if ($managerIds !== null) {
+        User::where('company_id', $company->id)
+          ->where('role', 'manager')
+          ->whereNotIn('id', $managerIds)
+          ->update(['company_id' => null]);
+
+        if (!empty($managerIds)) {
+          User::whereIn('id', $managerIds)
+            ->where('role', 'manager')
+            ->update(['company_id' => $company->id]);
+        }
+      }
 
       return response()->json([
         'success' => true,

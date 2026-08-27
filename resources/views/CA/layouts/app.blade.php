@@ -666,6 +666,9 @@ input[type=number] {
                 <a data-ca-nav href="{{ route('ca.tasks') }}" class="menu-item {{ request()->routeIs('ca.tasks') ? 'active' : '' }}">
                     <i class="fas fa-tasks"></i><span>Tasks</span>
                 </a>
+                <a href="javascript:void(0)" onclick="openChangePasswordModal()" class="menu-item" style="cursor: pointer;">
+                    <i class="fas fa-key"></i><span>Change Password</span>
+                </a>
             </div>
         </div>
         
@@ -697,7 +700,16 @@ input[type=number] {
                         <div class="dropdown-item-text px-3 py-2">
                             <strong class="d-block text-dark">{{ Auth::user()->name ?? 'CA User' }}</strong>
                             <small class="text-muted">{{ Auth::user()->email ?? (Auth::user()->role ?? 'CA') }}</small>
+                            <span class="badge bg-primary-subtle text-primary d-inline-block mt-1 text-uppercase" style="font-size: 10px;">{{ Auth::user()->role ?? 'CA' }}</span>
                         </div>
+                    </li>
+                    <li>
+                        <hr class="dropdown-divider" style="border-color: #f1f5f9;">
+                    </li>
+                    <li>
+                        <a class="dropdown-item py-2 px-3 d-flex align-items-center" href="javascript:void(0)" onclick="openChangePasswordModal()" style="font-size: 0.9rem; font-weight: 500;">
+                            <i class="fas fa-key me-2 text-primary"></i> Change Password
+                        </a>
                     </li>
                     <li>
                         <hr class="dropdown-divider" style="border-color: #f1f5f9;">
@@ -705,7 +717,7 @@ input[type=number] {
                     <li>
                         <form action="{{ route('logout') }}" method="POST" class="m-0 p-0">
                             @csrf
-                            <button type="submit" class="dropdown-item py-2 px-3 text-danger d-flex align-items-center bg-transparent" style="cursor:pointer;" onmouseover="this.style.backgroundColor='#fef2f2';" onmouseout="this.style.backgroundColor='transparent';">
+                            <button type="submit" class="dropdown-item py-2 px-3 text-danger d-flex align-items-center bg-transparent" style="cursor:pointer; font-size: 0.9rem; font-weight: 500;" onmouseover="this.style.backgroundColor='#fef2f2';" onmouseout="this.style.backgroundColor='transparent';">
                                 <i class="fas fa-sign-out-alt me-2"></i> Logout
                             </button>
                         </form>
@@ -718,6 +730,7 @@ input[type=number] {
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
         const DEFAULT_COMPANY = "{{ auth()->user() && auth()->user()->company ? auth()->user()->company->name : '' }}"; 
 
@@ -764,5 +777,6 @@ input[type=number] {
             setCompanyBadges();
         });
     </script>
+    @include('partials.change_password_modal')
 </body>
 </html>

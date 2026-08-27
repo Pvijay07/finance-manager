@@ -144,22 +144,31 @@
                                 </div>
                             </td>
                             <td>
-                                @if ($company->manager)
-                                    <div class="manager-info">
-                                        <span class="manager-name">{{ $company->manager->name }}</span>
-                                        @if (request('search'))
-                                            @php
-                                                $highlightedManager = preg_replace(
-                                                    '/(' . preg_quote(request('search'), '/') . ')/i',
-                                                    '<span class="search-highlight">$1</span>',
-                                                    $company->manager->name,
-                                                );
-                                            @endphp
-                                            <div class="search-match">{!! $highlightedManager !!}</div>
-                                        @endif
+                                @php
+                                    $assignedManagers = $company->managers->isNotEmpty() ? $company->managers : ($company->manager ? collect([$company->manager]) : collect());
+                                @endphp
+                                @if ($assignedManagers->isNotEmpty())
+                                    <div class="manager-chips-container">
+                                        @foreach($assignedManagers as $m)
+                                            <span class="manager-chip-badge" title="{{ $m->email ?? $m->name }}">
+                                                <i class="fas fa-user-tie"></i>
+                                                @if (request('search'))
+                                                    @php
+                                                        $highlightedManager = preg_replace(
+                                                            '/(' . preg_quote(request('search'), '/') . ')/i',
+                                                            '<span class="search-highlight">$1</span>',
+                                                            $m->name,
+                                                        );
+                                                    @endphp
+                                                    <span>{!! $highlightedManager !!}</span>
+                                                @else
+                                                    <span>{{ $m->name }}</span>
+                                                @endif
+                                            </span>
+                                        @endforeach
                                     </div>
                                 @else
-                                    <span class="text-muted">Unassigned</span>
+                                    <span class="badge-unassigned">Unassigned</span>
                                 @endif
                             </td>
                             <td>
@@ -268,20 +277,56 @@
                         <div class="error-message" id="email-error"></div>
                     </div>
 
-                    <!-- Manager Selection with search -->
+                    <!-- Multiple Managers Selection with search and tags -->
                     <div class="form-group">
-                        <label class="form-label">Assigned Manager</label>
-                        <div class="select-with-icon">
-                            <i class="fas fa-user-tie select-icon"></i>
-                            <select class="form-control" name="manager_id" id="manager-select">
-                                <option value="">Unassigned</option>
-                                @foreach ($managers as $manager)
-                                    <option value="{{ $manager->id }}">{{ $manager->name }}</option>
-                                @endforeach
-                            </select>
-                            <i class="fas fa-chevron-down select-arrow"></i>
+                        <div class="form-label-container">
+                            <label class="form-label">Assigned Managers</label>
+                            <span class="char-count" id="managers-count-badge">0 selected</span>
                         </div>
-                        <div class="hint-text">Select a manager to assign to this company</div>
+                        <div class="multi-select-container" id="manager-multi-select">
+                            <div class="multi-select-trigger" id="manager-select-trigger" tabindex="0">
+                                <div class="trigger-left">
+                                    <i class="fas fa-user-tie select-icon"></i>
+                                    <span class="trigger-placeholder" id="manager-trigger-text">Select managers...</span>
+                                </div>
+                                <i class="fas fa-chevron-down select-arrow"></i>
+                            </div>
+
+                            <div class="multi-select-dropdown" id="manager-dropdown" style="display: none;">
+                                <div class="multi-select-search-box">
+                                    <i class="fas fa-search search-icon"></i>
+                                    <input type="text" id="manager-search-input" placeholder="Search managers..." autocomplete="off">
+                                </div>
+                                <div class="multi-select-actions">
+                                    <button type="button" class="action-link" id="select-all-managers-btn"><i class="fas fa-check-double"></i> Select All</button>
+                                    <span class="action-divider">|</span>
+                                    <button type="button" class="action-link" id="clear-all-managers-btn"><i class="fas fa-times"></i> Clear All</button>
+                                </div>
+                                <div class="multi-select-options-list" id="manager-options-list">
+                                    @foreach ($managers as $manager)
+                                        <label class="multi-select-option" data-name="{{ strtolower($manager->name) }}" data-email="{{ strtolower($manager->email ?? '') }}">
+                                            <input type="checkbox" class="manager-checkbox" value="{{ $manager->id }}" data-name="{{ $manager->name }}" data-email="{{ $manager->email ?? '' }}">
+                                            <span class="custom-checkbox-indicator"><i class="fas fa-check"></i></span>
+                                            <div class="option-info">
+                                                <span class="option-name">{{ $manager->name }}</span>
+                                                @if (!empty($manager->email))
+                                                    <span class="option-email">{{ $manager->email }}</span>
+                                                @endif
+                                            </div>
+                                        </label>
+                                    @endforeach
+                                    @if($managers->isEmpty())
+                                        <div class="multi-select-empty">No managers available</div>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Selected Tags Display -->
+                        <div class="selected-tags-container" id="selected-managers-tags" style="display: none;"></div>
+
+                        <div class="hint-text">Select one or more managers to assign to this company</div>
+                        <div class="error-message" id="manager_ids-error"></div>
                         <div class="error-message" id="manager_id-error"></div>
                     </div>
 
@@ -446,10 +491,147 @@
                 }
             };
 
+            // Manager Multi-Select Elements
+            const managerMultiSelect = $('#manager-multi-select');
+            const managerDropdown = $('#manager-dropdown');
+            const managerSelectTrigger = $('#manager-select-trigger');
+            const managerTriggerText = $('#manager-trigger-text');
+            const managerCountBadge = $('#managers-count-badge');
+            const selectedManagersTags = $('#selected-managers-tags');
+            const managerSearchInput = $('#manager-search-input');
+
+            // Toggle manager dropdown
+            managerSelectTrigger.on('click', function(e) {
+                e.stopPropagation();
+                if (managerMultiSelect.hasClass('open')) {
+                    closeManagerDropdown();
+                } else {
+                    openManagerDropdown();
+                }
+            });
+
+            // Prevent dropdown interior clicks from bubbling to document
+            managerDropdown.on('click', function(e) {
+                e.stopPropagation();
+            });
+
+            function openManagerDropdown() {
+                managerMultiSelect.addClass('open');
+                managerDropdown.show();
+                managerSearchInput.val('').trigger('input');
+                setTimeout(() => managerSearchInput.focus(), 50);
+            }
+
+            function closeManagerDropdown() {
+                managerMultiSelect.removeClass('open');
+                managerDropdown.hide();
+            }
+
+            // Close dropdown when clicking outside
+            $(document).on('click', function(e) {
+                if (!$(e.target).closest('#manager-multi-select').length) {
+                    closeManagerDropdown();
+                }
+            });
+
+            // Filter manager options
+            managerSearchInput.on('input', function() {
+                const searchTerm = $(this).val().toLowerCase().trim();
+                $('.multi-select-option').each(function() {
+                    const name = ($(this).data('name') || '').toString();
+                    const email = ($(this).data('email') || '').toString();
+                    if (!searchTerm || name.indexOf(searchTerm) > -1 || email.indexOf(searchTerm) > -1) {
+                        $(this).show();
+                    } else {
+                        $(this).hide();
+                    }
+                });
+            });
+
+            // Handle checkbox changes
+            $(document).on('change', '.manager-checkbox', function() {
+                updateSelectedManagersUI();
+            });
+
+            // Select All visible managers
+            $('#select-all-managers-btn').on('click', function() {
+                $('.multi-select-option:visible .manager-checkbox').prop('checked', true);
+                updateSelectedManagersUI();
+            });
+
+            // Clear All selected managers
+            $('#clear-all-managers-btn').on('click', function() {
+                $('.manager-checkbox').prop('checked', false);
+                updateSelectedManagersUI();
+            });
+
+            // Remove manager tag chip
+            $(document).on('click', '.remove-manager-tag', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const managerId = $(this).data('id');
+                $(`.manager-checkbox[value="${managerId}"]`).prop('checked', false);
+                updateSelectedManagersUI();
+            });
+
+            // Helper to get selected manager IDs array
+            function getSelectedManagerIds() {
+                const ids = [];
+                $('.manager-checkbox:checked').each(function() {
+                    ids.push(parseInt($(this).val()));
+                });
+                return ids;
+            }
+
+            // Helper to set selected manager IDs in UI
+            function setSelectedManagers(managerIds = []) {
+                const ids = (managerIds || []).map(id => parseInt(id));
+                $('.manager-checkbox').each(function() {
+                    const val = parseInt($(this).val());
+                    $(this).prop('checked', ids.includes(val));
+                });
+                updateSelectedManagersUI();
+            }
+
+            // Synchronize UI tags, counter, and trigger placeholder
+            function updateSelectedManagersUI() {
+                const checkedBoxes = $('.manager-checkbox:checked');
+                const count = checkedBoxes.length;
+
+                managerCountBadge.text(`${count} selected`);
+
+                if (count === 0) {
+                    managerTriggerText.text('Select managers...').removeClass('has-selection');
+                } else if (count === 1) {
+                    managerTriggerText.text(checkedBoxes.first().data('name')).addClass('has-selection');
+                } else {
+                    managerTriggerText.text(`${count} managers selected`).addClass('has-selection');
+                }
+
+                selectedManagersTags.empty();
+                if (count > 0) {
+                    checkedBoxes.each(function() {
+                        const id = $(this).val();
+                        const name = $(this).data('name');
+                        const tag = $(`
+                            <span class="manager-tag">
+                                <i class="fas fa-user-tie"></i>
+                                <span class="tag-label"></span>
+                                <button type="button" class="remove-manager-tag" data-id="${id}" title="Remove">&times;</button>
+                            </span>
+                        `);
+                        tag.find('.tag-label').text(name);
+                        selectedManagersTags.append(tag);
+                    });
+                    selectedManagersTags.show();
+                } else {
+                    selectedManagersTags.hide();
+                }
+            }
+
             // Add Company Button
             $('#add-company-btn').click(function() {
-                companyForm[0].reset();
-                companyIdInput.val('');
+                resetForm();
                 modalTitle.text('Add New Company');
                 clearErrorMessages();
                 showModalCentered(companyModal);
@@ -496,21 +678,23 @@
             function clearErrorMessages() {
                 $('.error-message').text('').removeClass('show');
                 $('.form-control').removeClass('error');
+                $('#manager-select-trigger').removeClass('error');
             }
 
             // Add error class to field
             function addErrorClass(fieldId) {
-                $(`#${fieldId}, #company-${fieldId}, #${fieldId}-select, #manager-select, #currency-select, #company-status-modal`).addClass('error');
+                $(`#${fieldId}, #company-${fieldId}, #${fieldId}-select, #manager-select-trigger, #currency-select, #company-status-modal`).addClass('error');
             }
 
             // Remove error class from field
             function removeErrorClass(fieldId) {
-                $(`#${fieldId}, #company-${fieldId}, #${fieldId}-select, #manager-select, #currency-select, #company-status-modal`).removeClass('error');
+                $(`#${fieldId}, #company-${fieldId}, #${fieldId}-select, #manager-select-trigger, #currency-select, #company-status-modal`).removeClass('error');
             }
 
             // Validate single field
             function validateField(fieldName, value) {
                 const rules = validationRules[fieldName];
+                if (!rules) return true;
                 const errorElement = $(`#${fieldName}-error`);
 
                 // Clear previous error
@@ -643,11 +827,14 @@
                             companyIdInput.val(company.id);
                             $('#company-name').val(company.name);
                             $('#company-email').val(company.email);
-                            $('#manager-select').val(company.manager_id);
                             $('#currency-select').val(company.currency);
                             $('#company-website').val(company.website);
                             $('#company-address').val(company.address);
                             $('#company-status-modal').val(company.status);
+
+                            // Populate assigned managers
+                            const managerIds = response.manager_ids || (company.manager_id ? [company.manager_id] : []);
+                            setSelectedManagers(managerIds);
 
                             modalTitle.text('Edit Company');
                             clearErrorMessages();
@@ -706,11 +893,19 @@
                 formData.append('_token', csrfToken);
                 formData.append('name', $('#company-name').val());
                 formData.append('email', $('#company-email').val());
-                formData.append('manager_id', $('#manager-select').val());
                 formData.append('currency', $('#currency-select').val());
                 formData.append('website', $('#company-website').val());
                 formData.append('address', $('#company-address').val());
                 formData.append('status', $('#company-status-modal').val());
+
+                // Append manager IDs
+                const selectedManagerIds = getSelectedManagerIds();
+                selectedManagerIds.forEach(id => {
+                    formData.append('manager_ids[]', id);
+                });
+                if (selectedManagerIds.length > 0) {
+                    formData.append('manager_id', selectedManagerIds[0]);
+                }
 
                 if (companyId) {
                     formData.append('id', companyId);
@@ -958,6 +1153,8 @@
                 $('#company-form')[0].reset();
                 $('#company-id').val('');
                 $('#modal-title').text('Add New Company');
+                setSelectedManagers([]);
+                closeManagerDropdown();
                 clearErrorMessages();
                 removeErrorClasses();
             }
@@ -1668,6 +1865,315 @@
     tr td .btn {
         opacity: 1 !important;
         visibility: visible !important;
+    }
+
+    /* Manager Multi-Select & Badges Styling */
+    .manager-chips-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        max-width: 280px;
+    }
+
+    .manager-chip-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        background: #f1f5f9;
+        color: #1e293b;
+        border: 1px solid #e2e8f0;
+        padding: 3px 8px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+        transition: all 0.2s ease;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    }
+
+    .manager-chip-badge i {
+        color: #0284c7;
+        font-size: 10px;
+    }
+
+    .manager-chip-badge:hover {
+        background: #e2e8f0;
+        border-color: #cbd5e1;
+    }
+
+    .badge-unassigned {
+        display: inline-block;
+        color: #94a3b8;
+        font-size: 12px;
+        font-style: italic;
+    }
+
+    .multi-select-container {
+        position: relative;
+        width: 100%;
+    }
+
+    .multi-select-trigger {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background-color: #fff;
+        border: 1px solid #ced4da;
+        border-radius: 6px;
+        padding: 8px 12px;
+        min-height: 40px;
+        cursor: pointer;
+        user-select: none;
+        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    }
+
+    .multi-select-trigger:focus,
+    .multi-select-container.open .multi-select-trigger {
+        border-color: #007bff;
+        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.15);
+        outline: none;
+    }
+
+    .multi-select-trigger .trigger-left {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        flex: 1;
+    }
+
+    .multi-select-trigger .select-icon {
+        color: #6c757d;
+        font-size: 14px;
+    }
+
+    .multi-select-trigger .trigger-placeholder {
+        color: #6c757d;
+        font-size: 14px;
+    }
+
+    .multi-select-trigger .trigger-placeholder.has-selection {
+        color: #1e293b;
+        font-weight: 500;
+    }
+
+    .multi-select-trigger .select-arrow {
+        color: #6c757d;
+        font-size: 12px;
+        transition: transform 0.2s ease;
+    }
+
+    .multi-select-container.open .multi-select-trigger .select-arrow {
+        transform: rotate(180deg);
+    }
+
+    .multi-select-dropdown {
+        position: absolute;
+        top: calc(100% + 4px);
+        left: 0;
+        right: 0;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+        z-index: 1060;
+        padding: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        animation: fadeIn 0.15s ease-out;
+    }
+
+    .multi-select-search-box {
+        position: relative;
+        display: flex;
+        align-items: center;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 0 10px;
+    }
+
+    .multi-select-search-box .search-icon {
+        color: #94a3b8;
+        font-size: 12px;
+        margin-right: 6px;
+    }
+
+    .multi-select-search-box input {
+        border: none;
+        background: transparent;
+        width: 100%;
+        padding: 6px 0;
+        font-size: 13px;
+        outline: none;
+        color: #1e293b;
+    }
+
+    .multi-select-actions {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px;
+        padding: 2px 4px 6px;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .multi-select-actions .action-link {
+        background: none;
+        border: none;
+        color: #0284c7;
+        cursor: pointer;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 2px 5px;
+        border-radius: 4px;
+        transition: all 0.15s;
+    }
+
+    .multi-select-actions .action-link:hover {
+        background: #e0f2fe;
+        color: #0369a1;
+    }
+
+    .multi-select-actions .action-divider {
+        color: #cbd5e1;
+        font-size: 11px;
+    }
+
+    .multi-select-options-list {
+        max-height: 180px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding: 2px 0;
+    }
+
+    .multi-select-options-list::-webkit-scrollbar {
+        width: 5px;
+    }
+
+    .multi-select-options-list::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 4px;
+    }
+
+    .multi-select-option {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 7px 10px;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background 0.15s;
+        font-size: 13px;
+        margin: 0;
+        user-select: none;
+    }
+
+    .multi-select-option:hover {
+        background: #f1f5f9;
+    }
+
+    .multi-select-option input[type="checkbox"] {
+        display: none;
+    }
+
+    .custom-checkbox-indicator {
+        width: 18px;
+        height: 18px;
+        border: 1.5px solid #cbd5e1;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: transparent;
+        font-size: 10px;
+        flex-shrink: 0;
+        transition: all 0.15s;
+        background: #fff;
+    }
+
+    .multi-select-option input[type="checkbox"]:checked + .custom-checkbox-indicator {
+        background: #007bff;
+        border-color: #007bff;
+        color: #fff;
+    }
+
+    .multi-select-option .option-info {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .multi-select-option .option-name {
+        font-weight: 600;
+        color: #1e293b;
+        font-size: 13px;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    .multi-select-option .option-email {
+        font-size: 11px;
+        color: #64748b;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    .multi-select-empty {
+        padding: 15px;
+        text-align: center;
+        color: #94a3b8;
+        font-size: 13px;
+    }
+
+    .selected-tags-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 8px;
+    }
+
+    .manager-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #e0f2fe;
+        color: #0369a1;
+        border: 1px solid #bae6fd;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 3px 8px;
+        border-radius: 14px;
+        animation: fadeIn 0.15s ease-out;
+    }
+
+    .manager-tag i {
+        font-size: 11px;
+        color: #0284c7;
+    }
+
+    .manager-tag .remove-manager-tag {
+        border: none;
+        background: transparent;
+        color: #0284c7;
+        cursor: pointer;
+        font-size: 14px;
+        line-height: 1;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: color 0.15s;
+    }
+
+    .manager-tag .remove-manager-tag:hover {
+        color: #ef4444;
     }
     </style>
 @endsection

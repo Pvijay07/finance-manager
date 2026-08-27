@@ -35,6 +35,16 @@ class Company extends Model
     return $this->belongsTo(User::class, 'manager_id');
   }
 
+  public function managers()
+  {
+    return $this->hasMany(User::class, 'company_id')->where('role', 'manager');
+  }
+
+  public function users()
+  {
+    return $this->hasMany(User::class, 'company_id');
+  }
+
   public function expenseTypes()
   {
     return $this->hasMany(ExpenseType::class);
@@ -42,6 +52,20 @@ class Company extends Model
   public function scopeActive($query)
   {
     return $query->where('status', 'active');
+  }
+
+  public function scopeForManager($query, $user)
+  {
+    $userId = is_numeric($user) ? $user : $user->id;
+    return $query->where(function($q) use ($userId, $user) {
+      $q->where('manager_id', $userId)
+        ->orWhereHas('managers', function($mq) use ($userId) {
+          $mq->where('users.id', $userId);
+        });
+      if (is_object($user) && !empty($user->company_id)) {
+        $q->orWhere('id', $user->company_id);
+      }
+    });
   }
   public function incomes()
   {
