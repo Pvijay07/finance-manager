@@ -882,6 +882,7 @@
                 isSubmitting = true;
 
                 const companyId = companyIdInput.val();
+                const isEditMode = Boolean(companyId);
 
                 // Show loading
                 const saveBtn = $('#save-company-btn');
