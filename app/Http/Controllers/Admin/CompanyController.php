@@ -22,6 +22,9 @@ public function index(Request $request)
               ->orWhereHas('manager', function($q) use ($search) {
                   $q->where('name', 'LIKE', "%{$search}%");
               })
+              ->orWhereHas('managers', function($q) use ($search) {
+                  $q->where('name', 'LIKE', "%{$search}%");
+              })
               ->orWhereHas('users', function($q) use ($search) {
                   $q->where('name', 'LIKE', "%{$search}%");
               });
@@ -84,8 +87,7 @@ public function index(Request $request)
       $company = Company::create($validated);
 
       if (!empty($managerIds)) {
-        User::whereIn('id', $managerIds)
-          ->update(['company_id' => $company->id]);
+        $company->managers()->sync($managerIds);
       }
 
       return response()->json([
@@ -107,7 +109,10 @@ public function index(Request $request)
     try {
       $company = Company::with(['manager', 'managers', 'users'])->findOrFail($id);
 
-      $managerIds = $company->users->pluck('id')->toArray();
+      $managerIds = $company->managers->pluck('id')->toArray();
+      if (empty($managerIds)) {
+        $managerIds = $company->users->pluck('id')->toArray();
+      }
       if ($company->manager_id && !in_array($company->manager_id, $managerIds)) {
         $managerIds[] = (int) $company->manager_id;
       }
@@ -167,16 +172,7 @@ public function index(Request $request)
       $company->update($validated);
 
       if ($managerIds !== null) {
-        // Unassign managers previously assigned to this company who are not in the new list
-        User::where('company_id', $company->id)
-          ->whereNotIn('id', $managerIds)
-          ->update(['company_id' => null]);
-
-        // Assign selected managers to this company
-        if (!empty($managerIds)) {
-          User::whereIn('id', $managerIds)
-            ->update(['company_id' => $company->id]);
-        }
+        $company->managers()->sync($managerIds);
       }
 
       return response()->json([
@@ -211,10 +207,8 @@ public function index(Request $request)
         Storage::disk('public')->delete($company->logo);
       }
 
-      // Unassign any managers from this company
-      User::where('company_id', $company->id)
-        ->where('role', 'manager')
-        ->update(['company_id' => null]);
+      // Detach any managers from this company
+      $company->managers()->detach();
 
       $company->delete();
 
@@ -271,14 +265,7 @@ public function index(Request $request)
       ]);
 
       if ($managerIds !== null) {
-        User::where('company_id', $company->id)
-          ->whereNotIn('id', $managerIds)
-          ->update(['company_id' => null]);
-
-        if (!empty($managerIds)) {
-          User::whereIn('id', $managerIds)
-            ->update(['company_id' => $company->id]);
-        }
+        $company->managers()->sync($managerIds);
       }
 
       return response()->json([

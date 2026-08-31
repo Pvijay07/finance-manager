@@ -30,6 +30,11 @@ class User extends Authenticatable
         return $this->belongsTo(Company::class, 'company_id');
     }
 
+    public function companies()
+    {
+        return $this->belongsToMany(Company::class, 'company_user', 'user_id', 'company_id');
+    }
+
     public function expenses()
     {
         return $this->hasMany(Expense::class, 'created_by');
@@ -91,8 +96,9 @@ class User extends Authenticatable
     {
         if ($this->isAdmin() || $this->isCA()) return true;
         if ($this->company_id == $companyId) return true;
+        if ($this->companies()->where('companies.id', $companyId)->exists()) return true;
 
-        return Company::forManager($this)->where('id', $companyId)->exists();
+        return Company::forManager($this)->where('companies.id', $companyId)->exists();
     }
 
     public function hasPermission($permission)

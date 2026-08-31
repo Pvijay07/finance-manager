@@ -37,12 +37,12 @@ class Company extends Model
 
   public function managers()
   {
-    return $this->hasMany(User::class, 'company_id')->where('role', 'manager');
+    return $this->belongsToMany(User::class, 'company_user', 'company_id', 'user_id');
   }
 
   public function users()
   {
-    return $this->hasMany(User::class, 'company_id');
+    return $this->belongsToMany(User::class, 'company_user', 'company_id', 'user_id');
   }
 
   public function expenseTypes()
@@ -60,7 +60,7 @@ class Company extends Model
     $userObj = is_object($user) ? $user : User::find($userId);
 
     return $query->where(function($q) use ($userId, $userObj) {
-      $q->where('manager_id', $userId)
+      $q->where('companies.manager_id', $userId)
         ->orWhereHas('managers', function($mq) use ($userId) {
           $mq->where('users.id', $userId);
         })
@@ -68,7 +68,7 @@ class Company extends Model
           $uq->where('users.id', $userId);
         });
       if ($userObj && !empty($userObj->company_id)) {
-        $q->orWhere('id', $userObj->company_id);
+        $q->orWhere('companies.id', $userObj->company_id);
       }
     });
   }
