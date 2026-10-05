@@ -3,8 +3,9 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\{Company, StandardExpense, NonStandardExpense, Income, UpcomingPayment, User};
+use App\Models\{Company, StandardExpense, NonStandardExpense, Income, UpcomingPayment, User, Expense};
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class DashboardController extends Controller
@@ -209,6 +210,11 @@ class DashboardController extends Controller
         // Company performance
         $companyPerformance = $this->getCompanyPerformance();
 
+        // Manager expenses report
+        $startDate = $request->get('start_date');
+        $endDate = $request->get('end_date');
+        $managerExpensesReport = $this->getManagerExpensesReport($range, $companyId, $startDate, $endDate);
+
         return view('Admin.dashboard', compact(
             'stats',
             'companies',
@@ -216,7 +222,8 @@ class DashboardController extends Controller
             'financialData',
             'recentActivities',
             'topUsers',
-            'companyPerformance'
+            'companyPerformance',
+            'managerExpensesReport'
         ));
     }
 
@@ -350,5 +357,198 @@ class DashboardController extends Controller
                 'pending_count' => $pendingCount
             ];
         });
+    }
+
+    private function getDateRangeFilter($range, $startDate = null, $endDate = null)
+    {
+        $now = Carbon::now();
+        switch ($range) {
+            case 'today':
+                return [$now->copy()->startOfDay(), $now->copy()->endOfDay()];
+            case 'this_week':
+            case 'week':
+                return [$now->copy()->startOfWeek(), $now->copy()->endOfWeek()];
+            case 'this_month':
+            case 'month':
+                return [$now->copy()->startOfMonth(), $now->copy()->endOfMonth()];
+            case 'this_quarter':
+            case 'quarter':
+                return [$now->copy()->startOfQuarter(), $now->copy()->endOfQuarter()];
+            case 'this_year':
+            case 'year':
+                return [$now->copy()->startOfYear(), $now->copy()->endOfYear()];
+            case 'custom':
+                if ($startDate && $endDate) {
+                    return [
+                        Carbon::parse($startDate)->startOfDay(),
+                        Carbon::parse($endDate)->endOfDay()
+                    ];
+                }
+                return null;
+            case 'all':
+                return null;
+            default:
+                return [$now->copy()->startOfWeek(), $now->copy()->endOfWeek()];
+        }
+    }
+
+    private function getManagerExpensesReport($range = 'week', $companyId = null, $startDate = null, $endDate = null)
+    {
+        $dateRange = $this->getDateRangeFilter($range, $startDate, $endDate);
+
+        // Fetch managers: Users with role 'manager', or users assigned as manager in companies
+        $managerUserIds = User::where('role', 'manager')->pluck('id');
+        $companyManagerIds = Company::whereNotNull('manager_id')->pluck('manager_id');
+        $allManagerIds = $managerUserIds->merge($companyManagerIds)->filter()->unique();
+
+        $managers = User::whereIn('id', $allManagerIds)
+            ->with(['company', 'companies'])
+            ->get();
+
+        // Fallback: If no managers found, find users who have created expenses
+        if ($managers->isEmpty()) {
+            $managers = User::whereHas('expenses')
+                ->with(['company', 'companies'])
+                ->get();
+        }
+
+        // If still empty, get all users
+        if ($managers->isEmpty()) {
+            $managers = User::with(['company', 'companies'])->get();
+        }
+
+        $reportData = $managers->map(function ($manager) use ($companyId, $dateRange) {
+            $baseQuery = Expense::where('created_by', $manager->id);
+            if ($companyId) {
+                $baseQuery->where('company_id', $companyId);
+            }
+
+            // All-time totals for this manager
+            $allTimeCount = (clone $baseQuery)->count();
+            $allTimeAmount = (clone $baseQuery)->sum(DB::raw('COALESCE(actual_amount, planned_amount, 0)'));
+
+            // Filtered query (date range)
+            $filteredQuery = clone $baseQuery;
+            if ($dateRange) {
+                $filteredQuery->where(function ($q) use ($dateRange) {
+                    $q->whereBetween('created_at', $dateRange)
+                      ->orWhere(function ($sub) use ($dateRange) {
+                          $sub->whereNull('created_at')
+                              ->whereBetween('due_date', $dateRange);
+                      });
+                });
+            }
+
+            $filteredCount = (clone $filteredQuery)->count();
+            $filteredAmount = (clone $filteredQuery)->sum(DB::raw('COALESCE(actual_amount, planned_amount, 0)'));
+
+            // Status counts in filtered period
+            $paidCount = (clone $filteredQuery)->where('status', 'paid')->count();
+            $paidAmount = (clone $filteredQuery)->where('status', 'paid')->sum(DB::raw('COALESCE(actual_amount, planned_amount, 0)'));
+
+            $pendingCount = (clone $filteredQuery)->whereIn('status', ['pending', 'upcoming'])->count();
+            $pendingAmount = (clone $filteredQuery)->whereIn('status', ['pending', 'upcoming'])->sum(DB::raw('COALESCE(planned_amount, actual_amount, 0)'));
+
+            $overdueCount = (clone $filteredQuery)->where('status', 'overdue')->count();
+            $overdueAmount = (clone $filteredQuery)->where('status', 'overdue')->sum(DB::raw('COALESCE(planned_amount, actual_amount, 0)'));
+
+            // Source types in filtered period
+            $standardCount = (clone $filteredQuery)->where(function ($q) {
+                $q->where('source', 'standard')->orWhere('type', 'standard');
+            })->count();
+
+            $nonStandardCount = (clone $filteredQuery)->where(function ($q) {
+                $q->whereIn('source', ['manual', 'non_standard'])->orWhere('type', 'non_standard');
+            })->count();
+
+            // Assigned companies
+            $assignedCompanies = collect();
+            if ($manager->company) {
+                $assignedCompanies->push($manager->company->name);
+            }
+            if ($manager->companies && $manager->companies->isNotEmpty()) {
+                $assignedCompanies = $assignedCompanies->merge($manager->companies->pluck('name'));
+            }
+            $assignedCompanies = $assignedCompanies->unique()->values();
+
+            // Recent expenses for quick details modal
+            $recentExpenses = (clone $baseQuery)
+                ->with('company')
+                ->latest('created_at')
+                ->take(10)
+                ->get()
+                ->map(function ($exp) {
+                    return [
+                        'id' => $exp->id,
+                        'expense_number' => $exp->expense_number ?? ('EXP-' . str_pad($exp->id, 5, '0', STR_PAD_LEFT)),
+                        'name' => $exp->expense_name ?? $exp->name ?? ('Expense #' . $exp->id),
+                        'amount' => (float)($exp->actual_amount ?? $exp->planned_amount ?? 0),
+                        'status' => $exp->status ?? 'pending',
+                        'company' => $exp->company->name ?? 'N/A',
+                        'date' => $exp->created_at ? $exp->created_at->format('M d, Y') : ($exp->due_date ? Carbon::parse($exp->due_date)->format('M d, Y') : 'N/A'),
+                        'source' => ucfirst(str_replace('_', ' ', $exp->source ?? 'manual')),
+                    ];
+                });
+
+            $lastExpense = (clone $baseQuery)->latest('created_at')->first();
+            $lastAddedDate = $lastExpense && $lastExpense->created_at
+                ? $lastExpense->created_at->diffForHumans()
+                : ($lastExpense && $lastExpense->due_date ? Carbon::parse($lastExpense->due_date)->format('M d, Y') : 'No expenses yet');
+
+            return [
+                'id' => $manager->id,
+                'name' => $manager->name,
+                'email' => $manager->email,
+                'role' => ucfirst($manager->role ?? 'Manager'),
+                'companies' => $assignedCompanies->isNotEmpty() ? $assignedCompanies->all() : ['All Companies'],
+                'companies_string' => $assignedCompanies->isNotEmpty() ? $assignedCompanies->implode(', ') : 'All Companies',
+                'filtered_count' => $filteredCount,
+                'filtered_amount' => $filteredAmount,
+                'all_time_count' => $allTimeCount,
+                'all_time_amount' => $allTimeAmount,
+                'paid_count' => $paidCount,
+                'paid_amount' => $paidAmount,
+                'pending_count' => $pendingCount,
+                'pending_amount' => $pendingAmount,
+                'overdue_count' => $overdueCount,
+                'overdue_amount' => $overdueAmount,
+                'standard_count' => $standardCount,
+                'non_standard_count' => $nonStandardCount,
+                'last_added_date' => $lastAddedDate,
+                'recent_expenses' => $recentExpenses,
+            ];
+        });
+
+        // Calculate summary totals
+        $totalExpensesInPeriod = $reportData->sum('filtered_count');
+        $totalAmountInPeriod = $reportData->sum('filtered_amount');
+        $totalAllTimeExpenses = $reportData->sum('all_time_count');
+        $totalAllTimeAmount = $reportData->sum('all_time_amount');
+
+        // Add percentage contribution and sort by filtered count (or all-time count)
+        $reportData = $reportData->map(function ($item) use ($totalExpensesInPeriod, $totalAllTimeExpenses) {
+            $baseTotal = $totalExpensesInPeriod > 0 ? $totalExpensesInPeriod : $totalAllTimeExpenses;
+            $baseCount = $totalExpensesInPeriod > 0 ? $item['filtered_count'] : $item['all_time_count'];
+            $item['percentage'] = $baseTotal > 0 ? round(($baseCount / $baseTotal) * 100, 1) : 0;
+            return $item;
+        })->sortByDesc(function ($item) {
+            return ($item['filtered_count'] * 1000000) + $item['all_time_count'];
+        })->values();
+
+        $summary = [
+            'total_managers' => $managers->count(),
+            'active_managers_in_period' => $reportData->where('filtered_count', '>', 0)->count(),
+            'active_managers_all_time' => $reportData->where('all_time_count', '>', 0)->count(),
+            'total_expenses_in_period' => $totalExpensesInPeriod,
+            'total_amount_in_period' => $totalAmountInPeriod,
+            'total_all_time_expenses' => $totalAllTimeExpenses,
+            'total_all_time_amount' => $totalAllTimeAmount,
+            'date_range_label' => ucfirst(str_replace('_', ' ', $range)),
+        ];
+
+        return [
+            'managers' => $reportData,
+            'summary' => $summary,
+        ];
     }
 }
