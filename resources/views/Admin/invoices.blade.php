@@ -106,8 +106,11 @@
 <section id="invoices-page" class="page">
     <div class="container-fluid">
         @php
-        $activeTab = request ()->get ( 'tab', 'create' );
-        $settings = $settings ?? session ( 'settings' ) ?? [];
+        $activeTab = request()->get('tab');
+        if (!$activeTab) {
+            $activeTab = request()->hasAny(['search', 'company', 'status', 'date_range', 'start_date', 'end_date', 'page', 'per_page']) ? 'proformas' : 'create';
+        }
+        $settings = $settings ?? session('settings') ?? [];
         @endphp
 
         <h4 class="mb-3">Invoices &amp; Proformas</h4>
@@ -557,27 +560,141 @@
                 </div>
             </div>
 
-            <!-- Proformas Tab -->
+            <!-- Proformas / Repeated Incomes Tab -->
             <div class="tab-pane fade {{ $activeTab === 'proformas' ? 'show active' : '' }}" id="proformas"
                 role="tabpanel">
-                <div class="card shadow-sm">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <span>Pending Proformas</span>
-                        <div class="d-flex gap-2">
-                            <select class="form-select form-select-sm" style="width:auto;" id="companyFilter">
-                                <option value="">All Companies</option>
-                                @foreach ( $companies as $company )
-                                <option value="{{ $company->id }}">{{ $company->name }}</option>
-                                @endforeach
-                            </select>
-                            <button class="btn btn-sm btn-outline-secondary" onclick="resetFilters()">
-                                <i class="fas fa-redo"></i> Reset
-                            </button>
-                        </div>
+                <!-- Status Tabs -->
+                <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+                    <button type="button" 
+                        class="btn btn-sm py-2 px-3 {{ ($status ?? 'all') == 'all' ? 'active shadow-sm text-white' : 'btn-light border text-muted' }}"
+                        onclick="setProformaStatusFilter('all')"
+                        style="border-radius: 8px; font-weight: 600; font-size: 0.85rem; {{ ($status ?? 'all') == 'all' ? 'background-color: #4f46e5; border-color: #4f46e5;' : 'background-color: #ffffff;' }}">
+                        <i class="fas fa-list-ul me-1"></i> All Incomes
+                        <span class="badge ms-1 {{ ($status ?? 'all') == 'all' ? 'bg-white text-dark' : 'bg-secondary text-white' }}">{{ $statusCounts['all'] ?? 0 }}</span>
+                    </button>
+                    <button type="button" 
+                        class="btn btn-sm py-2 px-3 {{ ($status ?? '') == 'pending' ? 'active shadow-sm text-white' : 'btn-light border text-muted' }}"
+                        onclick="setProformaStatusFilter('pending')"
+                        style="border-radius: 8px; font-weight: 600; font-size: 0.85rem; {{ ($status ?? '') == 'pending' ? 'background-color: #f59e0b; border-color: #f59e0b;' : 'background-color: #ffffff;' }}">
+                        <i class="fas fa-clock me-1"></i> Pending
+                        <span class="badge ms-1 {{ ($status ?? '') == 'pending' ? 'bg-white text-dark' : 'bg-warning text-dark' }}">{{ $statusCounts['pending'] ?? 0 }}</span>
+                    </button>
+                    <button type="button" 
+                        class="btn btn-sm py-2 px-3 {{ ($status ?? '') == 'upcoming' ? 'active shadow-sm text-white' : 'btn-light border text-muted' }}"
+                        onclick="setProformaStatusFilter('upcoming')"
+                        style="border-radius: 8px; font-weight: 600; font-size: 0.85rem; {{ ($status ?? '') == 'upcoming' ? 'background-color: #3b82f6; border-color: #3b82f6;' : 'background-color: #ffffff;' }}">
+                        <i class="fas fa-calendar-check me-1"></i> Upcoming
+                        <span class="badge ms-1 {{ ($status ?? '') == 'upcoming' ? 'bg-white text-primary' : 'bg-info text-white' }}">{{ $statusCounts['upcoming'] ?? 0 }}</span>
+                    </button>
+                    <button type="button" 
+                        class="btn btn-sm py-2 px-3 {{ ($status ?? '') == 'paid' ? 'active shadow-sm text-white' : 'btn-light border text-muted' }}"
+                        onclick="setProformaStatusFilter('paid')"
+                        style="border-radius: 8px; font-weight: 600; font-size: 0.85rem; {{ ($status ?? '') == 'paid' ? 'background-color: #10b981; border-color: #10b981;' : 'background-color: #ffffff;' }}">
+                        <i class="fas fa-check-circle me-1"></i> Paid
+                        <span class="badge ms-1 {{ ($status ?? '') == 'paid' ? 'bg-white text-success' : 'bg-success text-white' }}">{{ $statusCounts['paid'] ?? 0 }}</span>
+                    </button>
+                </div>
+
+                <!-- Filter Section -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-body">
+                        <form id="proformaFilterForm" method="GET" action="{{ route('admin.invoices') }}" class="row g-3 align-items-end">
+                            <input type="hidden" name="tab" value="proformas">
+                            <input type="hidden" name="status" id="proformaStatusInput" value="{{ $status ?? 'all' }}">
+
+                            <!-- Search Field -->
+                            <div class="col-md-3 col-sm-6">
+                                <label class="form-label small mb-1">Search</label>
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                    <input type="text" class="form-control" name="search" value="{{ $search ?? '' }}"
+                                        placeholder="Search invoice #, client...">
+                                </div>
+                            </div>
+
+                            <!-- Company Filter -->
+                            <div class="col-md-2 col-sm-6">
+                                <label class="form-label small mb-1">Company</label>
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text"><i class="fas fa-building"></i></span>
+                                    <select class="form-select" name="company" onchange="this.form.submit()">
+                                        <option value="all" {{ ($company == 'all' || !$company) ? 'selected' : '' }}>All Companies</option>
+                                        @foreach ( $companies as $comp )
+                                        <option value="{{ $comp->id }}" {{ $company == $comp->id ? 'selected' : '' }}>
+                                            {{ $comp->name }}
+                                        </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Date Range Filter -->
+                            <div class="col-md-2 col-sm-6">
+                                <label class="form-label small mb-1">Date Range</label>
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                                    <select class="form-select" name="date_range" id="proformaDateRange" onchange="handleProformaDateRangeChange(this.value)">
+                                        <option value="all" {{ ($dateRange == 'all' || !$dateRange) ? 'selected' : '' }}>All Dates</option>
+                                        <option value="today" {{ $dateRange == 'today' ? 'selected' : '' }}>Today</option>
+                                        <option value="week" {{ $dateRange == 'week' ? 'selected' : '' }}>This Week</option>
+                                        <option value="month" {{ $dateRange == 'month' ? 'selected' : '' }}>This Month</option>
+                                        <option value="quarter" {{ $dateRange == 'quarter' ? 'selected' : '' }}>This Quarter</option>
+                                        <option value="year" {{ $dateRange == 'year' ? 'selected' : '' }}>This Year</option>
+                                        <option value="custom" {{ $dateRange == 'custom' ? 'selected' : '' }}>Custom Range</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Items Per Page -->
+                            <div class="col-md-2 col-sm-6">
+                                <label class="form-label small mb-1">Per Page</label>
+                                <div class="input-group input-group-sm">
+                                    <select class="form-select" name="per_page" onchange="this.form.submit()">
+                                        <option value="10" {{ ($perPage == 10 || !$perPage) ? 'selected' : '' }}>10</option>
+                                        <option value="25" {{ $perPage == 25 ? 'selected' : '' }}>25</option>
+                                        <option value="50" {{ $perPage == 50 ? 'selected' : '' }}>50</option>
+                                        <option value="100" {{ $perPage == 100 ? 'selected' : '' }}>100</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <div class="col-md-3 col-sm-12">
+                                <div class="d-flex gap-2">
+                                    <button type="submit" class="btn btn-primary btn-sm flex-fill" style="background-color: #4f46e5; border-color: #4f46e5;">
+                                        <i class="fas fa-search me-1"></i> Filter
+                                    </button>
+                                    <a href="{{ route('admin.invoices', ['tab' => 'proformas']) }}"
+                                        class="btn btn-outline-secondary btn-sm flex-fill">
+                                        <i class="fas fa-redo me-1"></i> Reset
+                                    </a>
+                                </div>
+                            </div>
+
+                            <!-- Custom Date Range Row -->
+                            <div class="col-12 mt-2" id="proformaCustomDateRangeRow" style="display: {{ $dateRange == 'custom' ? 'block' : 'none' }};">
+                                <div class="p-3 bg-light rounded border d-flex align-items-center gap-3 flex-wrap">
+                                    <span class="fw-semibold small text-muted"><i class="fas fa-calendar-day me-1"></i> Custom Range:</span>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <label class="form-label small mb-0">From:</label>
+                                        <input type="date" class="form-control form-control-sm" name="start_date" id="proformaStartDate" value="{{ $startDate ?? '' }}" style="width: auto;">
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <label class="form-label small mb-0">To:</label>
+                                        <input type="date" class="form-control form-control-sm" name="end_date" id="proformaEndDate" value="{{ $endDate ?? '' }}" style="width: auto;">
+                                    </div>
+                                    <button type="submit" class="btn btn-sm btn-primary" style="background-color: #4f46e5; border-color: #4f46e5;">Apply Dates</button>
+                                </div>
+                            </div>
+                        </form>
                     </div>
+                </div>
+
+                <!-- Table Card -->
+                <div class="card shadow-sm">
                     <div class="card-body p-0">
                         <div class="table-responsive">
-                            <table class="table table-sm mb-0 align-middle">
+                            <table class="table table-sm mb-0 align-middle table-hover">
                                 <thead class="table-light">
                                     <tr>
                                         <th>Invoice No</th>
@@ -588,19 +705,16 @@
                                         <th>Actual amount</th>
                                         <th>Due Date</th>
                                         <th>Status</th>
-                                        <!-- <th>Linked Payment</th> -->
                                         <th class="text-end">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody id="proformasTableBody">
-                                    @foreach ( $pendingProformas as $invoice )
+                                    @forelse ( $pendingProformas as $invoice )
                                     <tr data-company-id="{{ $invoice->company_id }}">
-                                        <td>{{ $invoice->invoice_number }}</td>
-                                        <td>{{ \Carbon\Carbon::parse ( $invoice->issue_date )->format ( 'd-m-Y' ) }}
-                                        </td>
-                                        <td>{{ $invoice->company->name }}</td>
-                                        <td>{{ $invoice->client_details['name'] }}</td>
-                                        </td>
+                                        <td><strong>{{ $invoice->invoice_number }}</strong></td>
+                                        <td>{{ $invoice->issue_date ? \Carbon\Carbon::parse ( $invoice->issue_date )->format ( 'd-m-Y' ) : '-' }}</td>
+                                        <td>{{ $invoice->company->name ?? 'N/A' }}</td>
+                                        <td>{{ $invoice->client_details['name'] ?? 'N/A' }}</td>
                                         <td>
                                             @if( $invoice->currency !== 'INR' )
                                             <div class="fw-bold">
@@ -617,41 +731,42 @@
                                             {{ $invoice->currency === 'USD' ? '$' : $invoice->currency }}
                                             {{ number_format ( $invoice->subtotal ?? $invoice->received_amount, 2 ) }}
                                         </td>
-                                        <td>{{ \Carbon\Carbon::parse ( $invoice->due_date )->format ( 'd-m-Y' ) }}
-
+                                        <td>{{ $invoice->due_date ? \Carbon\Carbon::parse ( $invoice->due_date )->format ( 'd-m-Y' ) : '-' }}</td>
                                         <td>
                                             @if ( $invoice->status == 'pending' )
                                             <span class="badge bg-warning text-dark">Pending</span>
                                             @elseif( $invoice->status == 'upcoming' )
                                             <span class="badge bg-secondary">Upcoming</span>
+                                            @elseif( $invoice->status == 'paid' )
+                                            <span class="badge bg-success">Paid</span>
+                                            @else
+                                            <span class="badge bg-light text-dark text-capitalize">{{ $invoice->status }}</span>
                                             @endif
                                         </td>
-
-                                        <!-- <td>
-                                                    @if ( $invoice->upcomingPayment )
-                                                        {{ $invoice->upcomingPayment->payment_number }}
-                                                    @else
-                                                        -
-                                                    @endif
-                                                </td> -->
                                         <td class="text-end">
                                             <div class="btn-group btn-group-sm">
                                                 <button class="btn btn-outline-secondary"
                                                     onclick="viewProforma({{ $invoice->id }})">
                                                     View
                                                 </button>
+                                                @if($invoice->status !== 'paid')
                                                 <button class="btn btn-outline-success btn-update-invoice"
                                                     data-invoice-id="{{ $invoice->id }}">
                                                     <i class="fas fa-edit"></i>
                                                 </button>
-
+                                                @endif
                                             </div>
                                         </td>
                                     </tr>
-                                    @endforeach
+                                    @empty
+                                    <tr>
+                                        <td colspan="9" class="text-center py-4 text-muted">
+                                            <i class="fas fa-file-invoice fa-2x mb-2 d-block text-muted"></i>
+                                            No incomes found matching the filters.
+                                        </td>
+                                    </tr>
+                                    @endforelse
                                 </tbody>
-                            </table>
-                            </tbody>
                             </table>
 
                             <div class="d-flex justify-content-between align-items-center p-3 bg-light border-top">
@@ -661,19 +776,10 @@
                                     entries
                                 </small>
                                 <div>
-                                    {{ $pendingProformas->appends ( [
-        'tab' =>
-            'proformas'
-    ] )->links ( 'pagination::bootstrap-4' ) }}
+                                    {{ $pendingProformas->appends ( request()->query() )->links ( 'pagination::bootstrap-4' ) }}
                                 </div>
                             </div>
                         </div>
-                        @if ( $pendingProformas->count () == 0 )
-                        <div class="text-center py-4">
-                            <i class="fas fa-file-invoice fa-2x text-muted mb-2"></i>
-                            <p class="text-muted">No pending proformas found.</p>
-                        </div>
-                        @endif
                     </div>
                 </div>
             </div>
@@ -3233,12 +3339,33 @@
         });
     }
 
+    // Proforma status tab filtering
+    function setProformaStatusFilter(status) {
+        const statusInput = document.getElementById('proformaStatusInput');
+        if (statusInput) {
+            statusInput.value = status;
+        }
+        const form = document.getElementById('proformaFilterForm');
+        if (form) {
+            form.submit();
+        }
+    }
+
+    // Proforma date range change
+    function handleProformaDateRangeChange(value) {
+        const customRow = document.getElementById('proformaCustomDateRangeRow');
+        if (value === 'custom') {
+            if (customRow) customRow.style.display = 'block';
+        } else {
+            if (customRow) customRow.style.display = 'none';
+            const form = document.getElementById('proformaFilterForm');
+            if (form) form.submit();
+        }
+    }
+
     // Reset filters
     function resetFilters() {
-        document.getElementById('companyFilter').value = '';
-        document.querySelectorAll('#proformasTableBody tr').forEach(row => {
-            row.style.display = '';
-        });
+        window.location.href = "{{ route('admin.invoices', ['tab' => 'proformas']) }}";
     }
 
     // Function to close send modal

@@ -20,15 +20,20 @@ class StandardExpensesController extends Controller
     $search         = $request->input('search');
     $companyFilter  = $request->input('company_id');
     $categoryFilter = $request->input('category_type');
+    $statusFilter   = $request->input('status', 'all');
+    $dateRange      = $request->input('date_range', 'all');
+    $startDate      = $request->input('start_date');
+    $endDate        = $request->input('end_date');
 
     $query = Expense::where('source', 'standard')
-      ->with(['company', 'categoryRelation'])
-      ->latest();
+      ->with(['company', 'categoryRelation']);
 
     // Apply search filter
     if ($search) {
       $query->where(function ($q) use ($search) {
-        $q->where('expense_name', 'like', "%{$search}%");
+        $q->where('expense_name', 'like', "%{$search}%")
+          ->orWhere('party_name', 'like', "%{$search}%")
+          ->orWhere('expense_number', 'like', "%{$search}%");
       });
     }
 
@@ -44,14 +49,113 @@ class StandardExpensesController extends Controller
       });
     }
 
-    $templates = $query->paginate($perPage);
+    // Apply date range filter
+    $now = Carbon::now();
+    $filterStartDate = null;
+    $filterEndDate = null;
+
+    if ($dateRange && $dateRange !== 'all') {
+      switch ($dateRange) {
+        case 'today':
+          $filterStartDate = $now->copy()->startOfDay()->toDateString();
+          $filterEndDate = $now->copy()->endOfDay()->toDateString();
+          break;
+        case 'week':
+          $filterStartDate = $now->copy()->startOfWeek()->toDateString();
+          $filterEndDate = $now->copy()->endOfWeek()->toDateString();
+          break;
+        case 'month':
+          $filterStartDate = $now->copy()->startOfMonth()->toDateString();
+          $filterEndDate = $now->copy()->endOfMonth()->toDateString();
+          break;
+        case 'quarter':
+          $filterStartDate = $now->copy()->startOfQuarter()->toDateString();
+          $filterEndDate = $now->copy()->endOfQuarter()->toDateString();
+          break;
+        case 'year':
+          $filterStartDate = $now->copy()->startOfYear()->toDateString();
+          $filterEndDate = $now->copy()->endOfYear()->toDateString();
+          break;
+        case 'custom':
+          if ($startDate) {
+            $filterStartDate = Carbon::parse($startDate)->toDateString();
+          }
+          if ($endDate) {
+            $filterEndDate = Carbon::parse($endDate)->toDateString();
+          }
+          break;
+      }
+    } elseif ($startDate || $endDate) {
+      if ($startDate) {
+        $filterStartDate = Carbon::parse($startDate)->toDateString();
+      }
+      if ($endDate) {
+        $filterEndDate = Carbon::parse($endDate)->toDateString();
+      }
+    }
+
+    if ($filterStartDate && $filterEndDate) {
+      $query->whereBetween('due_date', [$filterStartDate, $filterEndDate]);
+    } elseif ($filterStartDate) {
+      $query->where('due_date', '>=', $filterStartDate);
+    } elseif ($filterEndDate) {
+      $query->where('due_date', '<=', $filterEndDate);
+    }
+
+    // Base query for status counts (filtered by search, company, category, and date)
+    $countQuery = clone $query;
+    $today = Carbon::today()->toDateString();
+
+    $statusCounts = [
+      'all' => (clone $countQuery)->count(),
+      'pending' => (clone $countQuery)->where(function ($q) use ($today) {
+        $q->where('status', 'pending')
+          ->orWhere(function ($sq) use ($today) {
+            $sq->whereNotIn('status', ['paid', 'settle', 'settled'])
+               ->whereDate('due_date', '<', $today);
+          });
+      })->count(),
+      'upcoming' => (clone $countQuery)->where(function ($q) use ($today) {
+        $q->where('status', 'upcoming')
+          ->orWhere(function ($sq) use ($today) {
+            $sq->whereNotIn('status', ['paid', 'settle', 'settled'])
+               ->whereDate('due_date', '>=', $today);
+          });
+      })->count(),
+      'paid' => (clone $countQuery)->whereIn('status', ['paid', 'settle', 'settled'])->count(),
+    ];
+
+    // Apply status filter to the main query
+    if ($statusFilter && $statusFilter !== 'all') {
+      if ($statusFilter === 'paid') {
+        $query->whereIn('status', ['paid', 'settle', 'settled']);
+      } elseif ($statusFilter === 'pending') {
+        $query->where(function ($q) use ($today) {
+          $q->where('status', 'pending')
+            ->orWhere(function ($sq) use ($today) {
+              $sq->whereNotIn('status', ['paid', 'settle', 'settled'])
+                 ->whereDate('due_date', '<', $today);
+            });
+        });
+      } elseif ($statusFilter === 'upcoming') {
+        $query->where(function ($q) use ($today) {
+          $q->where('status', 'upcoming')
+            ->orWhere(function ($sq) use ($today) {
+              $sq->whereNotIn('status', ['paid', 'settle', 'settled'])
+                 ->whereDate('due_date', '>=', $today);
+            });
+        });
+      }
+    }
+
+    $templates = $query->latest('due_date')->paginate($perPage)->withQueryString();
     
     // Ensure statuses are updated for display (TC001/TC008)
     $templates->getCollection()->transform(function($item) {
         $today = Carbon::today();
-        $dueDate = Carbon::parse($item->due_date);
+        $dueDate = $item->due_date ? Carbon::parse($item->due_date) : null;
         if ($item->source === 'standard' && !in_array($item->status, ['paid', 'settle', 'settled'])) {
-            if ($dueDate->startOfDay()->isPast() && !$dueDate->isToday()) {
+            if ($dueDate && $dueDate->startOfDay()->isPast() && !$dueDate->isToday()) {
                 $item->status = 'pending';
             } else {
                 $item->status = 'upcoming';
@@ -68,7 +172,12 @@ class StandardExpensesController extends Controller
       'perPage'        => $perPage,
       'search'         => $search,
       'companyFilter'  => $companyFilter,
-      'categoryFilter' => $categoryFilter
+      'categoryFilter' => $categoryFilter,
+      'statusFilter'   => $statusFilter,
+      'dateRange'      => $dateRange,
+      'startDate'      => $startDate,
+      'endDate'        => $endDate,
+      'statusCounts'   => $statusCounts
     ]);
   }
 

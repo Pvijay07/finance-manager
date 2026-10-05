@@ -270,18 +270,53 @@
         </div>
         <!-- Table Tab -->
         <div id="table-tab" class="tab-content">
+            <!-- Status Tabs -->
+            <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+                <button type="button" 
+                    class="btn btn-sm py-2 px-3 status-tab-btn {{ ($statusFilter ?? 'all') == 'all' ? 'active shadow-sm text-white' : 'btn-light border text-muted' }}"
+                    onclick="setStatusFilter('all')"
+                    style="border-radius: 8px; font-weight: 600; font-size: 0.85rem; {{ ($statusFilter ?? 'all') == 'all' ? 'background-color: #4f46e5; border-color: #4f46e5;' : 'background-color: #ffffff;' }}">
+                    <i class="fas fa-list-ul me-1"></i> All Expenses
+                    <span class="badge ms-1 {{ ($statusFilter ?? 'all') == 'all' ? 'bg-white text-dark' : 'bg-secondary text-white' }}">{{ $statusCounts['all'] ?? 0 }}</span>
+                </button>
+                <button type="button" 
+                    class="btn btn-sm py-2 px-3 status-tab-btn {{ ($statusFilter ?? '') == 'pending' ? 'active shadow-sm text-white' : 'btn-light border text-muted' }}"
+                    onclick="setStatusFilter('pending')"
+                    style="border-radius: 8px; font-weight: 600; font-size: 0.85rem; {{ ($statusFilter ?? '') == 'pending' ? 'background-color: #f59e0b; border-color: #f59e0b;' : 'background-color: #ffffff;' }}">
+                    <i class="fas fa-clock me-1"></i> Pending
+                    <span class="badge ms-1 {{ ($statusFilter ?? '') == 'pending' ? 'bg-white text-dark' : 'bg-warning text-dark' }}">{{ $statusCounts['pending'] ?? 0 }}</span>
+                </button>
+                <button type="button" 
+                    class="btn btn-sm py-2 px-3 status-tab-btn {{ ($statusFilter ?? '') == 'upcoming' ? 'active shadow-sm text-white' : 'btn-light border text-muted' }}"
+                    onclick="setStatusFilter('upcoming')"
+                    style="border-radius: 8px; font-weight: 600; font-size: 0.85rem; {{ ($statusFilter ?? '') == 'upcoming' ? 'background-color: #3b82f6; border-color: #3b82f6;' : 'background-color: #ffffff;' }}">
+                    <i class="fas fa-calendar-check me-1"></i> Upcoming
+                    <span class="badge ms-1 {{ ($statusFilter ?? '') == 'upcoming' ? 'bg-white text-primary' : 'bg-info text-white' }}">{{ $statusCounts['upcoming'] ?? 0 }}</span>
+                </button>
+                <button type="button" 
+                    class="btn btn-sm py-2 px-3 status-tab-btn {{ ($statusFilter ?? '') == 'paid' ? 'active shadow-sm text-white' : 'btn-light border text-muted' }}"
+                    onclick="setStatusFilter('paid')"
+                    style="border-radius: 8px; font-weight: 600; font-size: 0.85rem; {{ ($statusFilter ?? '') == 'paid' ? 'background-color: #10b981; border-color: #10b981;' : 'background-color: #ffffff;' }}">
+                    <i class="fas fa-check-circle me-1"></i> Paid
+                    <span class="badge ms-1 {{ ($statusFilter ?? '') == 'paid' ? 'bg-white text-success' : 'bg-success text-white' }}">{{ $statusCounts['paid'] ?? 0 }}</span>
+                </button>
+            </div>
+
             <!-- Filter Section -->
             <div class="card shadow-sm mb-4">
                 <div class="card-body">
                     <form id="filterForm" method="GET" action="{{ route('admin.standard-expenses') }}"
                         class="row g-3 align-items-end">
+                        <input type="hidden" name="status" id="expenseStatusInput" value="{{ $statusFilter ?? 'all' }}">
+                        <input type="hidden" name="tab" value="table-tab">
+
                         <!-- Search Field -->
                         <div class="col-md-3 col-sm-6">
                             <label class="form-label small mb-1">Search</label>
                             <div class="input-group input-group-sm">
                                 <span class="input-group-text"><i class="fas fa-search"></i></span>
                                 <input type="text" class="form-control" name="search" value="{{ $search }}"
-                                    placeholder="Search expense...">
+                                    placeholder="Search expense, party...">
                             </div>
                         </div>
 
@@ -290,7 +325,7 @@
                             <label class="form-label small mb-1">Company</label>
                             <div class="input-group input-group-sm">
                                 <span class="input-group-text"><i class="fas fa-building"></i></span>
-                                <select class="form-select" name="company_id">
+                                <select class="form-select" name="company_id" onchange="this.form.submit()">
                                     <option value="all" {{ ($companyFilter == 'all' || !$companyFilter) ? 'selected' : '' }}>
                                         All Companies</option>
                                     @foreach ($companies as $company)
@@ -307,7 +342,7 @@
                             <label class="form-label small mb-1">Expense Type</label>
                             <div class="input-group input-group-sm">
                                 <span class="input-group-text"><i class="fas fa-filter"></i></span>
-                                <select class="form-select" name="category_type">
+                                <select class="form-select" name="category_type" onchange="this.form.submit()">
                                     <option value="all" {{ ($categoryFilter == 'all' || !$categoryFilter) ? 'selected' : '' }}>All Types</option>
                                     <option value="standard_fixed" {{ $categoryFilter == 'standard_fixed' ? 'selected' : '' }}>
                                         Standard Fixed
@@ -319,11 +354,27 @@
                             </div>
                         </div>
 
-                        <!-- Items Per Page -->
+                        <!-- Date Range Filter -->
                         <div class="col-md-2 col-sm-6">
-                            <label class="form-label small mb-1">Items per page</label>
+                            <label class="form-label small mb-1">Date Range</label>
                             <div class="input-group input-group-sm">
-                                <span class="input-group-text"><i class="fas fa-list-ol"></i></span>
+                                <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                                <select class="form-select" name="date_range" id="expenseDateRange" onchange="handleDateRangeChange(this.value)">
+                                    <option value="all" {{ ($dateRange == 'all' || !$dateRange) ? 'selected' : '' }}>All Dates</option>
+                                    <option value="today" {{ $dateRange == 'today' ? 'selected' : '' }}>Today</option>
+                                    <option value="week" {{ $dateRange == 'week' ? 'selected' : '' }}>This Week</option>
+                                    <option value="month" {{ $dateRange == 'month' ? 'selected' : '' }}>This Month</option>
+                                    <option value="quarter" {{ $dateRange == 'quarter' ? 'selected' : '' }}>This Quarter</option>
+                                    <option value="year" {{ $dateRange == 'year' ? 'selected' : '' }}>This Year</option>
+                                    <option value="custom" {{ $dateRange == 'custom' ? 'selected' : '' }}>Custom Range</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Items Per Page -->
+                        <div class="col-md-1 col-sm-6">
+                            <label class="form-label small mb-1">Per Page</label>
+                            <div class="input-group input-group-sm">
                                 <select class="form-select" name="per_page" onchange="this.form.submit()">
                                     <option value="10" {{ ($perPage == 10 || !$perPage) ? 'selected' : '' }}>10</option>
                                     <option value="25" {{ $perPage == 25 ? 'selected' : '' }}>25</option>
@@ -334,15 +385,31 @@
                         </div>
 
                         <!-- Action Buttons -->
-                        <div class="col-md-3 col-sm-12">
-                            <div class="d-flex gap-2 mt-2">
-                                <button type="submit" class="btn btn-primary btn-sm flex-fill">
+                        <div class="col-md-2 col-sm-12">
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary btn-sm flex-fill" style="background-color: #4f46e5; border-color: #4f46e5;">
                                     <i class="fas fa-search me-1"></i> Filter
                                 </button>
-                                <a href="{{ route('admin.standard-expenses') }}"
+                                <a href="{{ route('admin.standard-expenses', ['tab' => 'table-tab']) }}"
                                     class="btn btn-outline-secondary btn-sm flex-fill">
                                     <i class="fas fa-redo me-1"></i> Reset
                                 </a>
+                            </div>
+                        </div>
+
+                        <!-- Custom Date Range Row (Shown when Custom Range is selected) -->
+                        <div class="col-12 mt-2" id="customDateRangeRow" style="display: {{ $dateRange == 'custom' ? 'block' : 'none' }};">
+                            <div class="p-3 bg-light rounded border d-flex align-items-center gap-3 flex-wrap">
+                                <span class="fw-semibold small text-muted"><i class="fas fa-calendar-day me-1"></i> Custom Range:</span>
+                                <div class="d-flex align-items-center gap-2">
+                                    <label class="form-label small mb-0">From:</label>
+                                    <input type="date" class="form-control form-control-sm" name="start_date" id="expenseStartDate" value="{{ $startDate ?? '' }}" style="width: auto;">
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <label class="form-label small mb-0">To:</label>
+                                    <input type="date" class="form-control form-control-sm" name="end_date" id="expenseEndDate" value="{{ $endDate ?? '' }}" style="width: auto;">
+                                </div>
+                                <button type="submit" class="btn btn-sm btn-primary" style="background-color: #4f46e5; border-color: #4f46e5;">Apply Dates</button>
                             </div>
                         </div>
                     </form>
@@ -563,6 +630,30 @@
     </div>
 
     <script>
+        // Status tab switching
+        function setStatusFilter(status) {
+            const statusInput = document.getElementById('expenseStatusInput');
+            if (statusInput) {
+                statusInput.value = status;
+            }
+            const form = document.getElementById('filterForm');
+            if (form) {
+                form.submit();
+            }
+        }
+
+        // Date range select handler
+        function handleDateRangeChange(value) {
+            const customRow = document.getElementById('customDateRangeRow');
+            if (value === 'custom') {
+                if (customRow) customRow.style.display = 'block';
+            } else {
+                if (customRow) customRow.style.display = 'none';
+                const form = document.getElementById('filterForm');
+                if (form) form.submit();
+            }
+        }
+
         // Tab switching functionality
         function switchTab(tabId, skipReset = false) {
             // Hide all tab contents
@@ -601,7 +692,14 @@
 
         // Update the initial tab setup
         document.addEventListener('DOMContentLoaded', function () {
-            const lastActiveTab = localStorage.getItem('lastActiveTab') || 'form-tab';
+            const urlParams = new URLSearchParams(window.location.search);
+            const hasFilterParams = urlParams.has('search') || urlParams.has('company_id') || 
+                                    urlParams.has('category_type') || urlParams.has('status') || 
+                                    urlParams.has('date_range') || urlParams.has('start_date') || 
+                                    urlParams.has('end_date') || urlParams.has('page') || 
+                                    urlParams.has('per_page') || urlParams.get('tab') === 'table-tab';
+
+            const lastActiveTab = hasFilterParams ? 'table-tab' : (localStorage.getItem('lastActiveTab') || 'form-tab');
             switchTab(lastActiveTab, true); // Don't reset on initial load
         });
 

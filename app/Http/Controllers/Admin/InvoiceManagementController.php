@@ -16,22 +16,28 @@ class InvoiceManagementController extends Controller
 {
   public function index(Request $request)
   {
+    $perPage = $request->input('per_page', 10);
+    $search = $request->input('search');
+    $company = $request->input('company');
+    $status = $request->input('status', 'all');
+    $dateRange = $request->input('date_range', 'all');
+    $startDate = $request->input('start_date');
+    $endDate = $request->input('end_date');
+
+    // Base query for invoices
     $invoices = Invoice::with(['company', 'upcomingPayment', 'tdsTax'])
-      ->when($request->company, function ($q) use ($request) {
-        $q->where('company_id', $request->company);
+      ->when($company && $company !== 'all', function ($q) use ($company) {
+        $q->where('company_id', $company);
       })
       ->when($request->type && $request->type !== 'all', function ($q) use ($request) {
         $q->where('type', $request->type);
       })
-      ->when($request->status && $request->status !== 'all', function ($q) use ($request) {
-        $q->where('status', $request->status);
-      })
-      ->when(!$request->status || $request->status === 'all', function ($q) {
-        // Default to not showing 'replaced' in the main list if no status filter
-        // or optionally show everything. Given the existing code, it shows descending logs.
+      ->when($status && $status !== 'all', function ($q) use ($status) {
+        $q->where('status', $status);
       })
       ->orderBy('created_at', 'desc')
-      ->paginate(10); // Changed from get()
+      ->paginate($perPage)
+      ->withQueryString();
 
     // Decode JSON fields for current page only
     $invoices->each(function ($invoice) {
@@ -45,12 +51,94 @@ class InvoiceManagementController extends Controller
 
     $companies = Company::all();
 
-    // Paginated pending proformas for the table
-    $pendingProformas = Invoice::with(['company', 'upcomingPayment'])
-      ->where('type', 'proforma')
-      ->whereIn('status', ['pending', 'upcoming'])
-      ->orderBy('created_at', 'desc')
-      ->paginate(10); // Changed from get()
+    // Repeated Incomes / Proformas Query
+    $proformasQuery = Invoice::with(['company', 'upcomingPayment', 'tdsTax'])
+      ->where('type', 'proforma');
+
+    // Search filter
+    if ($search) {
+      $proformasQuery->where(function ($q) use ($search) {
+        $q->where('invoice_number', 'like', "%{$search}%")
+          ->orWhere('client_details->name', 'like', "%{$search}%")
+          ->orWhere('client_details->email', 'like', "%{$search}%");
+      });
+    }
+
+    // Company filter
+    if ($company && $company !== 'all') {
+      $proformasQuery->where('company_id', $company);
+    }
+
+    // Date range filter
+    $now = Carbon::now();
+    $filterStartDate = null;
+    $filterEndDate = null;
+
+    if ($dateRange && $dateRange !== 'all') {
+      switch ($dateRange) {
+        case 'today':
+          $filterStartDate = $now->copy()->startOfDay()->toDateString();
+          $filterEndDate = $now->copy()->endOfDay()->toDateString();
+          break;
+        case 'week':
+          $filterStartDate = $now->copy()->startOfWeek()->toDateString();
+          $filterEndDate = $now->copy()->endOfWeek()->toDateString();
+          break;
+        case 'month':
+          $filterStartDate = $now->copy()->startOfMonth()->toDateString();
+          $filterEndDate = $now->copy()->endOfMonth()->toDateString();
+          break;
+        case 'quarter':
+          $filterStartDate = $now->copy()->startOfQuarter()->toDateString();
+          $filterEndDate = $now->copy()->endOfQuarter()->toDateString();
+          break;
+        case 'year':
+          $filterStartDate = $now->copy()->startOfYear()->toDateString();
+          $filterEndDate = $now->copy()->endOfYear()->toDateString();
+          break;
+        case 'custom':
+          if ($startDate) {
+            $filterStartDate = Carbon::parse($startDate)->toDateString();
+          }
+          if ($endDate) {
+            $filterEndDate = Carbon::parse($endDate)->toDateString();
+          }
+          break;
+      }
+    } elseif ($startDate || $endDate) {
+      if ($startDate) {
+        $filterStartDate = Carbon::parse($startDate)->toDateString();
+      }
+      if ($endDate) {
+        $filterEndDate = Carbon::parse($endDate)->toDateString();
+      }
+    }
+
+    if ($filterStartDate && $filterEndDate) {
+      $proformasQuery->whereBetween('due_date', [$filterStartDate, $filterEndDate]);
+    } elseif ($filterStartDate) {
+      $proformasQuery->where('due_date', '>=', $filterStartDate);
+    } elseif ($filterEndDate) {
+      $proformasQuery->where('due_date', '<=', $filterEndDate);
+    }
+
+    // Status counts for status tabs
+    $countQuery = clone $proformasQuery;
+    $statusCounts = [
+      'all'      => (clone $countQuery)->whereNotIn('status', ['replaced', 'cancelled'])->count(),
+      'pending'  => (clone $countQuery)->where('status', 'pending')->count(),
+      'upcoming' => (clone $countQuery)->where('status', 'upcoming')->count(),
+      'paid'     => (clone $countQuery)->where('status', 'paid')->count(),
+    ];
+
+    // Apply status filter
+    if ($status && $status !== 'all') {
+      $proformasQuery->where('status', $status);
+    } else {
+      $proformasQuery->whereNotIn('status', ['replaced', 'cancelled']);
+    }
+
+    $pendingProformas = $proformasQuery->orderBy('due_date', 'asc')->paginate($perPage)->withQueryString();
 
     // Decode JSON fields for current page
     $pendingProformas->each(function ($invoice) {
@@ -62,10 +150,7 @@ class InvoiceManagementController extends Controller
       }
     });
 
-    // Calculate stats separately to include ALL pending records, not just current page
-    $pendingProformasCount = Invoice::where('type', 'proforma')
-      ->whereIn('status', ['pending', 'upcoming'])
-      ->count();
+    $pendingProformasCount = $statusCounts['pending'] + $statusCounts['upcoming'];
 
     $pendingAmount = Invoice::where('type', 'proforma')
       ->whereIn('status', ['pending', 'upcoming'])
@@ -86,7 +171,15 @@ class InvoiceManagementController extends Controller
       'companies',
       'pendingProformas',
       'pendingProformasCount',
-      'stats'
+      'stats',
+      'search',
+      'company',
+      'status',
+      'dateRange',
+      'startDate',
+      'endDate',
+      'perPage',
+      'statusCounts'
     ));
   }
 
