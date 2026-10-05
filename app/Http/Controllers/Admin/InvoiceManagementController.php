@@ -166,6 +166,8 @@ class InvoiceManagementController extends Controller
       'total_invoices'    => Invoice::count(),
     ];
 
+    $companyFilter = $company;
+
     return view('Admin.invoices', compact(
       'invoices',
       'companies',
@@ -174,6 +176,7 @@ class InvoiceManagementController extends Controller
       'stats',
       'search',
       'company',
+      'companyFilter',
       'status',
       'dateRange',
       'startDate',

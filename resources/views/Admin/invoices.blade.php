@@ -618,9 +618,9 @@
                                 <div class="input-group input-group-sm">
                                     <span class="input-group-text"><i class="fas fa-building"></i></span>
                                     <select class="form-select" name="company" onchange="this.form.submit()">
-                                        <option value="all" {{ ($company == 'all' || !$company) ? 'selected' : '' }}>All Companies</option>
+                                        <option value="all" {{ (($companyFilter ?? '') == 'all' || !($companyFilter ?? '')) ? 'selected' : '' }}>All Companies</option>
                                         @foreach ( $companies as $comp )
-                                        <option value="{{ $comp->id }}" {{ $company == $comp->id ? 'selected' : '' }}>
+                                        <option value="{{ $comp->id }}" {{ ($companyFilter ?? '') == $comp->id ? 'selected' : '' }}>
                                             {{ $comp->name }}
                                         </option>
                                         @endforeach
