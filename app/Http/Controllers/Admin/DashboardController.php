@@ -453,12 +453,10 @@ class DashboardController extends Controller
             $overdueAmount = (clone $filteredQuery)->where('status', 'overdue')->sum(DB::raw('COALESCE(planned_amount, actual_amount, 0)'));
 
             // Source types in filtered period
-            $standardCount = (clone $filteredQuery)->where(function ($q) {
-                $q->where('source', 'standard')->orWhere('type', 'standard');
-            })->count();
+            $standardCount = (clone $filteredQuery)->where('source', 'standard')->count();
 
             $nonStandardCount = (clone $filteredQuery)->where(function ($q) {
-                $q->whereIn('source', ['manual', 'non_standard'])->orWhere('type', 'non_standard');
+                $q->where('source', '!=', 'standard')->orWhereNull('source');
             })->count();
 
             // Assigned companies
