@@ -171,7 +171,7 @@ class InvoiceManagementController extends Controller
     $typeFilter = $request->input('type', 'all');
 
     // Query Non-Standard Income
-    $nsIncomeQuery = Income::with(['company'])
+    $nsIncomeQuery = Income::with(['company', 'creator'])
       ->where(function($q) {
         $q->where('income_type', 'non-standard')
           ->orWhere(function($sq) {
@@ -218,7 +218,7 @@ class InvoiceManagementController extends Controller
     $nonStandardIncomes = $nsIncomeQuery->orderBy('income_date', 'desc')->paginate($perPage, ['*'], 'ns_page')->withQueryString();
 
     // 3. Unified All Incomes Query (Shows all Standard and Non-Standard Incomes in one place)
-    $allInvQuery = Invoice::with(['company', 'tdsTax']);
+    $allInvQuery = Invoice::with(['company', 'tdsTax', 'creator']);
     if ($search) {
       $allInvQuery->where(function ($q) use ($search) {
         $q->where('invoice_number', 'like', "%{$search}%")
@@ -285,6 +285,7 @@ class InvoiceManagementController extends Controller
           'balance_amount'  => (float)($inv->balance_amount ?? max(0, $inv->total_amount - ($inv->received_amount ?? 0))),
           'payment_mode'    => 'Bank / Online',
           'status'          => $inv->status,
+          'creator'         => $inv->creator,
           'raw'             => $inv,
         ]);
       }
@@ -308,6 +309,7 @@ class InvoiceManagementController extends Controller
           'balance_amount'  => (float)($inc->balance_amount ?: 0),
           'payment_mode'    => ucfirst($inc->payment_mode ?? 'Cash'),
           'status'          => in_array($inc->status, ['received', 'paid']) ? 'paid' : $inc->status,
+          'creator'         => $inc->creator,
           'raw'             => $inc,
         ]);
       }

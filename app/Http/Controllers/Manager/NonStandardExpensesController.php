@@ -19,7 +19,7 @@ class NonStandardExpensesController extends Controller
     $status = $request->get('status');
 
     // Query non-standard expenses
-    $query = Expense::where('type', 'non_standard')
+    $query = Expense::where('source', '!=', 'standard')
       ->with('company')
       ->orderBy('due_date', 'desc');
 
@@ -40,7 +40,7 @@ class NonStandardExpensesController extends Controller
 
     // Get data for filters
     $companies = Company::where('status', 'active')->get();
-    $categories = Expense::where('type', 'non_standard')
+    $categories = Expense::where('source', '!=', 'standard')
       ->select('category')
       ->distinct()
       ->pluck('category');
@@ -72,8 +72,7 @@ class NonStandardExpensesController extends Controller
       $expense = Expense::create([
         'company_id' => $request->company_id,
         'name' => $request->name,
-        'type' => 'non_standard',
-        'purpose_comment' => $request->purpose_comment,
+        'notes' => $request->purpose_comment ?? $request->notes,
         'planned_amount' => $request->planned_amount,
         'actual_amount' => $request->status === 'paid' ? $request->planned_amount : null,
         'due_date' => $dueDate,
@@ -105,7 +104,7 @@ class NonStandardExpensesController extends Controller
 
   public function update(Request $request, $id)
   {
-    $expense = Expense::where('type', 'non_standard')->findOrFail($id);
+    $expense = Expense::where('source', '!=', 'standard')->findOrFail($id);
 
     $request->validate([
       'company_id' => 'required|exists:companies,id',
@@ -128,7 +127,7 @@ class NonStandardExpensesController extends Controller
         'category' => $request->category,
         'planned_amount' => $request->planned_amount,
         'due_date' => $dueDate,
-        'purpose_comment' => $request->purpose_comment,
+        'notes' => $request->purpose_comment ?? $request->notes,
         'party_name' => $request->party_name,
         'status' => $request->status,
         'month_year' => Carbon::parse($dueDate)->format('Y-m'),
@@ -165,7 +164,7 @@ class NonStandardExpensesController extends Controller
 
   public function markAsPaid($id)
   {
-    $expense = Expense::where('type', 'non_standard')->findOrFail($id);
+    $expense = Expense::where('source', '!=', 'standard')->findOrFail($id);
 
     $expense->update([
       'actual_amount' => $expense->planned_amount,
@@ -182,7 +181,7 @@ class NonStandardExpensesController extends Controller
 
   public function destroy($id)
   {
-    $expense = Expense::where('type', 'non_standard')->findOrFail($id);
+    $expense = Expense::where('source', '!=', 'standard')->findOrFail($id);
     $expense->delete();
 
     return response()->json([
@@ -192,7 +191,7 @@ class NonStandardExpensesController extends Controller
   }
   public function edit($id)
   {
-    $expense = Expense::where('type', 'non_standard')->findOrFail($id);
+    $expense = Expense::where('source', '!=', 'standard')->findOrFail($id);
 
     return response()->json([
       'success' => true,

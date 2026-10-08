@@ -28,27 +28,22 @@ class StandardExpensesController extends Controller
     $endDate        = $request->input('end_date');
 
     // 1. All Expenses Query (Shows all Standard and Non-Standard Expenses in one place)
-    $allExpensesQuery = Expense::with(['company', 'categoryRelation']);
+    $allExpensesQuery = Expense::with(['company', 'categoryRelation', 'creator']);
 
     if ($typeFilter === 'standard') {
       $allExpensesQuery->where('source', 'standard');
     } elseif ($typeFilter === 'standard_fixed' || $typeFilter === 'fixed') {
-      $allExpensesQuery->where('source', 'standard')->where(function ($q) {
-        $q->whereHas('categoryRelation', function ($sq) {
-          $sq->where('category_type', 'standard_fixed');
-        })->orWhere('sub_type', 'fixed');
+      $allExpensesQuery->where('source', 'standard')->whereHas('categoryRelation', function ($sq) {
+        $sq->where('category_type', 'standard_fixed')
+          ->orWhere('sub_type', 'fixed');
       });
     } elseif ($typeFilter === 'standard_editable' || $typeFilter === 'editable') {
-      $allExpensesQuery->where('source', 'standard')->where(function ($q) {
-        $q->whereHas('categoryRelation', function ($sq) {
-          $sq->where('category_type', 'standard_editable');
-        })->orWhere('sub_type', 'editable');
+      $allExpensesQuery->where('source', 'standard')->whereHas('categoryRelation', function ($sq) {
+        $sq->where('category_type', 'standard_editable')
+          ->orWhere('sub_type', 'editable');
       });
     } elseif ($typeFilter === 'non-standard') {
-      $allExpensesQuery->where(function ($q) {
-        $q->where('source', '!=', 'standard')
-          ->orWhere('type', 'non_standard');
-      });
+      $allExpensesQuery->where('source', '!=', 'standard');
     }
 
     if ($search) {
@@ -57,7 +52,7 @@ class StandardExpensesController extends Controller
           ->orWhere('name', 'like', "%{$search}%")
           ->orWhere('party_name', 'like', "%{$search}%")
           ->orWhere('expense_number', 'like', "%{$search}%")
-          ->orWhere('purpose_comment', 'like', "%{$search}%");
+          ->orWhere('notes', 'like', "%{$search}%");
       });
     }
 
@@ -123,14 +118,14 @@ class StandardExpensesController extends Controller
         $q->where('status', 'pending')
           ->orWhere(function ($sq) use ($today) {
             $sq->whereNotIn('status', ['paid', 'settle', 'settled'])
-               ->whereDate('due_date', '<', $today);
+              ->whereDate('due_date', '<', $today);
           });
       })->count(),
       'upcoming' => (clone $allCountQuery)->where(function ($q) use ($today) {
         $q->where('status', 'upcoming')
           ->orWhere(function ($sq) use ($today) {
             $sq->whereNotIn('status', ['paid', 'settle', 'settled'])
-               ->whereDate('due_date', '>=', $today);
+              ->whereDate('due_date', '>=', $today);
           });
       })->count(),
       'paid' => (clone $allCountQuery)->whereIn('status', ['paid', 'settle', 'settled'])->count(),
@@ -144,7 +139,7 @@ class StandardExpensesController extends Controller
           $q->where('status', 'pending')
             ->orWhere(function ($sq) use ($today) {
               $sq->whereNotIn('status', ['paid', 'settle', 'settled'])
-                 ->whereDate('due_date', '<', $today);
+                ->whereDate('due_date', '<', $today);
             });
         });
       } elseif ($statusFilter === 'upcoming') {
@@ -152,24 +147,24 @@ class StandardExpensesController extends Controller
           $q->where('status', 'upcoming')
             ->orWhere(function ($sq) use ($today) {
               $sq->whereNotIn('status', ['paid', 'settle', 'settled'])
-                 ->whereDate('due_date', '>=', $today);
+                ->whereDate('due_date', '>=', $today);
             });
         });
       }
     }
 
     $allExpenses = $allExpensesQuery->latest('due_date')->paginate($perPage, ['*'], 'all_page')->withQueryString();
-    $allExpenses->getCollection()->transform(function($item) {
-        $today = Carbon::today();
-        $dueDate = $item->due_date ? Carbon::parse($item->due_date) : null;
-        if (!in_array($item->status, ['paid', 'settle', 'settled'])) {
-            if ($dueDate && $dueDate->startOfDay()->isPast() && !$dueDate->isToday()) {
-                $item->status = 'pending';
-            } else {
-                $item->status = 'upcoming';
-            }
+    $allExpenses->getCollection()->transform(function ($item) {
+      $today = Carbon::today();
+      $dueDate = $item->due_date ? Carbon::parse($item->due_date) : null;
+      if (!in_array($item->status, ['paid', 'settle', 'settled'])) {
+        if ($dueDate && $dueDate->startOfDay()->isPast() && !$dueDate->isToday()) {
+          $item->status = 'pending';
+        } else {
+          $item->status = 'upcoming';
         }
-        return $item;
+      }
+      return $item;
     });
 
     // 2. Standard Expenses Query
@@ -205,14 +200,14 @@ class StandardExpensesController extends Controller
         $q->where('status', 'pending')
           ->orWhere(function ($sq) use ($today) {
             $sq->whereNotIn('status', ['paid', 'settle', 'settled'])
-               ->whereDate('due_date', '<', $today);
+              ->whereDate('due_date', '<', $today);
           });
       })->count(),
       'upcoming' => (clone $stdCountQuery)->where(function ($q) use ($today) {
         $q->where('status', 'upcoming')
           ->orWhere(function ($sq) use ($today) {
             $sq->whereNotIn('status', ['paid', 'settle', 'settled'])
-               ->whereDate('due_date', '>=', $today);
+              ->whereDate('due_date', '>=', $today);
           });
       })->count(),
       'paid' => (clone $stdCountQuery)->whereIn('status', ['paid', 'settle', 'settled'])->count(),
@@ -226,7 +221,7 @@ class StandardExpensesController extends Controller
           $q->where('status', 'pending')
             ->orWhere(function ($sq) use ($today) {
               $sq->whereNotIn('status', ['paid', 'settle', 'settled'])
-                 ->whereDate('due_date', '<', $today);
+                ->whereDate('due_date', '<', $today);
             });
         });
       } elseif ($statusFilter === 'upcoming') {
@@ -234,36 +229,36 @@ class StandardExpensesController extends Controller
           $q->where('status', 'upcoming')
             ->orWhere(function ($sq) use ($today) {
               $sq->whereNotIn('status', ['paid', 'settle', 'settled'])
-                 ->whereDate('due_date', '>=', $today);
+                ->whereDate('due_date', '>=', $today);
             });
         });
       }
     }
 
     $templates = $stdQuery->latest('due_date')->paginate($perPage)->withQueryString();
-    $templates->getCollection()->transform(function($item) {
-        $today = Carbon::today();
-        $dueDate = $item->due_date ? Carbon::parse($item->due_date) : null;
-        if (!in_array($item->status, ['paid', 'settle', 'settled'])) {
-            if ($dueDate && $dueDate->startOfDay()->isPast() && !$dueDate->isToday()) {
-                $item->status = 'pending';
-            } else {
-                $item->status = 'upcoming';
-            }
+    $templates->getCollection()->transform(function ($item) {
+      $today = Carbon::today();
+      $dueDate = $item->due_date ? Carbon::parse($item->due_date) : null;
+      if (!in_array($item->status, ['paid', 'settle', 'settled'])) {
+        if ($dueDate && $dueDate->startOfDay()->isPast() && !$dueDate->isToday()) {
+          $item->status = 'pending';
+        } else {
+          $item->status = 'upcoming';
         }
-        return $item;
+      }
+      return $item;
     });
 
     // 3. Non-Standard Expenses Query
     $nonStandardQuery = Expense::where('source', '!=', 'standard')
-      ->with(['company', 'categoryRelation']);
+      ->with(['company', 'categoryRelation', 'creator']);
 
     if ($search) {
       $nonStandardQuery->where(function ($q) use ($search) {
         $q->where('expense_name', 'like', "%{$search}%")
           ->orWhere('party_name', 'like', "%{$search}%")
           ->orWhere('expense_number', 'like', "%{$search}%")
-          ->orWhere('purpose_comment', 'like', "%{$search}%");
+          ->orWhere('notes', 'like', "%{$search}%");
       });
     }
 
@@ -295,14 +290,14 @@ class StandardExpensesController extends Controller
         $q->where('status', 'pending')
           ->orWhere(function ($sq) use ($today) {
             $sq->whereNotIn('status', ['paid', 'settle', 'settled'])
-               ->whereDate('due_date', '<', $today);
+              ->whereDate('due_date', '<', $today);
           });
       })->count(),
       'upcoming' => (clone $nsCountQuery)->where(function ($q) use ($today) {
         $q->where('status', 'upcoming')
           ->orWhere(function ($sq) use ($today) {
             $sq->whereNotIn('status', ['paid', 'settle', 'settled'])
-               ->whereDate('due_date', '>=', $today);
+              ->whereDate('due_date', '>=', $today);
           });
       })->count(),
       'paid' => (clone $nsCountQuery)->whereIn('status', ['paid', 'settle', 'settled'])->count(),
@@ -316,7 +311,7 @@ class StandardExpensesController extends Controller
           $q->where('status', 'pending')
             ->orWhere(function ($sq) use ($today) {
               $sq->whereNotIn('status', ['paid', 'settle', 'settled'])
-                 ->whereDate('due_date', '<', $today);
+                ->whereDate('due_date', '<', $today);
             });
         });
       } elseif ($statusFilter === 'upcoming') {
@@ -324,7 +319,7 @@ class StandardExpensesController extends Controller
           $q->where('status', 'upcoming')
             ->orWhere(function ($sq) use ($today) {
               $sq->whereNotIn('status', ['paid', 'settle', 'settled'])
-                 ->whereDate('due_date', '>=', $today);
+                ->whereDate('due_date', '>=', $today);
             });
         });
       }
@@ -364,47 +359,47 @@ class StandardExpensesController extends Controller
     }
 
     // Base query for current active tab summary statistics
-    $statsBaseQuery = match($mainTab) {
+    $statsBaseQuery = match ($mainTab) {
       'standard'     => clone $stdCountQuery,
       'non-standard' => clone $nsCountQuery,
       default        => clone $allCountQuery
     };
 
     $statsItems = (clone $statsBaseQuery)->get();
-    $totalPayments = $statsItems->sum(function($item) {
+    $totalPayments = $statsItems->sum(function ($item) {
       return floatval($item->schedule_amount ?: ($item->planned_amount ?: $item->actual_amount));
     });
     $totalItems = $statsItems->count();
 
     // Paid
-    $paidItems = $statsItems->filter(function($item) {
+    $paidItems = $statsItems->filter(function ($item) {
       return in_array(strtolower($item->status ?? ''), ['paid', 'settle', 'settled']);
     });
-    $paidAmount = $paidItems->sum(function($item) {
+    $paidAmount = $paidItems->sum(function ($item) {
       return floatval($item->paid_amount ?: ($item->actual_amount ?: $item->planned_amount));
     });
     $paidCount = $paidItems->count();
 
     // Pending: not paid and (due_date >= today or status is upcoming/pending/due)
-    $pendingItems = $statsItems->filter(function($item) use ($today) {
+    $pendingItems = $statsItems->filter(function ($item) use ($today) {
       $s = strtolower($item->status ?? '');
       if (in_array($s, ['paid', 'settle', 'settled'])) return false;
       $d = $item->due_date ? Carbon::parse($item->due_date)->toDateString() : null;
       return ($d && $d >= $today) || in_array($s, ['upcoming', 'pending', 'due']);
     });
-    $pendingAmount = $pendingItems->sum(function($item) {
+    $pendingAmount = $pendingItems->sum(function ($item) {
       return floatval($item->balance_amount > 0 ? $item->balance_amount : ($item->schedule_amount ?: ($item->planned_amount ?: $item->actual_amount)));
     });
     $pendingCount = $pendingItems->count();
 
     // Over Due: in current period where due_date < today and not paid
-    $overdueItems = $statsItems->filter(function($item) use ($today) {
+    $overdueItems = $statsItems->filter(function ($item) use ($today) {
       $s = strtolower($item->status ?? '');
       if (in_array($s, ['paid', 'settle', 'settled'])) return false;
       $d = $item->due_date ? Carbon::parse($item->due_date)->toDateString() : null;
       return ($d && $d < $today) || $s === 'overdue';
     });
-    $overdueAmount = $overdueItems->sum(function($item) {
+    $overdueAmount = $overdueItems->sum(function ($item) {
       return floatval($item->balance_amount > 0 ? $item->balance_amount : ($item->schedule_amount ?: ($item->planned_amount ?: $item->actual_amount)));
     });
     $overdueCount = $overdueItems->count();
@@ -420,12 +415,12 @@ class StandardExpensesController extends Controller
       $allTimeOverdueQuery->where('company_id', $companyFilter);
     }
     $allTimeOverdueItems = $allTimeOverdueQuery->whereNotIn('status', ['paid', 'settle', 'settled'])
-      ->where(function($q) use ($today) {
+      ->where(function ($q) use ($today) {
         $q->whereDate('due_date', '<', $today)
           ->orWhere('status', 'overdue');
       })->get();
 
-    $totalOverdueAmount = $allTimeOverdueItems->sum(function($item) {
+    $totalOverdueAmount = $allTimeOverdueItems->sum(function ($item) {
       return floatval($item->balance_amount > 0 ? $item->balance_amount : ($item->schedule_amount ?: ($item->planned_amount ?: $item->actual_amount)));
     });
     $totalOverdueCount = $allTimeOverdueItems->count();
@@ -567,11 +562,9 @@ class StandardExpensesController extends Controller
         'upi_number'      => $request->upi_number,
         'party_name'      => $request->party_name,
         'mobile_number'   => $request->mobile_number,
-        'notes'           => $request->notes,
-        'purpose_comment' => $request->notes ?: $request->purpose_comment,
+        'notes'           => $request->notes ?: $request->purpose_comment,
         'settle_notes'    => $request->settle_notes,
         'month_year'      => Carbon::parse($dueDate)->format('Y-m'),
-        'type'            => 'non_standard',
         'source'          => 'manual',
         'created_by'      => auth()->id(),
         'expense_number'  => Expense::generateNewExpenseNumber(),
@@ -835,8 +828,7 @@ class StandardExpensesController extends Controller
         'upi_number'      => $request->upi_number,
         'party_name'      => $request->party_name,
         'mobile_number'   => $request->mobile_number,
-        'notes'           => $request->notes,
-        'purpose_comment' => $request->notes ?: $expense->purpose_comment,
+        'notes'           => $request->notes ?: ($request->purpose_comment ?: $expense->notes),
         'settle_notes'    => $request->settle_notes,
         'month_year'      => Carbon::parse($dueDate)->format('Y-m')
       ]);
@@ -996,6 +988,37 @@ class StandardExpensesController extends Controller
     }
   }
 
+  public function markStandardPaid(Request $request, $id)
+  {
+    try {
+      $expense = Expense::findOrFail($id);
+      $paidAmount = $request->actual_amount ?? ($expense->schedule_amount ?: ($expense->planned_amount ?: $expense->actual_amount));
+      $expense->update([
+        'status'         => 'paid',
+        'actual_amount'  => $paidAmount,
+        'paid_date'      => $request->paid_date ?? now()->format('Y-m-d'),
+        'balance_amount' => 0
+      ]);
+
+      if ($request->ajax() || $request->wantsJson()) {
+        return response()->json([
+          'success' => true,
+          'message' => 'Expense marked as paid.'
+        ]);
+      }
+
+      return back()->with('success', 'Expense marked as paid.');
+    } catch (\Exception $e) {
+      if ($request->ajax() || $request->wantsJson()) {
+        return response()->json([
+          'success' => false,
+          'message' => 'Error updating expense: ' . $e->getMessage()
+        ], 500);
+      }
+      return back()->with('error', 'Error updating expense: ' . $e->getMessage());
+    }
+  }
+
   public function store(Request $request)
   {
     $request->validate([
@@ -1068,7 +1091,7 @@ class StandardExpensesController extends Controller
         'amount_mode'    => 'fixed',
         'is_active'      => $request->is_active ?: 1,
         'tax_type'       => $taxType ?: null,
-        'original_amount'=> $request->actual_amount,
+        'original_amount' => $request->actual_amount,
 
         'due_date' => $baseMonth
           ->day(min((int)$request->due_day, $baseMonth->daysInMonth))
@@ -1366,8 +1389,7 @@ class StandardExpensesController extends Controller
       'gst_percentage' => 'nullable|numeric|min:0|max:100',
       'gst_amount'     => 'nullable|numeric|min:0',
       'tds_amount'     => 'nullable|numeric|min:0',
-    ]);
-   ;
+    ]);;
     try {
       DB::beginTransaction();
 
@@ -1408,7 +1430,7 @@ class StandardExpensesController extends Controller
         'tax_type'       => $taxType ?: null,
         'status'         => 'upcoming',
         'due_date'       => $dueDate,
-        'original_amount'=> $request->actual_amount,
+        'original_amount' => $request->actual_amount,
 
       ]);
 
@@ -1524,8 +1546,7 @@ class StandardExpensesController extends Controller
             'expense_number'     => Expense::generateNewExpenseNumber(),
             'company_id'         => $template->company_id,
             'expense_name'       => $template->template_name,
-            'type'               => 'standard',
-            'purpose_comment'    => 'Auto-generated from template',
+            'notes'              => 'Auto-generated from template',
             'planned_amount'     => $template->amount_mode === 'standard'
               ? $template->default_amount
               : null,
@@ -1721,5 +1742,4 @@ class StandardExpensesController extends Controller
       ], 500);
     }
   }
-  
 }

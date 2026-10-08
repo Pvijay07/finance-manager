@@ -89,6 +89,7 @@ Route::middleware(['auth', 'role:admin'])
         Route::put('/standard-expenses/non-standard/{id}', [StandardExpensesController::class, 'updateNonStandard'])->name('standard-expenses.non-standard.update');
         Route::delete('/standard-expenses/non-standard/{id}', [StandardExpensesController::class, 'destroyNonStandard'])->name('standard-expenses.non-standard.destroy');
         Route::post('/standard-expenses/non-standard/{id}/mark-paid', [StandardExpensesController::class, 'markNonStandardPaid'])->name('standard-expenses.non-standard.mark-paid');
+        Route::post('/standard-expenses/{id}/mark-paid', [StandardExpensesController::class, 'markStandardPaid'])->name('standard-expenses.mark-paid');
         Route::get('/standard-expenses/{id}', [StandardExpensesController::class, 'show'])->name('standard-expenses.show');
         Route::put('/standard-expenses/{id}', [StandardExpensesController::class, 'update'])->name('standard-expenses.update');
         Route::delete('/standard-expenses/{id}', [StandardExpensesController::class, 'destroy'])->name('standard-expenses.destroy');

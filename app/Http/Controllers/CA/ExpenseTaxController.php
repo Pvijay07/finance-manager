@@ -46,7 +46,7 @@ class ExpenseTaxController extends Controller
                 $q->where('payment_notes', 'like', "%{$search}%")
                   ->orWhereHasMorph('taxable', [Expense::class], function ($q) use ($search) {
                       $q->where('expense_name', 'like', "%{$search}%")
-                        ->orWhere('purpose_comment', 'like', "%{$search}%");
+                        ->orWhere('notes', 'like', "%{$search}%");
                   });
             });
         }

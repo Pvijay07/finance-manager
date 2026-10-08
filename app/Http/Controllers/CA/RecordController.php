@@ -36,7 +36,7 @@ class RecordController extends Controller
             if ($search) {
                 $query->where(function($q) use ($search) {
                     $q->where('expense_name', 'like', "%{$search}%")
-                      ->orWhere('purpose_comment', 'like', "%{$search}%")
+                      ->orWhere('notes', 'like', "%{$search}%")
                       ->orWhere('id', 'like', "%{$search}%");
                 });
             }

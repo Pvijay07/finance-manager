@@ -67,6 +67,11 @@ class Income extends Model
     return $this->belongsTo(Invoice::class);
   }
 
+  public function creator()
+  {
+    return $this->belongsTo(User::class, 'created_by');
+  }
+
   public function scopeThisMonth($query)
   {
     return $query->where('month_year', date('Y-m'));

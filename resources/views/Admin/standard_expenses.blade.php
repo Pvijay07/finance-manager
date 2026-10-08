@@ -228,6 +228,14 @@
                                 <td>
                                     <div class="fw-bold text-dark">{{ $exp->expense_name ?: $exp->name }}</div>
                                     <div class="text-muted text-xs">Ref: {{ $exp->expense_number ?? 'EXP-'.$exp->id }}</div>
+                                    @if($exp->source !== 'standard' && $exp->creator)
+                                    <div class="text-xs text-secondary mt-1">
+                                        <i class="fas fa-user-circle me-1 text-muted"></i>{{ $exp->creator->name }}
+                                        <span class="badge bg-light text-secondary border text-capitalize py-0 px-1" style="font-size: 10px;">
+                                            {{ str_replace('_', ' ', $exp->creator->role ?? 'User') }}
+                                        </span>
+                                    </div>
+                                    @endif
                                 </td>
                                 <td>
                                     @if($exp->source === 'standard')
@@ -295,7 +303,6 @@
                                         <button type="button" class="btn btn-outline-success btn-sm" onclick="markAllExpenseAsPaid({{ $exp->id }}, '{{ addslashes($exp->expense_name ?: $exp->name) }}', {{ $exp->balance_amount > 0 ? $exp->balance_amount : ($exp->schedule_amount ?: $exp->planned_amount) }}, '{{ $exp->source }}')" title="Mark as Paid">
                                             <i class="fas fa-check"></i>
                                         </button>
-                                        @endif
                                         @if($exp->source === 'standard')
                                         <button type="button" class="btn btn-outline-primary btn-sm" onclick="editTemplate({{ $exp->id }})" title="Edit Standard Expense">
                                             <i class="fas fa-edit"></i>
@@ -304,6 +311,9 @@
                                         <button type="button" class="btn btn-outline-primary btn-sm" onclick="editNonStandardExpense({{ $exp->id }})" title="Edit Non-Standard Expense">
                                             <i class="fas fa-edit"></i>
                                         </button>
+                                        @endif
+                                        @endif
+                                        @if($exp->source !== 'standard')
                                         <form action="{{ route('admin.standard-expenses.non-standard.destroy', $exp->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this non-standard expense record?');">
                                             @csrf
                                             @method('DELETE')
@@ -841,10 +851,12 @@
                                 </span>
                             </td>
                             <td style="padding: 14px 16px; text-align: center;">
+                                @if(strtolower($type->status ?? '') !== 'paid')
                                 <button class="btn-edit" onclick="editTemplate({{ $type->id }})"
                                     style="padding: 6px 16px; background: white; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; font-size: 13px; color: #2563eb;">
                                     Edit
                                 </button>
+                                @endif
                             </td>
                         </tr>
                         @empty
@@ -1099,6 +1111,7 @@
                             <th style="padding: 12px 16px; text-align: left; font-weight: 600; font-size: 13px; color: #1a1a1a;">Company</th>
                             <th style="padding: 12px 16px; text-align: left; font-weight: 600; font-size: 13px; color: #1a1a1a;">Party / Vendor</th>
                             <th style="padding: 12px 16px; text-align: left; font-weight: 600; font-size: 13px; color: #1a1a1a;">Category</th>
+                            <th style="padding: 12px 16px; text-align: left; font-weight: 600; font-size: 13px; color: #1a1a1a;">Created By</th>
                             <th style="padding: 12px 16px; text-align: right; font-weight: 600; font-size: 13px; color: #1a1a1a;">Planned Amount</th>
                             <th style="padding: 12px 16px; text-align: right; font-weight: 600; font-size: 13px; color: #1a1a1a;">Paid Amount</th>
                             <th style="padding: 12px 16px; text-align: center; font-weight: 600; font-size: 13px; color: #1a1a1a;">Due Date</th>
@@ -1125,6 +1138,16 @@
                                 <span class="badge bg-secondary-subtle text-secondary" style="font-size: 11px;">
                                     {{ $nsExpense->categoryRelation->name ?? $nsExpense->category ?? 'General' }}
                                 </span>
+                            </td>
+                            <td style="padding: 12px 16px; font-size: 13px;">
+                                @if($nsExpense->creator)
+                                <div class="fw-semibold text-dark">{{ $nsExpense->creator->name }}</div>
+                                <span class="badge bg-light text-secondary border text-capitalize" style="font-size: 11px;">
+                                    {{ str_replace('_', ' ', $nsExpense->creator->role ?? 'User') }}
+                                </span>
+                                @else
+                                <span class="text-muted">—</span>
+                                @endif
                             </td>
                             <td style="padding: 12px 16px; text-align: right; font-weight: 600; color: #1e293b;">
                                 ₹ {{ number_format($nsExpense->planned_amount, 2) }}
@@ -1153,10 +1176,10 @@
                                             <i class="fas fa-check"></i>
                                         </button>
                                     </form>
-                                    @endif
                                     <button type="button" class="btn btn-sm btn-outline-primary py-1 px-2" title="Edit" onclick="editNonStandardExpense({{ $nsExpense->id }})">
                                         <i class="fas fa-edit"></i>
                                     </button>
+                                    @endif
                                     <form action="{{ route('admin.standard-expenses.non-standard.destroy', $nsExpense->id) }}" method="POST" class="d-inline">
                                         @csrf
                                         @method('DELETE')
@@ -1169,7 +1192,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="9" style="padding: 40px; text-align: center; color: #94a3b8;">
+                            <td colspan="10" style="padding: 40px; text-align: center; color: #94a3b8;">
                                 <i class="fas fa-receipt mb-2" style="font-size: 36px; color: #cbd5e1; display: block;"></i>
                                 No non-standard expenses found matching your filter criteria.
                             </td>
@@ -1855,60 +1878,56 @@
 
     // DOM Ready
     document.addEventListener('DOMContentLoaded', function() {
-        // Initialize tax calculation
-        calculateTax();
+        const ppOriginalAmountEl = document.getElementById('pp_original_amount');
+        if (ppOriginalAmountEl) {
+            calculateTax();
+            ppOriginalAmountEl.addEventListener('input', calculateTax);
+            document.getElementById('applyGST')?.addEventListener('change', calculateTax);
+            document.getElementById('gst_percentage')?.addEventListener('input', calculateTax);
+            document.getElementById('applyTDS')?.addEventListener('change', calculateTax);
+            document.getElementById('tds_percentage')?.addEventListener('input', calculateTax);
+        }
 
         // Set default entry direction to expense
         const entryDirectionEl = document.getElementById('entry_direction');
         if (entryDirectionEl) {
             entryDirectionEl.value = 'expense';
+            entryDirectionEl.addEventListener('change', function() {
+                updateCategoryTypeOptions();
+            });
         }
-        updateCategoryTypeOptions();
-
-        // Add event listeners for tax calculation
-        document.getElementById('pp_original_amount').addEventListener('input', calculateTax);
-
-        // GST listeners
-        document.getElementById('applyGST').addEventListener('change', calculateTax);
-        document.getElementById('gst_percentage').addEventListener('input', calculateTax);
-
-        // TDS listeners
-        document.getElementById('applyTDS').addEventListener('change', calculateTax);
-        document.getElementById('tds_percentage').addEventListener('input', calculateTax);
+        if (document.getElementById('category_type')) {
+            updateCategoryTypeOptions();
+            document.getElementById('category_type')?.addEventListener('change', function() {
+                updateCategoryOptions();
+            });
+        }
 
         // Payment field listeners
         document.getElementById('gst_amount_paid')?.addEventListener('input', updateGstPaymentStatus);
         document.getElementById('tds_amount_paid')?.addEventListener('input', updateTdsPaymentStatus);
         document.getElementById('amount_paid')?.addEventListener('input', updateMainPaymentStatus);
-
-        // Initialize dropdowns when direction changes
-        const entryDirectionDropdown = document.getElementById('entry_direction');
-        if (entryDirectionDropdown) {
-            entryDirectionDropdown.addEventListener('change', function() {
-                updateCategoryTypeOptions();
-            });
-        }
-
-        // Initialize dropdowns when category type changes
-        document.getElementById('category_type').addEventListener('change', function() {
-            updateCategoryOptions();
-        });
     });
 
     // Tax calculation function
     function calculateTax() {
-        console.log('Tax calculation triggered');
+        const ppOriginalEl = document.getElementById('pp_original_amount');
+        if (!ppOriginalEl) return;
 
         // Get original amount
-        const originalAmount = parseFloat(document.getElementById('pp_original_amount').value) || 0;
+        const originalAmount = parseFloat(ppOriginalEl.value) || 0;
 
         // GST Calculation
-        const applyGst = document.getElementById('applyGST').checked;
-        const gstPercentage = parseFloat(document.getElementById('gst_percentage').value) || 0;
+        const applyGstEl = document.getElementById('applyGST');
+        const gstPercentageEl = document.getElementById('gst_percentage');
+        const applyGst = applyGstEl ? applyGstEl.checked : false;
+        const gstPercentage = gstPercentageEl ? (parseFloat(gstPercentageEl.value) || 0) : 0;
 
         // TDS Calculation
-        const applyTds = document.getElementById('applyTDS').checked;
-        const tdsPercentage = parseFloat(document.getElementById('tds_percentage').value) || 0;
+        const applyTdsEl = document.getElementById('applyTDS');
+        const tdsPercentageEl = document.getElementById('tds_percentage');
+        const applyTds = applyTdsEl ? applyTdsEl.checked : false;
+        const tdsPercentage = tdsPercentageEl ? (parseFloat(tdsPercentageEl.value) || 0) : 0;
 
         let gstAmount = 0;
         let tdsAmount = 0;
@@ -1931,24 +1950,27 @@
         // Calculate Grand Total (Base + GST - TDS)
         finalAmount = amountAfterGst - tdsAmount;
 
-        // Update display fields
-        // GST section
-        document.getElementById('gst_subtotal').value = gstAmount.toFixed(2);
-        document.getElementById('gst_total').value = amountAfterGst.toFixed(2);
+        // Update display fields safely
+        const gstSubtotal = document.getElementById('gst_subtotal');
+        if (gstSubtotal) gstSubtotal.value = gstAmount.toFixed(2);
+        const gstTotal = document.getElementById('gst_total');
+        if (gstTotal) gstTotal.value = amountAfterGst.toFixed(2);
 
-        // TDS section
-        document.getElementById('tds_subtotal').value = tdsAmount.toFixed(2);
-        document.getElementById('tds_final').value = (amountForTds - tdsAmount).toFixed(2);
+        const tdsSubtotal = document.getElementById('tds_subtotal');
+        if (tdsSubtotal) tdsSubtotal.value = tdsAmount.toFixed(2);
+        const tdsFinal = document.getElementById('tds_final');
+        if (tdsFinal) tdsFinal.value = (amountForTds - tdsAmount).toFixed(2);
 
-        // Grand Total
-        document.getElementById('grand_total_display').value = '₹ ' + amountAfterGst.toFixed(2);
+        const grandTotalDisplay = document.getElementById('grand_total_display');
+        if (grandTotalDisplay) grandTotalDisplay.value = '₹ ' + amountAfterGst.toFixed(2);
 
-        // Hidden planned amount (Total before TDS)
-        document.getElementById('default_amount').value = amountAfterGst.toFixed(2);
+        const defaultAmount = document.getElementById('default_amount');
+        if (defaultAmount) defaultAmount.value = amountAfterGst.toFixed(2);
 
-        // Update hidden tax amount fields for form submission
-        document.getElementById('hidden_gst_amount').value = gstAmount.toFixed(2);
-        document.getElementById('hidden_tds_amount').value = tdsAmount.toFixed(2);
+        const hiddenGst = document.getElementById('hidden_gst_amount');
+        if (hiddenGst) hiddenGst.value = gstAmount.toFixed(2);
+        const hiddenTds = document.getElementById('hidden_tds_amount');
+        if (hiddenTds) hiddenTds.value = tdsAmount.toFixed(2);
     }
 
     // Update due amounts in payment section
@@ -2015,8 +2037,10 @@
 
     // Update overall status
     function updateOverallStatus() {
-        const paymentStatus = document.getElementById('payment_status').value;
+        const paymentStatusEl = document.getElementById('payment_status');
         const statusSelect = document.getElementById('status');
+        if (!paymentStatusEl || !statusSelect) return;
+        const paymentStatus = paymentStatusEl.value;
 
         if (paymentStatus === 'paid') {
             statusSelect.value = 'paid';
@@ -2032,13 +2056,14 @@
         const direction = 'expense';
         const categoryTypeSelect = document.getElementById('category_type');
         const categorySelect = document.getElementById('category');
+        if (!categoryTypeSelect || !categorySelect) return;
 
         // Reset dependent dropdown
         categoryTypeSelect.innerHTML = '<option value="">Select Category Type</option>';
         categorySelect.innerHTML = '<option value="">Select Category</option>';
         categorySelect.disabled = true;
 
-        if (direction && categoryTypeOptions[direction]) {
+        if (direction && typeof categoryTypeOptions !== 'undefined' && categoryTypeOptions[direction]) {
             // Enable and populate category type dropdown
             categoryTypeSelect.disabled = false;
 
@@ -2056,8 +2081,10 @@
     // Update category options based on category type
     function updateCategoryOptions() {
         const direction = 'expense';
-        const combinedCategoryType = document.getElementById('category_type').value;
+        const categoryTypeEl = document.getElementById('category_type');
         const categorySelect = document.getElementById('category');
+        if (!categoryTypeEl || !categorySelect) return;
+        const combinedCategoryType = categoryTypeEl.value;
 
         // Reset category dropdown
         categorySelect.innerHTML = '<option value="">Select Category</option>';
@@ -2402,62 +2429,80 @@
     document.addEventListener('DOMContentLoaded', function() {
         // Mobile number validation
         const mobileField = document.getElementById('mobile_number');
-        mobileField.addEventListener('input', function() {
-            validateMobileNumber(this);
-        });
+        if (mobileField) {
+            mobileField.addEventListener('input', function() {
+                validateMobileNumber(this);
+            });
+        }
 
         // Amount validation
         const amountField = document.getElementById('pp_original_amount');
-        amountField.addEventListener('input', function() {
-            validatePositiveNumber(this);
-            calculateTax(); // Recalculate tax when amount changes
-        });
+        if (amountField) {
+            amountField.addEventListener('input', function() {
+                validatePositiveNumber(this);
+                calculateTax(); // Recalculate tax when amount changes
+            });
+        }
 
         // GST percentage validation
         const gstField = document.getElementById('gst_percentage');
-        gstField.addEventListener('input', function() {
-            if (document.getElementById('applyGST').checked) {
-                validateGSTPercentage();
-            }
-            calculateTax();
-        });
+        if (gstField) {
+            gstField.addEventListener('input', function() {
+                const applyGstEl = document.getElementById('applyGST');
+                if (applyGstEl && applyGstEl.checked) {
+                    validateGSTPercentage();
+                }
+                calculateTax();
+            });
+        }
 
         // TDS percentage validation
         const tdsField = document.getElementById('tds_percentage');
-        tdsField.addEventListener('input', function() {
-            if (document.getElementById('applyTDS').checked) {
-                validateTDSPercentage();
-            }
-            calculateTax();
-        });
+        if (tdsField) {
+            tdsField.addEventListener('input', function() {
+                const applyTdsEl = document.getElementById('applyTDS');
+                if (applyTdsEl && applyTdsEl.checked) {
+                    validateTDSPercentage();
+                }
+                calculateTax();
+            });
+        }
 
         // Due day validation
         const dueDayField = document.getElementById('due_day');
-        dueDayField.addEventListener('input', validateDueDay);
+        if (dueDayField) {
+            dueDayField.addEventListener('input', validateDueDay);
+        }
 
         // Frequency change affects due day validation
         const frequencyField = document.getElementById('frequency');
-        frequencyField.addEventListener('change', validateDueDay);
+        if (frequencyField) {
+            frequencyField.addEventListener('change', validateDueDay);
+        }
 
         // Expense name length validation
         const expenseNameField = document.getElementById('expense_name');
-        expenseNameField.addEventListener('input', function() {
-            if (this.value.length > 255) {
-                showError('expense_name', 'Maximum 255 characters allowed');
-            } else {
-                resetError('expense_name');
-            }
-        });
+        if (expenseNameField) {
+            expenseNameField.addEventListener('input', function() {
+                if (this.value.length > 255) {
+                    showError('expense_name', 'Maximum 255 characters allowed');
+                } else {
+                    resetError('expense_name');
+                }
+            });
+        }
 
         // Party name length validation
         const partyNameField = document.getElementById('party_name');
-        partyNameField.addEventListener('input', function() {
-            if (this.value.length > 255) {
-                showError('party_name', 'Maximum 255 characters allowed');
-            } else {
-                resetError('party_name');
-            }
-        });
+        if (partyNameField) {
+            partyNameField.addEventListener('input', function() {
+                if (this.value.length > 255) {
+                    showError('party_name', 'Maximum 255 characters allowed');
+                } else {
+                    resetError('party_name');
+                }
+            });
+        }
     });
     // Handle form submission
     document.getElementById('templateForm')?.addEventListener('submit', function(e) {

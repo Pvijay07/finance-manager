@@ -338,6 +338,17 @@
                                     </td>
                                     <td>
                                         <div class="fw-bold text-dark">{{ $incItem->reference_no }}</div>
+                                        @php
+                                            $incCreator = $incItem->creator ?? ($incItem->raw?->creator ?? null);
+                                        @endphp
+                                        @if($incItem->source !== 'standard' && $incCreator)
+                                        <div class="text-xs text-secondary mt-1">
+                                            <i class="fas fa-user-circle me-1 text-muted"></i>{{ $incCreator->name }}
+                                            <span class="badge bg-light text-secondary border text-capitalize py-0 px-1" style="font-size: 10px;">
+                                                {{ str_replace('_', ' ', $incCreator->role ?? 'User') }}
+                                            </span>
+                                        </div>
+                                        @endif
                                     </td>
                                     <td>
                                         @if($incItem->source === 'standard')
@@ -392,21 +403,23 @@
                                                 <a href="{{ route('admin.invoices.view', $incItem->id) }}" class="btn btn-outline-primary btn-sm" title="View Details">
                                                     <i class="fas fa-eye"></i>
                                                 </a>
+                                                @if(!in_array(strtolower($incItem->status ?? ''), ['paid', 'received', 'settle', 'settled']))
                                                 <button type="button" class="btn btn-outline-success btn-sm btn-update-invoice" data-invoice-id="{{ $incItem->id }}" title="Edit Standard Invoice">
                                                     <i class="fas fa-edit"></i>
                                                 </button>
+                                                @endif
                                             @else
-                                                @if(!in_array($incItem->status, ['paid', 'received', 'settle', 'settled']))
+                                                @if(!in_array(strtolower($incItem->status ?? ''), ['paid', 'received', 'settle', 'settled']))
                                                 <form action="{{ route('admin.invoices.non-standard.mark-received', $incItem->id) }}" method="POST" class="d-inline">
                                                     @csrf
                                                     <button type="submit" class="btn btn-outline-success btn-sm" title="Mark Received" onclick="return confirm('Mark this income as received?')">
                                                         <i class="fas fa-check"></i>
                                                     </button>
                                                 </form>
-                                                @endif
                                                 <button type="button" class="btn btn-outline-primary btn-sm" onclick="openEditNonStandardIncomeModal({{ $incItem->id }})" title="Edit Non-Standard Income">
                                                     <i class="fas fa-edit"></i>
                                                 </button>
+                                                @endif
                                                 <form action="{{ route('admin.invoices.non-standard.destroy', $incItem->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this non-standard income record?');">
                                                     @csrf
                                                     @method('DELETE')
@@ -1084,10 +1097,12 @@
                                                     onclick="viewProforma({{ $invoice->id }})">
                                                     View
                                                 </button>
+                                                @if(!in_array(strtolower($invoice->status ?? ''), ['paid', 'received', 'settle', 'settled']))
                                                 <button class="btn btn-outline-success btn-update-invoice"
                                                     data-invoice-id="{{ $invoice->id }}" title="Edit">
                                                     <i class="fas fa-edit"></i>
                                                 </button>
+                                                @endif
                                             </div>
                                         </td>
                                     </tr>
@@ -1256,6 +1271,7 @@
                                 <th style="padding: 12px 16px; text-align: left; font-weight: 600; font-size: 13px; color: #1a1a1a;">Date</th>
                                 <th style="padding: 12px 16px; text-align: left; font-weight: 600; font-size: 13px; color: #1a1a1a;">Company</th>
                                 <th style="padding: 12px 16px; text-align: left; font-weight: 600; font-size: 13px; color: #1a1a1a;">Client / Party</th>
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; font-size: 13px; color: #1a1a1a;">Created By</th>
                                 <th style="padding: 12px 16px; text-align: right; font-weight: 600; font-size: 13px; color: #1a1a1a;">Amount</th>
                                 <th style="padding: 12px 16px; text-align: right; font-weight: 600; font-size: 13px; color: #1a1a1a;">Received</th>
                                 <th style="padding: 12px 16px; text-align: right; font-weight: 600; font-size: 13px; color: #1a1a1a;">Balance</th>
@@ -1278,6 +1294,16 @@
                                             <div class="text-muted small text-truncate" style="max-width: 200px;">{{ $nsIncome->notes }}</div>
                                         @endif
                                     </td>
+                                    <td style="padding: 12px 16px; font-size: 13px;">
+                                        @if($nsIncome->creator)
+                                            <div class="fw-semibold text-dark">{{ $nsIncome->creator->name }}</div>
+                                            <span class="badge bg-light text-secondary border text-capitalize" style="font-size: 11px;">
+                                                {{ str_replace('_', ' ', $nsIncome->creator->role ?? 'User') }}
+                                            </span>
+                                        @else
+                                            <span class="text-muted">—</span>
+                                        @endif
+                                    </td>
                                     <td style="padding: 12px 16px; text-align: right; font-weight: 600; color: #1e293b;">
                                         ₹ {{ number_format($nsIncome->amount ?? $nsIncome->planned_amount ?? 0, 2) }}
                                     </td>
@@ -1298,17 +1324,17 @@
                                     </td>
                                     <td style="padding: 12px 16px; text-align: center;">
                                         <div class="d-flex align-items-center justify-content-center gap-1">
-                                            @if(!in_array($nsIncome->status, ['paid', 'received', 'settle', 'settled']))
+                                            @if(!in_array(strtolower($nsIncome->status ?? ''), ['paid', 'received', 'settle', 'settled']))
                                                 <form action="{{ route('admin.invoices.non-standard.mark-received', $nsIncome->id) }}" method="POST" class="d-inline">
                                                     @csrf
                                                     <button type="submit" class="btn btn-sm btn-outline-success py-1 px-2" title="Mark Received" onclick="return confirm('Mark this income as received?')">
                                                         <i class="fas fa-check"></i>
                                                     </button>
                                                 </form>
+                                                <button type="button" class="btn btn-sm btn-outline-primary py-1 px-2" title="Edit" onclick="openEditNonStandardIncomeModal({{ $nsIncome->id }})">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
                                             @endif
-                                            <button type="button" class="btn btn-sm btn-outline-primary py-1 px-2" title="Edit" onclick="openEditNonStandardIncomeModal({{ $nsIncome->id }})">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
                                             <form action="{{ route('admin.invoices.non-standard.destroy', $nsIncome->id) }}" method="POST" class="d-inline">
                                                 @csrf
                                                 @method('DELETE')
@@ -1321,7 +1347,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="8" style="padding: 40px; text-align: center; color: #94a3b8;">
+                                    <td colspan="9" style="padding: 40px; text-align: center; color: #94a3b8;">
                                         <i class="fas fa-hand-holding-usd mb-2" style="font-size: 36px; color: #cbd5e1; display: block;"></i>
                                         No non-standard incomes found matching your filter criteria.
                                     </td>

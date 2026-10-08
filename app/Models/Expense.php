@@ -12,7 +12,6 @@ class Expense extends Model
 
     protected $fillable = [
         'company_id',
-        'purpose_comment',
         'planned_amount',
         'actual_amount',
         'due_date',
@@ -26,7 +25,6 @@ class Expense extends Model
         'notes',
         'settle_notes',
         'frequency',
-        'purpose_comment',
         'default_amount',
         'due_day',
         'reminder_days',
@@ -280,5 +278,15 @@ class Expense extends Model
             return (float)($this->actual_amount ?: ($this->schedule_amount ?: ($this->planned_amount ?: 0)));
         }
         return (float)($this->actual_amount ?? 0);
+    }
+
+    public function getPurposeCommentAttribute($value = null)
+    {
+        return $value ?: $this->notes;
+    }
+
+    public function setPurposeCommentAttribute($value)
+    {
+        $this->attributes['notes'] = $value;
     }
 }
