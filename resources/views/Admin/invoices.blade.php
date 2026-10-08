@@ -153,6 +153,11 @@
         @if(($mainTab ?? 'incomes') === 'incomes')
         <!-- All Incomes Section (Show all Standard and Non-Standard Incomes in one place) -->
         <div id="all-incomes-section">
+            <!-- Summary Cards -->
+            @if(isset($cardStats))
+                @include('Admin.partials.summary_cards', ['cardType' => 'income'])
+            @endif
+
             <!-- Status Tabs -->
             <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
                 <button type="button" 
@@ -882,6 +887,11 @@
             <!-- Proformas / Repeated Incomes Tab -->
             <div class="tab-pane fade {{ $activeTab === 'proformas' ? 'show active' : '' }}" id="proformas"
                 role="tabpanel">
+                <!-- Summary Cards -->
+                @if(isset($cardStats))
+                    @include('Admin.partials.summary_cards', ['cardType' => 'income'])
+                @endif
+
                 <!-- Status Tabs -->
                 <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
                     <button type="button" 
@@ -1107,6 +1117,11 @@
         @else
         <!-- Non-Standard Income Section -->
         <div id="non-standard-income-section">
+            <!-- Summary Cards -->
+            @if(isset($cardStats))
+                @include('Admin.partials.summary_cards', ['cardType' => 'income'])
+            @endif
+
             <!-- Status Tabs -->
             <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
                 <button type="button" 
@@ -1321,175 +1336,175 @@
     </div>
 </section>
 
-<!-- Add Non-Standard Income Modal (Manager Equivalent) -->
-<div id="addNonStandardIncomeModal" class="modal fade" tabindex="-1" aria-labelledby="addNonStandardIncomeModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); border: none;">
-            <div class="modal-header border-bottom" style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); color: white; border-radius: 12px 12px 0 0;">
-                <h5 class="modal-title font-semibold text-white" id="addNonStandardIncomeModalLabel">
-                    <i class="fas fa-hand-holding-usd me-2"></i> Add Non-Standard Income
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+<!-- Add Non-standard Income Modal (Same as Manager Panel) -->
+<div class="modal fade" id="addNonStandardIncomeModal" tabindex="-1" aria-labelledby="addNonStandardIncomeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addNonStandardIncomeModalLabel">Add Non-standard Income</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form action="{{ route('admin.invoices.non-standard.store') }}" method="POST" enctype="multipart/form-data" id="adminAddNsIncomeForm">
+            <form id="incomeForm" action="{{ route('admin.invoices.non-standard.store') }}" method="POST" enctype="multipart/form-data">
                 @csrf
+                <input type="hidden" id="incomeId" name="id">
                 <input type="hidden" name="source" value="manual">
-                <input type="hidden" id="admin_ns_inc_grand_total" name="grand_total" value="0.00">
 
-                <div class="modal-body p-4">
-                    <!-- Company & Client Name -->
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label small fw-semibold">Company <span class="text-danger">*</span></label>
-                            <select name="company_id" class="form-select form-select-sm" required>
-                                <option value="" disabled selected>Select Company</option>
-                                @foreach($companies as $comp)
-                                    <option value="{{ $comp->id }}">{{ $comp->name }}</option>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="companyId" class="form-label">Company *</label>
+                            <select class="form-select" id="companyId" name="company_id" required>
+                                <option value="">Select Company</option>
+                                @foreach ($companies as $company)
+                                <option value="{{ $company->id }}">{{ $company->name }}</option>
                                 @endforeach
                             </select>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-semibold">Client Name / Description <span class="text-danger">*</span></label>
-                            <input type="text" name="client_name" class="form-control form-control-sm" placeholder="Client, payer, or source name" required>
+                        <div class="col-md-6 mb-3">
+                            <label for="clientName" class="form-label">Client Name / Description *</label>
+                            <input type="text" class="form-control" id="clientName" name="client_name" required>
                         </div>
-                    </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="actualAmount" class="form-label">Base Amount *</label>
+                            <input type="number" step="0.01" class="form-control" id="actualAmount" name="amount"
+                                value="" required placeholder="0.00">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <input type="hidden" readonly class="form-control bg-light" id="originalTotalBase">
+                            <input type="hidden" id="grand_total" name="grand_total">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="mobileNumber" class="form-label">Mobile Number</label>
+                            <input type="text" class="form-control" id="mobileNumber" name="mobile_number"
+                                placeholder="Enter mobile number">
+                        </div>
 
-                    <!-- Base Amount & Mobile -->
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label small fw-semibold">Base Amount (₹) <span class="text-danger">*</span></label>
-                            <input type="number" step="0.01" min="0" id="admin_ns_inc_amount" name="amount" class="form-control form-control-sm" placeholder="0.00" required oninput="calculateAdminNsIncomeTax()">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-semibold">Mobile Number</label>
-                            <input type="text" name="mobile_number" class="form-control form-control-sm" placeholder="Enter mobile number">
-                        </div>
-                    </div>
+                        <!-- Tax Section -->
+                        <div class="col-12 mb-3" id="taxSection">
+                            <!-- GST Section -->
+                            <div class="d-flex justify-content-between mb-2">
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" name="apply_gst" id="applyGst"
+                                        value="1" checked>
+                                    <label class="form-check-label" for="applyGst">Apply GST</label>
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">GST %</label>
+                                    <div class="input-group">
+                                        <input type="number" class="form-control" id="gst_percentage"
+                                            name="gst_percentage" value="18" min="0" max="100" step="0.01">
+                                        <span class="input-group-text">%</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">GST Amount</label>
+                                    <input type="number" class="form-control" id="gst_amount" name="gst_amount"
+                                        readonly>
+                                </div>
+                            </div>
 
-                    <hr class="my-3 text-muted">
+                            <!-- TDS Section -->
+                            <div id="addTdsSectionWrapper">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" name="apply_tds"
+                                            id="applyTds" value="1" checked>
+                                        <label class="form-check-label" for="applyTds">Apply TDS</label>
+                                    </div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">TDS %</label>
+                                        <div class="input-group">
+                                            <input type="number" class="form-control" id="tds_percentage"
+                                                name="tds_percentage" value="10" min="0" max="100" step="0.01">
+                                            <span class="input-group-text">%</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">TDS Amount</label>
+                                        <input type="number" class="form-control" id="tds_amount" name="tds_amount"
+                                            readonly>
+                                    </div>
+                                </div>
 
-                    <!-- Tax Section -->
-                    <!-- GST Section -->
-                    <div class="p-3 bg-light rounded-3 mb-3 border">
-                        <div class="row g-3 align-items-center">
-                            <div class="col-auto">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="admin_ns_inc_apply_gst" name="apply_gst" value="1" checked onchange="calculateAdminNsIncomeTax()">
-                                    <label class="form-check-label small fw-bold text-uppercase text-secondary" for="admin_ns_inc_apply_gst">Apply GST</label>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="input-group input-group-sm">
-                                    <span class="input-group-text">GST %</span>
-                                    <input type="number" class="form-control" id="admin_ns_inc_gst_percentage" name="gst_percentage" value="18" min="0" max="100" step="0.01" oninput="calculateAdminNsIncomeTax()">
-                                </div>
-                            </div>
-                            <div class="col-md-5">
-                                <div class="input-group input-group-sm">
-                                    <span class="input-group-text">GST Amount (₹)</span>
-                                    <input type="number" class="form-control bg-white" id="admin_ns_inc_gst_amount" name="gst_amount" value="0.00" readonly>
+                                <div class="row mb-3">
+                                    <div class="col-md-5">
+                                        <label class="form-label">TDS Status</label>
+                                        <select class="form-select" id="addTdsStatus" name="tds_status">
+                                            <option value="" selected disabled>Select Status</option>
+                                            <option value="received">Received</option>
+                                            <option value="not_received">Not Received</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-7">
+                                        <label class="form-label">Receipt</label>
+                                        <input type="file" id="addTdsReceipt" name="tds_receipt"
+                                            class="form-control" accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- TDS Section -->
-                    <div class="p-3 bg-light rounded-3 mb-3 border">
-                        <div class="row g-3 align-items-center">
-                            <div class="col-auto">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="admin_ns_inc_apply_tds" name="apply_tds" value="1" checked onchange="calculateAdminNsIncomeTax()">
-                                    <label class="form-check-label small fw-bold text-uppercase text-secondary" for="admin_ns_inc_apply_tds">Apply TDS</label>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="input-group input-group-sm">
-                                    <span class="input-group-text">TDS %</span>
-                                    <input type="number" class="form-control" id="admin_ns_inc_tds_percentage" name="tds_percentage" value="10" min="0" max="100" step="0.01" oninput="calculateAdminNsIncomeTax()">
-                                </div>
-                            </div>
-                            <div class="col-md-5">
-                                <div class="input-group input-group-sm">
-                                    <span class="input-group-text">TDS Amount (₹)</span>
-                                    <input type="number" class="form-control bg-white" id="admin_ns_inc_tds_amount" name="tds_amount" value="0.00" readonly>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row g-3 mt-1">
+                        <!-- Amount Received Section -->
+                        <div class="row mb-3">
                             <div class="col-md-6">
-                                <label class="form-label small text-muted mb-1">TDS Status</label>
-                                <select class="form-select form-select-sm" name="tds_status">
-                                    <option value="received">Received</option>
-                                    <option value="not_received" selected>Not Received</option>
-                                </select>
+                                <label class="form-label">Received Amount</label>
+                                <input type="number" class="form-control" id="received_amount"
+                                    name="received_amount" step="0.01" value="0.00">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Payment Date</label>
+                                <input type="date" class="form-control" id="received_date" name="received_date"
+                                    max="{{ date ( 'Y-m-d' ) }}">
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label small text-muted mb-1">TDS Receipt / Proof</label>
-                                <input type="file" name="tds_receipt" class="form-control form-control-sm" accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
+                                <label class="form-label">Balance</label>
+                                <input type="number" class="form-control" id="balance_amount" name="balance_amount"
+                                    step="0.01" readonly>
                             </div>
                         </div>
-                    </div>
 
-                    <hr class="my-3 text-muted">
-
-                    <!-- Amounts, Dates & Balance -->
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-4">
-                            <label class="form-label small fw-semibold">Net Expected (₹)</label>
-                            <input type="number" class="form-control form-control-sm bg-light" id="admin_ns_inc_net_expected_display" readonly value="0.00">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label small fw-semibold">Received Amount (₹)</label>
-                            <input type="number" step="0.01" min="0" id="admin_ns_inc_received_amount" name="received_amount" class="form-control form-control-sm" value="0.00" oninput="calculateAdminNsIncomeTax(true)">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label small fw-semibold">Balance (₹)</label>
-                            <input type="number" class="form-control form-control-sm bg-light" id="admin_ns_inc_balance_amount" name="balance_amount" readonly value="0.00">
-                        </div>
-                    </div>
-
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-4">
-                            <label class="form-label small fw-semibold">Payment / Received Date</label>
-                            <input type="date" name="received_date" class="form-control form-control-sm" value="{{ date('Y-m-d') }}" max="{{ date('Y-m-d') }}">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label small fw-semibold">Status <span class="text-danger">*</span></label>
-                            <select name="status" id="admin_ns_inc_status" class="form-select form-select-sm" required onchange="handleAdminNsIncomeStatusChange(this.value)">
+                        <div class="col-md-6 mb-3">
+                            <label for="status" class="form-label">Status *</label>
+                            <select class="form-select" id="status" name="status" required
+                                onchange="handleStatusChange(this, 'dueDateContainer', 'dueDate')">
                                 <option value="due" selected>Due</option>
                                 <option value="settle">Settle</option>
-                                <option value="received">Received</option>
-                                <option value="pending">Pending</option>
+                                <option value="paid" class="text-success" style="display:none;">Paid</option>
                             </select>
                         </div>
-                        <div class="col-md-4" id="admin_ns_inc_due_date_container">
-                            <label class="form-label small fw-semibold">Due Date <span class="text-danger">*</span></label>
-                            <input type="date" name="due_date" id="admin_ns_inc_due_date" class="form-control form-control-sm" value="{{ date('Y-m-d') }}">
+                        <div class="col-md-6 mb-3" id="addSettleNotesContainer" style="display:none;">
+                            <label for="addSettleNotes" class="form-label">Settle Notes <span
+                                    class="text-danger">*</span></label>
+                            <textarea class="form-control" id="addSettleNotes" name="settle_notes" rows="1"
+                                placeholder="Enter notes for settled status..."></textarea>
                         </div>
-                        <div class="col-md-4" id="admin_ns_inc_settle_notes_container" style="display: none;">
-                            <label class="form-label small fw-semibold">Settle Notes <span class="text-danger">*</span></label>
-                            <input type="text" name="settle_notes" id="admin_ns_inc_settle_notes" class="form-control form-control-sm" placeholder="Notes for settled status...">
+                        <div class="col-md-6 mb-3" id="dueDateContainer">
+                            <label for="dueDate" class="form-label">Due Date *</label>
+                            <input type="date" class="form-control" id="dueDate" name="due_date"
+                                min="{{ date ( 'Y-m-d' ) }}">
                         </div>
-                    </div>
-
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label small fw-semibold">Mail Status</label>
-                            <select name="mail_status" class="form-select form-select-sm">
-                                <option value="0" selected>No</option>
+                        <div class="col-md-6 mb-3">
+                            <label for="mailStatus" class="form-label">Mail Status</label>
+                            <select class="form-select" id="mailStatus" name="mail_status">
                                 <option value="1">Yes</option>
+                                <option value="0" selected>No</option>
                             </select>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-semibold">Notes / Purpose</label>
-                            <textarea name="notes" rows="2" class="form-control form-control-sm" placeholder="Any extra details about this income..."></textarea>
+                        <div class="col-md-12 mb-3">
+                            <label for="notes" class="form-label">Notes</label>
+                            <textarea class="form-control" id="addNotes" name="notes" rows="3"
+                                placeholder="Add any additional notes..."></textarea>
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer border-top bg-light">
-                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-sm btn-primary px-4" style="background-color: #4f46e5; border-color: #4f46e5; font-weight: 600;">
-                        <i class="fas fa-save me-1"></i> Save Income
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="submitBtn">
+                        <i class="fas fa-save me-2"></i> Save Income
                     </button>
                 </div>
             </form>
@@ -1498,80 +1513,103 @@
 </div>
 
 <script>
-function calculateAdminNsIncomeTax(isReceivedAmountTrigger = false) {
-    const baseAmount = parseFloat(document.getElementById('admin_ns_inc_amount')?.value) || 0;
-    const applyGst = document.getElementById('admin_ns_inc_apply_gst')?.checked;
-    const gstPercentage = applyGst ? (parseFloat(document.getElementById('admin_ns_inc_gst_percentage')?.value) || 0) : 0;
-    const gstAmount = (baseAmount * gstPercentage) / 100;
+// Manager Panel Equivalent Income Tax and Status Handling
+function handleStatusChange(selectElement, containerId, inputId) {
+    const container = document.getElementById(containerId);
+    const input = document.getElementById(inputId);
+    const form = selectElement.closest('form');
+    const settleNotesEl = form ? form.querySelector('[name="settle_notes"]') : document.getElementById('addSettleNotes');
+    const settleNotesContainer = document.getElementById('addSettleNotesContainer');
 
-    const gstAmountField = document.getElementById('admin_ns_inc_gst_amount');
-    if (gstAmountField) gstAmountField.value = gstAmount.toFixed(2);
-
-    const applyTds = document.getElementById('admin_ns_inc_apply_tds')?.checked;
-    const tdsPercentage = applyTds ? (parseFloat(document.getElementById('admin_ns_inc_tds_percentage')?.value) || 0) : 0;
-    const tdsAmount = (baseAmount * tdsPercentage) / 100;
-
-    const tdsAmountField = document.getElementById('admin_ns_inc_tds_amount');
-    if (tdsAmountField) tdsAmountField.value = tdsAmount.toFixed(2);
-
-    const grandTotal = baseAmount + gstAmount;
-    const netExpected = Math.max(0, grandTotal - tdsAmount);
-
-    const grandTotalField = document.getElementById('admin_ns_inc_grand_total');
-    if (grandTotalField) grandTotalField.value = grandTotal.toFixed(2);
-
-    const netExpectedDisplay = document.getElementById('admin_ns_inc_net_expected_display');
-    if (netExpectedDisplay) netExpectedDisplay.value = netExpected.toFixed(2);
-
-    const receivedInput = document.getElementById('admin_ns_inc_received_amount');
-    if (receivedInput && !isReceivedAmountTrigger) {
-        const currentReceived = parseFloat(receivedInput.value) || 0;
-        const statusVal = document.getElementById('admin_ns_inc_status')?.value;
-        if (statusVal === 'received' && (currentReceived === 0 || Math.abs(currentReceived - netExpected) < 0.01)) {
-            receivedInput.value = netExpected.toFixed(2);
+    if (settleNotesEl && settleNotesContainer) {
+        if (selectElement.value === 'settle' || selectElement.value === 'paid') {
+            settleNotesContainer.style.display = 'block';
+            settleNotesEl.required = true;
+        } else {
+            settleNotesContainer.style.display = 'none';
+            settleNotesEl.required = false;
         }
     }
 
-    const currentReceived = parseFloat(receivedInput?.value) || 0;
-    const balance = Math.max(0, netExpected - currentReceived);
-
-    const balanceField = document.getElementById('admin_ns_inc_balance_amount');
-    if (balanceField) balanceField.value = balance.toFixed(2);
-
-    const statusSelect = document.getElementById('admin_ns_inc_status');
-    if (statusSelect && isReceivedAmountTrigger) {
-        if (balance <= 0.01 && currentReceived > 0) {
-            statusSelect.value = 'received';
-        } else if (currentReceived > 0 && balance > 0) {
-            if (statusSelect.value !== 'settle') {
-                statusSelect.value = 'due';
-            }
+    if (selectElement.value === 'due') {
+        if (container) container.style.display = 'block';
+        if (input) input.required = true;
+    } else {
+        if (container) container.style.display = 'none';
+        if (input) {
+            input.required = false;
+            input.value = '';
         }
-        handleAdminNsIncomeStatusChange(statusSelect.value);
     }
 }
 
-function handleAdminNsIncomeStatusChange(status) {
-    const dueContainer = document.getElementById('admin_ns_inc_due_date_container');
-    const settleContainer = document.getElementById('admin_ns_inc_settle_notes_container');
-    const dueDateInput = document.getElementById('admin_ns_inc_due_date');
-    const settleNotesInput = document.getElementById('admin_ns_inc_settle_notes');
+function calculateIncomeTax(event) {
+    const actualAmountInput = document.getElementById('actualAmount');
+    const gstCheckbox = document.getElementById('applyGst');
+    const tdsCheckbox = document.getElementById('applyTds');
+    const gstPercentageInput = document.getElementById('gst_percentage');
+    const tdsPercentageInput = document.getElementById('tds_percentage');
+    const receivedAmountInput = document.getElementById('received_amount');
 
-    if (status === 'due') {
-        if (dueContainer) dueContainer.style.display = 'block';
-        if (dueDateInput) dueDateInput.required = true;
-        if (settleContainer) settleContainer.style.display = 'none';
-        if (settleNotesInput) settleNotesInput.required = false;
-    } else if (status === 'settle') {
-        if (dueContainer) dueContainer.style.display = 'none';
-        if (dueDateInput) dueDateInput.required = false;
-        if (settleContainer) settleContainer.style.display = 'block';
-        if (settleNotesInput) settleNotesInput.required = true;
+    if (!actualAmountInput || !gstCheckbox || !tdsCheckbox) return;
+
+    const isReceivedAmount = event && event.target && (event.target.id === 'received_amount');
+
+    const actualAmount = parseFloat(actualAmountInput.value) || 0;
+    const applyGst = gstCheckbox.checked;
+    const applyTds = tdsCheckbox.checked;
+    const gstPercentage = parseFloat(gstPercentageInput?.value) || 0;
+    const tdsPercentage = parseFloat(tdsPercentageInput?.value) || 0;
+    const receivedAmount = parseFloat(receivedAmountInput?.value) || 0;
+
+    let gstAmount = 0;
+    let tdsAmount = 0;
+    let amountAfterGst = actualAmount;
+    let grandTotal = actualAmount;
+
+    if (!isReceivedAmount) {
+        if (applyGst && gstPercentage > 0) {
+            gstAmount = (actualAmount * gstPercentage) / 100;
+            amountAfterGst = actualAmount + gstAmount;
+            grandTotal = amountAfterGst;
+        }
+
+        if (applyTds && tdsPercentage > 0) {
+            const baseForTds = applyGst ? amountAfterGst : actualAmount;
+            tdsAmount = (baseForTds * tdsPercentage) / 100;
+        }
+
+        const gstAmountEl = document.getElementById('gst_amount');
+        const tdsAmountEl = document.getElementById('tds_amount');
+        const grandTotalEl = document.getElementById('grand_total');
+
+        if (gstAmountEl) gstAmountEl.value = gstAmount.toFixed(2);
+        if (tdsAmountEl) tdsAmountEl.value = tdsAmount.toFixed(2);
+        if (grandTotalEl) grandTotalEl.value = grandTotal.toFixed(2);
     } else {
-        if (dueContainer) dueContainer.style.display = 'none';
-        if (dueDateInput) dueDateInput.required = false;
-        if (settleContainer) settleContainer.style.display = 'none';
-        if (settleNotesInput) settleNotesInput.required = false;
+        gstAmount = parseFloat(document.getElementById('gst_amount')?.value) || 0;
+        tdsAmount = parseFloat(document.getElementById('tds_amount')?.value) || 0;
+        grandTotal = parseFloat(document.getElementById('grand_total')?.value) || 0;
+    }
+
+    const netPayable = grandTotal - tdsAmount;
+    const balance = Math.max(0, netPayable - receivedAmount);
+    const balanceEl = document.getElementById('balance_amount');
+    if (balanceEl) balanceEl.value = balance.toFixed(2);
+
+    if (gstPercentageInput) gstPercentageInput.disabled = !applyGst;
+    if (tdsPercentageInput) tdsPercentageInput.disabled = !applyTds;
+}
+
+function handleIncomeTdsStatusBehavior(statusId, fileId) {
+    const statusEl = document.getElementById(statusId);
+    const fileEl = document.getElementById(fileId);
+    if (!statusEl || !fileEl) return;
+    const status = statusEl.value;
+    if (status === 'received' || status === 'paid') {
+        fileEl.required = true;
+    } else {
+        fileEl.required = false;
     }
 }
 
@@ -1610,6 +1648,36 @@ function handleAllIncomeDateRangeChange(value) {
         if (form) form.submit();
     }
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    const nsIncomeModal = document.getElementById('addNonStandardIncomeModal');
+    if (nsIncomeModal) {
+        const actualAmountInput = document.getElementById('actualAmount');
+        const gstCheckbox = document.getElementById('applyGst');
+        const tdsCheckbox = document.getElementById('applyTds');
+        const gstPercentageInput = document.getElementById('gst_percentage');
+        const tdsPercentageInput = document.getElementById('tds_percentage');
+        const receivedAmountInput = document.getElementById('received_amount');
+        const addTdsStatusSelect = document.getElementById('addTdsStatus');
+
+        if (actualAmountInput) actualAmountInput.addEventListener('input', calculateIncomeTax);
+        if (gstCheckbox) gstCheckbox.addEventListener('change', calculateIncomeTax);
+        if (tdsCheckbox) tdsCheckbox.addEventListener('change', calculateIncomeTax);
+        if (gstPercentageInput) gstPercentageInput.addEventListener('input', calculateIncomeTax);
+        if (tdsPercentageInput) tdsPercentageInput.addEventListener('input', calculateIncomeTax);
+        if (receivedAmountInput) receivedAmountInput.addEventListener('input', calculateIncomeTax);
+        if (addTdsStatusSelect) addTdsStatusSelect.addEventListener('change', () => {
+            handleIncomeTdsStatusBehavior('addTdsStatus', 'addTdsReceipt');
+        });
+
+        nsIncomeModal.addEventListener('show.bs.modal', function() {
+            const form = document.getElementById('incomeForm');
+            if (form) form.reset();
+            handleStatusChange(document.getElementById('status'), 'dueDateContainer', 'dueDate');
+            calculateIncomeTax();
+        });
+    }
+});
 </script>
 
 <!-- Partial Payment / Split Modal -->
@@ -4371,6 +4439,19 @@ function handleAllIncomeDateRangeChange(value) {
 </script>
 
 <style>
+    .tax-section {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+
+    .section-divider {
+        border-top: 2px solid #e2e8f0;
+        margin: 24px 0;
+    }
+
     .stat-card {
         border-left: 4px solid;
         transition: transform 0.2s;

@@ -345,6 +345,104 @@ class StandardExpensesController extends Controller
       $mainTab = 'expenses';
     }
 
+    // Determine title for date range
+    $dateRangeTitle = $now->format('M-Y');
+    if ($dateRange === 'today') {
+      $dateRangeTitle = 'Today';
+    } elseif ($dateRange === 'week') {
+      $dateRangeTitle = 'This Week';
+    } elseif ($dateRange === 'month') {
+      $dateRangeTitle = $now->format('M-Y');
+    } elseif ($dateRange === 'quarter') {
+      $dateRangeTitle = 'This Quarter';
+    } elseif ($dateRange === 'year') {
+      $dateRangeTitle = $now->format('Y');
+    } elseif ($dateRange === 'custom') {
+      $dateRangeTitle = 'Custom';
+    } elseif ($dateRange === 'all') {
+      $dateRangeTitle = $now->format('M-Y');
+    }
+
+    // Base query for current active tab summary statistics
+    $statsBaseQuery = match($mainTab) {
+      'standard'     => clone $stdCountQuery,
+      'non-standard' => clone $nsCountQuery,
+      default        => clone $allCountQuery
+    };
+
+    $statsItems = (clone $statsBaseQuery)->get();
+    $totalPayments = $statsItems->sum(function($item) {
+      return floatval($item->schedule_amount ?: ($item->planned_amount ?: $item->actual_amount));
+    });
+    $totalItems = $statsItems->count();
+
+    // Paid
+    $paidItems = $statsItems->filter(function($item) {
+      return in_array(strtolower($item->status ?? ''), ['paid', 'settle', 'settled']);
+    });
+    $paidAmount = $paidItems->sum(function($item) {
+      return floatval($item->paid_amount ?: ($item->actual_amount ?: $item->planned_amount));
+    });
+    $paidCount = $paidItems->count();
+
+    // Pending: not paid and (due_date >= today or status is upcoming/pending/due)
+    $pendingItems = $statsItems->filter(function($item) use ($today) {
+      $s = strtolower($item->status ?? '');
+      if (in_array($s, ['paid', 'settle', 'settled'])) return false;
+      $d = $item->due_date ? Carbon::parse($item->due_date)->toDateString() : null;
+      return ($d && $d >= $today) || in_array($s, ['upcoming', 'pending', 'due']);
+    });
+    $pendingAmount = $pendingItems->sum(function($item) {
+      return floatval($item->balance_amount > 0 ? $item->balance_amount : ($item->schedule_amount ?: ($item->planned_amount ?: $item->actual_amount)));
+    });
+    $pendingCount = $pendingItems->count();
+
+    // Over Due: in current period where due_date < today and not paid
+    $overdueItems = $statsItems->filter(function($item) use ($today) {
+      $s = strtolower($item->status ?? '');
+      if (in_array($s, ['paid', 'settle', 'settled'])) return false;
+      $d = $item->due_date ? Carbon::parse($item->due_date)->toDateString() : null;
+      return ($d && $d < $today) || $s === 'overdue';
+    });
+    $overdueAmount = $overdueItems->sum(function($item) {
+      return floatval($item->balance_amount > 0 ? $item->balance_amount : ($item->schedule_amount ?: ($item->planned_amount ?: $item->actual_amount)));
+    });
+    $overdueCount = $overdueItems->count();
+
+    // Total Over Due (All Time)
+    $allTimeOverdueQuery = Expense::query();
+    if ($mainTab === 'standard') {
+      $allTimeOverdueQuery->where('source', 'standard');
+    } elseif ($mainTab === 'non-standard') {
+      $allTimeOverdueQuery->where('source', '!=', 'standard');
+    }
+    if ($companyFilter && $companyFilter !== 'all') {
+      $allTimeOverdueQuery->where('company_id', $companyFilter);
+    }
+    $allTimeOverdueItems = $allTimeOverdueQuery->whereNotIn('status', ['paid', 'settle', 'settled'])
+      ->where(function($q) use ($today) {
+        $q->whereDate('due_date', '<', $today)
+          ->orWhere('status', 'overdue');
+      })->get();
+
+    $totalOverdueAmount = $allTimeOverdueItems->sum(function($item) {
+      return floatval($item->balance_amount > 0 ? $item->balance_amount : ($item->schedule_amount ?: ($item->planned_amount ?: $item->actual_amount)));
+    });
+    $totalOverdueCount = $allTimeOverdueItems->count();
+
+    $cardStats = [
+      'totalPayments'      => $totalPayments,
+      'totalItems'         => $totalItems,
+      'paidAmount'         => $paidAmount,
+      'paidCount'          => $paidCount,
+      'pendingAmount'      => $pendingAmount,
+      'pendingCount'       => $pendingCount,
+      'overdueAmount'      => $overdueAmount,
+      'overdueCount'       => $overdueCount,
+      'totalOverdueAmount' => $totalOverdueAmount,
+      'totalOverdueCount'  => $totalOverdueCount,
+    ];
+
     return view('Admin.standard_expenses', [
       'allExpenses'         => $allExpenses,
       'expenseTypes'        => $templates,
@@ -364,7 +462,9 @@ class StandardExpensesController extends Controller
       'statusCounts'        => $statusCounts,
       'nsStatusCounts'      => $nsStatusCounts,
       'mainTab'             => $mainTab,
-      'requestedTab'        => $requestedTab
+      'requestedTab'        => $requestedTab,
+      'cardStats'           => $cardStats,
+      'dateRangeTitle'      => $dateRangeTitle
     ]);
   }
 

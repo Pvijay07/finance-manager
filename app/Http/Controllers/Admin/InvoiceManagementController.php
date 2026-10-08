@@ -339,6 +339,163 @@ class InvoiceManagementController extends Controller
       $mainTab = 'incomes';
     }
 
+    $dateRangeTitle = $now->format('M-Y');
+    if ($dateRange === 'today') {
+      $dateRangeTitle = 'Today';
+    } elseif ($dateRange === 'week') {
+      $dateRangeTitle = 'This Week';
+    } elseif ($dateRange === 'month') {
+      $dateRangeTitle = $now->format('M-Y');
+    } elseif ($dateRange === 'quarter') {
+      $dateRangeTitle = 'This Quarter';
+    } elseif ($dateRange === 'year') {
+      $dateRangeTitle = $now->format('Y');
+    } elseif ($dateRange === 'custom') {
+      $dateRangeTitle = 'Custom';
+    } elseif ($dateRange === 'all') {
+      $dateRangeTitle = $now->format('M-Y');
+    }
+
+    $today = Carbon::today()->toDateString();
+
+    if ($mainTab === 'standard') {
+      $statsProformas = (clone $countQuery)->get();
+      $totalPayments = $statsProformas->sum(fn($i) => (float)$i->total_amount);
+      $totalItems = $statsProformas->count();
+
+      $paidItems = $statsProformas->filter(fn($i) => strtolower($i->status ?? '') === 'paid');
+      $paidAmount = $paidItems->sum(fn($i) => (float)$i->total_amount);
+      $paidCount = $paidItems->count();
+
+      $pendingItems = $statsProformas->filter(function($i) use ($today) {
+        $s = strtolower($i->status ?? '');
+        if ($s === 'paid') return false;
+        $d = $i->due_date ? Carbon::parse($i->due_date)->toDateString() : null;
+        return ($d && $d >= $today) || in_array($s, ['upcoming', 'pending', 'due']);
+      });
+      $pendingAmount = $pendingItems->sum(fn($i) => (float)($i->balance_amount > 0 ? $i->balance_amount : $i->total_amount));
+      $pendingCount = $pendingItems->count();
+
+      $overdueItems = $statsProformas->filter(function($i) use ($today) {
+        $s = strtolower($i->status ?? '');
+        if ($s === 'paid') return false;
+        $d = $i->due_date ? Carbon::parse($i->due_date)->toDateString() : null;
+        return ($d && $d < $today) || $s === 'overdue';
+      });
+      $overdueAmount = $overdueItems->sum(fn($i) => (float)($i->balance_amount > 0 ? $i->balance_amount : $i->total_amount));
+      $overdueCount = $overdueItems->count();
+
+      $allTimeOverdueQ = Invoice::where('type', 'proforma')->whereNotIn('status', ['paid', 'cancelled', 'replaced'])
+        ->where(function($q) use ($today) {
+          $q->whereDate('due_date', '<', $today)->orWhere('status', 'overdue');
+        });
+      if ($company && $company !== 'all') {
+        $allTimeOverdueQ->where('company_id', $company);
+      }
+      $allTimeOverdueItems = $allTimeOverdueQ->get();
+      $totalOverdueAmount = $allTimeOverdueItems->sum(fn($i) => (float)($i->balance_amount > 0 ? $i->balance_amount : $i->total_amount));
+      $totalOverdueCount = $allTimeOverdueItems->count();
+
+    } elseif ($mainTab === 'non-standard') {
+      $statsNs = (clone $nsCountQuery)->get();
+      $totalPayments = $statsNs->sum(fn($i) => (float)($i->schedule_amount ?: ($i->planned_amount ?: ($i->grand_total ?: $i->amount))));
+      $totalItems = $statsNs->count();
+
+      $paidItems = $statsNs->filter(fn($i) => in_array(strtolower($i->status ?? ''), ['received', 'paid', 'settle', 'settled']));
+      $paidAmount = $paidItems->sum(fn($i) => (float)($i->received_amount ?: ($i->grand_total ?: $i->amount)));
+      $paidCount = $paidItems->count();
+
+      $pendingItems = $statsNs->filter(function($i) use ($today) {
+        $s = strtolower($i->status ?? '');
+        if (in_array($s, ['received', 'paid', 'settle', 'settled'])) return false;
+        $d = $i->due_date ? Carbon::parse($i->due_date)->toDateString() : ($i->income_date ? Carbon::parse($i->income_date)->toDateString() : null);
+        return ($d && $d >= $today) || in_array($s, ['upcoming', 'pending', 'due']);
+      });
+      $pendingAmount = $pendingItems->sum(fn($i) => (float)($i->balance_amount > 0 ? $i->balance_amount : ($i->grand_total ?: $i->amount)));
+      $pendingCount = $pendingItems->count();
+
+      $overdueItems = $statsNs->filter(function($i) use ($today) {
+        $s = strtolower($i->status ?? '');
+        if (in_array($s, ['received', 'paid', 'settle', 'settled'])) return false;
+        $d = $i->due_date ? Carbon::parse($i->due_date)->toDateString() : ($i->income_date ? Carbon::parse($i->income_date)->toDateString() : null);
+        return ($d && $d < $today) || $s === 'overdue';
+      });
+      $overdueAmount = $overdueItems->sum(fn($i) => (float)($i->balance_amount > 0 ? $i->balance_amount : ($i->grand_total ?: $i->amount)));
+      $overdueCount = $overdueItems->count();
+
+      $allTimeOverdueQ = Income::where(function($q) {
+        $q->where('income_type', 'non-standard')->orWhere(function($sq) { $sq->whereNull('invoice_id')->where('source', 'manual'); });
+      })->whereNotIn('status', ['received', 'paid', 'settle', 'settled'])
+      ->where(function($q) use ($today) {
+        $q->whereDate('due_date', '<', $today)->orWhere('status', 'overdue');
+      });
+      if ($company && $company !== 'all') {
+        $allTimeOverdueQ->where('company_id', $company);
+      }
+      $allTimeOverdueItems = $allTimeOverdueQ->get();
+      $totalOverdueAmount = $allTimeOverdueItems->sum(fn($i) => (float)($i->balance_amount > 0 ? $i->balance_amount : ($i->grand_total ?: $i->amount)));
+      $totalOverdueCount = $allTimeOverdueItems->count();
+
+    } else {
+      // All Incomes
+      $totalPayments = $unifiedItems->sum('total_amount');
+      $totalItems = $unifiedItems->count();
+
+      $paidItems = $unifiedItems->filter(fn($i) => in_array(strtolower($i->status ?? ''), ['received', 'paid', 'settle', 'settled']));
+      $paidAmount = $paidItems->sum('received_amount');
+      $paidCount = $paidItems->count();
+
+      $pendingItems = $unifiedItems->filter(function($i) use ($today) {
+        $s = strtolower($i->status ?? '');
+        if (in_array($s, ['received', 'paid', 'settle', 'settled'])) return false;
+        $d = $i->due_date ? Carbon::parse($i->due_date)->toDateString() : null;
+        return ($d && $d >= $today) || in_array($s, ['upcoming', 'pending', 'due']);
+      });
+      $pendingAmount = $pendingItems->sum(fn($i) => (float)($i->balance_amount > 0 ? $i->balance_amount : $i->total_amount));
+      $pendingCount = $pendingItems->count();
+
+      $overdueItems = $unifiedItems->filter(function($i) use ($today) {
+        $s = strtolower($i->status ?? '');
+        if (in_array($s, ['received', 'paid', 'settle', 'settled'])) return false;
+        $d = $i->due_date ? Carbon::parse($i->due_date)->toDateString() : null;
+        return ($d && $d < $today) || $s === 'overdue';
+      });
+      $overdueAmount = $overdueItems->sum(fn($i) => (float)($i->balance_amount > 0 ? $i->balance_amount : $i->total_amount));
+      $overdueCount = $overdueItems->count();
+
+      $allTimeStdOverdue = Invoice::where('type', 'proforma')->whereNotIn('status', ['paid', 'cancelled', 'replaced'])
+        ->where(function($q) use ($today) {
+          $q->whereDate('due_date', '<', $today)->orWhere('status', 'overdue');
+        })
+        ->when($company && $company !== 'all', fn($q) => $q->where('company_id', $company))
+        ->get();
+      $allTimeNsOverdue = Income::where(function($q) {
+        $q->where('income_type', 'non-standard')->orWhere(function($sq) { $sq->whereNull('invoice_id')->where('source', 'manual'); });
+      })->whereNotIn('status', ['received', 'paid', 'settle', 'settled'])
+      ->where(function($q) use ($today) {
+        $q->whereDate('due_date', '<', $today)->orWhere('status', 'overdue');
+      })
+      ->when($company && $company !== 'all', fn($q) => $q->where('company_id', $company))
+      ->get();
+
+      $totalOverdueAmount = $allTimeStdOverdue->sum(fn($i) => (float)($i->balance_amount > 0 ? $i->balance_amount : $i->total_amount))
+                          + $allTimeNsOverdue->sum(fn($i) => (float)($i->balance_amount > 0 ? $i->balance_amount : ($i->grand_total ?: $i->amount)));
+      $totalOverdueCount = $allTimeStdOverdue->count() + $allTimeNsOverdue->count();
+    }
+
+    $cardStats = [
+      'totalPayments'      => $totalPayments,
+      'totalItems'         => $totalItems,
+      'paidAmount'         => $paidAmount,
+      'paidCount'          => $paidCount,
+      'pendingAmount'      => $pendingAmount,
+      'pendingCount'       => $pendingCount,
+      'overdueAmount'      => $overdueAmount,
+      'overdueCount'       => $overdueCount,
+      'totalOverdueAmount' => $totalOverdueAmount,
+      'totalOverdueCount'  => $totalOverdueCount,
+    ];
+
     return view('Admin.invoices', compact(
       'invoices',
       'companies',
@@ -360,7 +517,9 @@ class InvoiceManagementController extends Controller
       'nonStandardIncomes',
       'nsIncomeStatusCounts',
       'mainTab',
-      'requestedTab'
+      'requestedTab',
+      'cardStats',
+      'dateRangeTitle'
     ));
   }
 

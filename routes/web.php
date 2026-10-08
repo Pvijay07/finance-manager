@@ -95,6 +95,7 @@ Route::middleware(['auth', 'role:admin'])
         Route::get('/standard-expenses/{id}/taxes', [StandardExpensesController::class, 'getTaxDetails']);
         Route::post('/taxes/{id}/pay', [StandardExpensesController::class, 'markTaxAsPaid']);
         Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs');
+        Route::get('/audit-logs/export', [AuditLogController::class, 'export'])->name('audit-logs.export');
 
         Route::prefix('invoices')->group(function () {
             Route::get('/', [InvoiceManagementController::class, 'index'])->name('invoices');

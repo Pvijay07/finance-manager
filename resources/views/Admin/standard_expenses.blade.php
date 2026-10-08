@@ -35,6 +35,11 @@
     @if(($mainTab ?? 'expenses') === 'expenses')
     <!-- All Expenses Section (Show all Standard and Non-Standard Expenses in one place) -->
     <div id="all-expenses-section">
+        <!-- Summary Cards -->
+        @if(isset($cardStats))
+            @include('Admin.partials.summary_cards', ['cardType' => 'expense'])
+        @endif
+
         <!-- Status Tabs for All Expenses -->
         <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
             <button type="button"
@@ -591,6 +596,11 @@
     </div>
     <!-- Table Tab -->
     <div id="table-tab" class="tab-content">
+        <!-- Summary Cards -->
+        @if(isset($cardStats))
+            @include('Admin.partials.summary_cards', ['cardType' => 'expense'])
+        @endif
+
         <!-- Status Tabs -->
         <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
             <button type="button"
@@ -931,6 +941,11 @@
     @else
     <!-- Non-Standard Expenses Section -->
     <div id="non-standard-section">
+        <!-- Summary Cards -->
+        @if(isset($cardStats))
+            @include('Admin.partials.summary_cards', ['cardType' => 'expense'])
+        @endif
+
         <!-- Status Tabs -->
         <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
             <button type="button"
@@ -1168,164 +1183,174 @@
     @endif
 </div>
 
-<!-- Add Non-Standard Expense Modal (Manager Equivalent) -->
-<div id="addNonStandardModal" class="modal fade" tabindex="-1" aria-labelledby="addNonStandardModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); border: none;">
-            <div class="modal-header border-bottom" style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); color: white; border-radius: 12px 12px 0 0;">
-                <h5 class="modal-title font-semibold text-white" id="addNonStandardModalLabel">
-                    <i class="fas fa-receipt me-2"></i> Add Non-Standard Expense
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+<!-- Add Non-standard Expense Modal (Same as Manager Panel) -->
+<div class="modal fade" id="addNonStandardModal" tabindex="-1" aria-labelledby="addNonStandardModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addNonStandardModalLabel">Add Non-standard Expense</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form action="{{ route('admin.standard-expenses.non-standard.store') }}" method="POST" enctype="multipart/form-data" id="adminAddNsExpenseForm">
+            <form id="addNonStandardForm" action="{{ route('admin.standard-expenses.non-standard.store') }}" method="POST"
+                enctype="multipart/form-data">
                 @csrf
+                <!-- Add this hidden input for source -->
                 <input type="hidden" name="source" value="manual">
-                <input type="hidden" id="admin_ns_grand_total" name="grand_total" value="0.00">
-                <input type="hidden" id="admin_ns_schedule_amount" name="planned_amount" value="0.00">
 
-                <div class="modal-body p-4">
+                <div class="modal-body">
                     <!-- Company & Expense Name -->
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
-                            <label class="form-label small fw-semibold">Company <span class="text-danger">*</span></label>
-                            <select name="company_id" class="form-select form-select-sm" required>
-                                <option value="" disabled selected>Select Company</option>
-                                @foreach($companies as $comp)
-                                <option value="{{ $comp->id }}">{{ $comp->name }}</option>
+                            <label class="form-label">Company</label>
+                            <select class="form-select" name="company_id" required>
+                                <option value="" selected disabled>Select Company</option>
+                                @foreach ($companies as $company)
+                                    <option value="{{ $company->id }}">{{ $company->name }}</option>
                                 @endforeach
                             </select>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label small fw-semibold">Expense Name <span class="text-danger">*</span></label>
-                            <input type="text" name="expense_name" class="form-control form-control-sm" placeholder="e.g. Office Repair Work" required>
+                            <label class="form-label">Expense Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="expense_name" required
+                                placeholder="e.g., Server Maintenance">
                         </div>
                     </div>
 
-                    <!-- Category & Base Amount -->
-                    <div class="row g-3 mb-3">
+                    <!-- Category & Amount -->
+                    <div class="row g-3 mb-4">
                         <div class="col-md-6">
-                            <label class="form-label small fw-semibold">Category <span class="text-danger">*</span></label>
-                            <select name="category_id" class="form-select form-select-sm" required>
-                                <option value="" disabled selected>Select Category</option>
-                                @foreach($categories as $cat)
-                                <option value="{{ $cat->id }}">{{ $cat->name }}</option>
+                            <label class="form-label">Category <span class="text-danger">*</span></label>
+                            <select class="form-select" name="category_id" required>
+                                <option value="" selected disabled>Select Category</option>
+                                @foreach ($categories as $category)
+                                    <option value="{{ $category->id }}">{{ $category->name }}</option>
                                 @endforeach
                             </select>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label small fw-semibold">Base Amount (₹) <span class="text-danger">*</span></label>
-                            <input type="number" step="0.01" min="0" id="admin_ns_actual_amount" name="actual_amount" class="form-control form-control-sm" placeholder="0.00" required oninput="calculateAdminNsExpenseTax()">
+                            <label class="form-label">Actual Amount (₹) <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="actual_amount" name="actual_amount"
+                                step="0.01" required value="" placeholder="0.00">
                         </div>
                     </div>
-
-                    <hr class="my-3 text-muted">
+                    <div class="section-divider"></div>
 
                     <!-- GST Section -->
-                    <div class="p-3 bg-light rounded-3 mb-3 border">
-                        <div class="row g-3 align-items-center">
+                    <div class="tax-section mb-3">
+                        <div class="row g-3 align-items-end">
                             <div class="col-auto">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="admin_ns_apply_gst" name="apply_gst" value="1" checked onchange="calculateAdminNsExpenseTax()">
-                                    <label class="form-check-label small fw-bold text-uppercase text-secondary" for="admin_ns_apply_gst">Apply GST</label>
+                                <div class="form-check" style="margin-top: 32px;">
+                                    <input class="form-check-input" type="checkbox" id="apply_gst" name="apply_gst"
+                                        value="1" checked>
+                                    <label class="form-check-label fw-bold text-uppercase small text-muted" for="apply_gst">GST</label>
                                 </div>
                             </div>
-                            <div class="col-md-4">
-                                <div class="input-group input-group-sm">
-                                    <span class="input-group-text">GST %</span>
-                                    <input type="number" class="form-control" id="admin_ns_gst_percentage" name="gst_percentage" value="18" min="0" max="100" step="0.01" oninput="calculateAdminNsExpenseTax()">
+                            <div class="col">
+                                <label class="form-label fw-bold text-uppercase small text-muted">GST %</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="gst_percentage" name="gst_percentage"
+                                        value="18" min="0" max="100" step="0.01">
+                                    <span class="input-group-text">%</span>
                                 </div>
                             </div>
-                            <div class="col-md-5">
-                                <div class="input-group input-group-sm">
-                                    <span class="input-group-text">GST (₹)</span>
-                                    <input type="number" class="form-control bg-white" id="admin_ns_gst_amount" name="gst_amount" value="0.00" readonly>
-                                </div>
+                            <div class="col">
+                                <label class="form-label fw-bold text-uppercase small text-muted">GST Amount</label>
+                                <input type="number" class="form-control" id="gst_amount" name="gst_amount" value="0.00"
+                                    readonly>
                             </div>
                         </div>
                     </div>
 
                     <!-- TDS Section -->
-                    <div class="p-3 bg-light rounded-3 mb-3 border">
-                        <div class="row g-3 align-items-center">
+                    <div class="tax-section mb-3">
+                        <div class="row g-3 align-items-end">
                             <div class="col-auto">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="admin_ns_apply_tds" name="apply_tds" value="1" checked onchange="calculateAdminNsExpenseTax()">
-                                    <label class="form-check-label small fw-bold text-uppercase text-secondary" for="admin_ns_apply_tds">Apply TDS</label>
+                                <div class="form-check" style="margin-top: 32px;">
+                                    <input class="form-check-input" type="checkbox" id="apply_tds" name="apply_tds"
+                                        value="1" checked>
+                                    <label class="form-check-label fw-bold text-uppercase small text-muted" for="apply_tds">TDS</label>
                                 </div>
                             </div>
-                            <div class="col-md-4">
-                                <div class="input-group input-group-sm">
-                                    <span class="input-group-text">TDS %</span>
-                                    <input type="number" class="form-control" id="admin_ns_tds_percentage" name="tds_percentage" value="10" min="0" max="100" step="0.01" oninput="calculateAdminNsExpenseTax()">
+                            <div class="col">
+                                <label class="form-label fw-bold text-uppercase small text-muted">TDS %</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="tds_percentage" name="tds_percentage"
+                                        value="10" min="0" max="100" step="0.01">
+                                    <span class="input-group-text">%</span>
                                 </div>
                             </div>
-                            <div class="col-md-5">
-                                <div class="input-group input-group-sm">
-                                    <span class="input-group-text">TDS (₹)</span>
-                                    <input type="number" class="form-control bg-white" id="admin_ns_tds_amount" name="tds_amount" value="0.00" readonly>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row g-3 mt-1" id="admin_ns_tds_extras_row">
-                            <div class="col-md-6">
-                                <label class="form-label small text-muted mb-1">TDS Payment Status</label>
-                                <select class="form-select form-select-sm" name="tds_status">
-                                    <option value="received">Paid</option>
-                                    <option value="not_received" selected>Not Paid</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label small text-muted mb-1">TDS Certificate / Receipt</label>
-                                <input type="file" name="tds_receipt" class="form-control form-control-sm" accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
+                            <div class="col">
+                                <label class="form-label fw-bold text-uppercase small text-muted">TDS Amount</label>
+                                <input type="number" class="form-control" id="tds_amount" name="tds_amount" value="0.00"
+                                    readonly>
                             </div>
                         </div>
                     </div>
 
-                    <hr class="my-3 text-muted">
-
-                    <!-- Payment Amounts & Mode -->
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-4">
-                            <label class="form-label small fw-semibold">Net Payable (₹)</label>
-                            <input type="number" class="form-control form-control-sm bg-light" id="admin_ns_net_payable_display" readonly value="0.00">
+                    <!-- Amount After TDS & TDS Details -->
+                    <div class="row g-3 mb-4">
+                        <input type="hidden" class="form-control" id="amount_after_tds" name="amount_after_tds"
+                            value="0.00" readonly>
+                        <div class="col-md-4 tds-status-field">
+                            <label class="form-label fw-bold text-uppercase small text-muted">TDS Status</label>
+                            <select class="form-select" id="addTdsStatus" name="tds_status">
+                                <option value="" selected disabled>Select Status</option>
+                                <option value="received">Paid</option>
+                                <option value="not_received">Not Paid</option>
+                            </select>
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label small fw-semibold">Paid Amount (₹)</label>
-                            <input type="number" step="0.01" min="0" class="form-control form-control-sm" id="admin_ns_paid_amount" name="paid_amount" value="0.00" oninput="calculateAdminNsExpenseBalance(true)">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label small fw-semibold">Balance (₹)</label>
-                            <input type="number" class="form-control form-control-sm bg-light" id="admin_ns_balance_amount" name="balance_amount" readonly value="0.00">
+                        <div class="col-md-4 tds-receipt-field">
+                            <label class="form-label fw-bold text-uppercase small text-muted">TDS Certificate/Receipt</label>
+                            <input type="file" id="addTdsReceipt" name="tds_receipt" class="form-control"
+                                accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
                         </div>
                     </div>
 
-                    <!-- Payment Mode, Date & Receipts -->
+                    <input type="hidden" class="form-control" id="grand_total" name="grand_total" value="0.00" readonly>
+
+                    <div class="section-divider"></div>
+
+                    <!-- Schedule, Paid, Balance -->
                     <div class="row g-3 mb-3">
-                        <div class="col-md-4">
-                            <label class="form-label small fw-semibold">Payment Mode</label>
-                            <select class="form-select form-select-sm" name="payment_mode" id="admin_ns_payment_mode" onchange="toggleAdminNsExpensePaymentMode(this.value)">
-                                <option value="cash" selected>Cash</option>
+                        <input type="hidden" class="form-control" id="schedule_amount" name="planned_amount" step="0.01"
+                            value="0.00">
+                        <div class="col-md-3">
+                            <label class="form-label">Paid Amount (₹)</label>
+                            <input type="number" class="form-control" id="paid_amount" name="paid_amount" step="0.01"
+                                value="0.00">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Payment Mode</label>
+                            <select class="form-select" name="payment_mode" id="payment_mode"
+                                onchange="togglePaymentModeDetails(this)">
+                                <option value="cash">Cash</option>
                                 <option value="bank_transfer">Bank Transfer</option>
                                 <option value="cheque">Cheque</option>
                                 <option value="upi">UPI</option>
                             </select>
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label small fw-semibold">Payment Date</label>
-                            <input type="date" name="payment_date" class="form-control form-control-sm" value="{{ date('Y-m-d') }}" max="{{ date('Y-m-d') }}">
+                        <div class="col-md-3">
+                            <label class="form-label">Payment Date</label>
+                            <input type="date" class="form-control" name="payment_date" id="payment_date" max="{{ date('Y-m-d') }}">
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label small fw-semibold">Receipt(s)</label>
-                            <input type="file" name="receipts[]" multiple class="form-control form-control-sm" accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
+                        <div class="col-md-3">
+                            <label class="form-label" id="receipts_label">Receipt</label>
+                            <div id="receiptsContainer">
+                                <div class="receipt-item mb-2">
+                                    <div class="input-group">
+                                        <input type="file" name="receipts[]" class="form-control" id="main_receipt"
+                                            accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Bank / UPI Details Row (Conditional) -->
-                    <div class="row g-3 mb-3 p-3 bg-light rounded-3 border" id="admin_ns_payment_mode_details" style="display: none;">
-                        <div class="col-md-6" id="admin_ns_bank_details" style="display: none;">
-                            <label class="form-label small fw-semibold">Select Bank</label>
-                            <select class="form-select form-select-sm" name="bank_name">
+                    <!-- Payment Mode Details Row (Hidden by default) -->
+                    <div class="row g-3 mb-3 payment-mode-details" style="display: none;">
+                        <div class="col-md-6 bank-details" style="display: none;">
+                            <label class="form-label">Select Bank</label>
+                            <select class="form-select" name="bank_name">
                                 <option value="">Select Bank</option>
                                 <option value="SBI">State Bank of India</option>
                                 <option value="HDFC">HDFC Bank</option>
@@ -1333,66 +1358,72 @@
                                 <option value="Axis">Axis Bank</option>
                             </select>
                         </div>
-                        <div class="col-md-6" id="admin_ns_upi_details" style="display: none;">
-                            <div class="row g-2">
-                                <div class="col-6">
-                                    <label class="form-label small fw-semibold">UPI App</label>
-                                    <select class="form-select form-select-sm" name="upi_type">
-                                        <option value="GPay">Google Pay</option>
-                                        <option value="PhonePe">PhonePe</option>
-                                        <option value="Paytm">Paytm</option>
-                                    </select>
-                                </div>
-                                <div class="col-6">
-                                    <label class="form-label small fw-semibold">UPI Number</label>
-                                    <input type="text" class="form-control form-control-sm" name="upi_number" placeholder="10-digit number" maxlength="10">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Status, Settle Notes, Due Date -->
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-4">
-                            <label class="form-label small fw-semibold">Status <span class="text-danger">*</span></label>
-                            <select name="status" id="admin_ns_status" class="form-select form-select-sm" required onchange="handleAdminNsExpenseStatusChange(this.value)">
-                                <option value="due">Due</option>
-                                <option value="settle">Settle</option>
-                                <option value="paid">Paid</option>
-                                <option value="pending">Pending</option>
-                                <option value="upcoming">Upcoming</option>
+                        <div class="col-md-6 upi-details" style="display: none;">
+                            <label class="form-label">UPI Type</label>
+                            <select class="form-select" name="upi_type">
+                                <option value="GPay">Google Pay</option>
+                                <option value="PhonePe">PhonePe</option>
+                                <option value="Paytm">Paytm</option>
                             </select>
                         </div>
-                        <div class="col-md-4" id="admin_ns_due_date_container">
-                            <label class="form-label small fw-semibold">Due Date <span class="text-danger">*</span></label>
-                            <input type="date" name="due_date" id="admin_ns_due_date" class="form-control form-control-sm" value="{{ date('Y-m-d') }}">
+                        <div class="col-md-6 upi-details" style="display: none;">
+                            <label class="form-label">UPI Phone Number</label>
+                            <input type="text" class="form-control" id="addUpiNumber" name="upi_number" placeholder="Enter phone number" maxlength="10" pattern="[0-9]{10}" title="UPI phone number must be exactly 10 digits">
                         </div>
-                        <div class="col-md-4" id="admin_ns_settle_notes_container" style="display: none;">
-                            <label class="form-label small fw-semibold">Settle Notes <span class="text-danger">*</span></label>
-                            <input type="text" name="settle_notes" id="admin_ns_settle_notes" class="form-control form-control-sm" placeholder="Reason for settling...">
+                    </div>
+                    <input type="hidden" name="split_payment" id="split_payment" value="0">
+                    <input type="hidden" name="create_new_for_balance" id="create_new_for_balance" value="0">
+
+                    <!-- Status & Payment Date -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Balance</label>
+                            <input type="number" class="form-control bg-light" id="balance_amount" name="balance_amount"
+                                step="0.01" readonly value="0.00">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Status <span class="text-danger">*</span></label>
+                            <select class="form-select" name="status" required id="payment_status">
+                                <option value="" selected disabled>Select Status</option>
+                                <option value="due" class="text-warning">Due</option>
+                                <option value="settle" class="text-info">Settle</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3" id="addSettleNotesContainer" style="display:none;">
+                            <label class="form-label" for="addSettleNotes">Settle Notes <span class="text-danger">*</span></label>
+                            <textarea class="form-control" id="addSettleNotes" name="settle_notes" rows="1" placeholder="Enter notes..."></textarea>
+                        </div>
+                        <div class="col-md-4" id="due_date_container" style="display: none;">
+                            <label class="form-label">Due Date <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" name="due_date" id="add_due_date"
+                                min="{{ date('Y-m-d') }}">
+                        </div>
+                    </div>
+                    <div class="section-divider"></div>
+
+                    <!-- Party/Vendor & Mobile -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Party/Vendor Name</label>
+                            <input type="text" class="form-control" name="party_name" placeholder="Optional">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Mobile Number</label>
+                            <input type="number" class="form-control" name="mobile_number" placeholder="Optional">
                         </div>
                     </div>
 
-                    <!-- Vendor details & notes -->
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label small fw-semibold">Party / Vendor Name</label>
-                            <input type="text" name="party_name" class="form-control form-control-sm" placeholder="Optional vendor name">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-semibold">Mobile Number</label>
-                            <input type="text" name="mobile_number" class="form-control form-control-sm" placeholder="Optional phone number">
-                        </div>
-                    </div>
-                    <div class="mb-2">
-                        <label class="form-label small fw-semibold">Purpose / Notes</label>
-                        <textarea name="notes" rows="2" class="form-control form-control-sm" placeholder="Add extra expense notes or purpose..."></textarea>
+                    <!-- Notes -->
+                    <div class="mb-3">
+                        <label class="form-label" for="addNotes">Notes</label>
+                        <textarea class="form-control" id="addNotes" name="notes" rows="3" placeholder="Optional notes..."></textarea>
                     </div>
                 </div>
-                <div class="modal-footer border-top bg-light">
-                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-sm btn-primary px-4" style="background-color: #4f46e5; border-color: #4f46e5; font-weight: 600;">
-                        <i class="fas fa-save me-1"></i> Save Expense
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Save Expense
                     </button>
                 </div>
             </form>
@@ -2942,128 +2973,228 @@
         }
     }
 
-    // Non-Standard Expense calculations (Manager equivalent)
-    function calculateAdminNsExpenseTax(isPaidAmountTrigger = false) {
-        const baseAmount = parseFloat(document.getElementById('admin_ns_actual_amount')?.value) || 0;
-        const applyGst = document.getElementById('admin_ns_apply_gst')?.checked;
-        const gstPercentage = applyGst ? (parseFloat(document.getElementById('admin_ns_gst_percentage')?.value) || 0) : 0;
-        const gstAmount = (baseAmount * gstPercentage) / 100;
+    // Non-Standard Expense calculations (Manager Panel Equivalent)
+    function calculateTaxNonStandardAdd() {
+        const baseAmount = parseFloat(document.getElementById('actual_amount')?.value) || 0;
 
-        const gstAmountField = document.getElementById('admin_ns_gst_amount');
-        if (gstAmountField) gstAmountField.value = gstAmount.toFixed(2);
+        let gstAmount = 0;
+        let tdsAmount = 0;
+        let grandTotal = baseAmount;
+        let amountAfterTDS = baseAmount;
 
-        const applyTds = document.getElementById('admin_ns_apply_tds')?.checked;
-        const tdsPercentage = applyTds ? (parseFloat(document.getElementById('admin_ns_tds_percentage')?.value) || 0) : 0;
-        const tdsAmount = (baseAmount * tdsPercentage) / 100;
+        const applyGST = document.getElementById('apply_gst');
+        if (applyGST && applyGST.checked) {
+            const gstPercentage = parseFloat(document.getElementById('gst_percentage')?.value) || 0;
+            gstAmount = (baseAmount * gstPercentage) / 100;
+            grandTotal += gstAmount;
 
-        const tdsAmountField = document.getElementById('admin_ns_tds_amount');
-        if (tdsAmountField) tdsAmountField.value = tdsAmount.toFixed(2);
-
-        const grandTotal = baseAmount + gstAmount;
-        const netPayable = Math.max(0, grandTotal - tdsAmount);
-
-        const grandTotalField = document.getElementById('admin_ns_grand_total');
-        if (grandTotalField) grandTotalField.value = grandTotal.toFixed(2);
-
-        const scheduleAmountField = document.getElementById('admin_ns_schedule_amount');
-        if (scheduleAmountField) scheduleAmountField.value = netPayable.toFixed(2);
-
-        const netPayableDisplay = document.getElementById('admin_ns_net_payable_display');
-        if (netPayableDisplay) netPayableDisplay.value = netPayable.toFixed(2);
-
-        const statusVal = document.getElementById('admin_ns_status')?.value;
-        const paidAmountInput = document.getElementById('admin_ns_paid_amount');
-        if (paidAmountInput && !isPaidAmountTrigger) {
-            if (statusVal === 'paid') {
-                paidAmountInput.value = netPayable.toFixed(2);
-            }
-        }
-
-        calculateAdminNsExpenseBalance(isPaidAmountTrigger);
-    }
-
-    function calculateAdminNsExpenseBalance(isPaidAmountTrigger = false) {
-        const netPayable = parseFloat(document.getElementById('admin_ns_net_payable_display')?.value) || 0;
-        const paidAmountInput = document.getElementById('admin_ns_paid_amount');
-        const paidAmount = parseFloat(paidAmountInput?.value) || 0;
-        const balance = Math.max(0, netPayable - paidAmount);
-
-        const balanceField = document.getElementById('admin_ns_balance_amount');
-        if (balanceField) balanceField.value = balance.toFixed(2);
-
-        const statusSelect = document.getElementById('admin_ns_status');
-        if (statusSelect && isPaidAmountTrigger) {
-            if (balance <= 0.01 && paidAmount > 0) {
-                statusSelect.value = 'paid';
-            } else if (paidAmount > 0 && balance > 0) {
-                if (statusSelect.value !== 'settle') {
-                    statusSelect.value = 'due';
-                }
-            } else if (paidAmount === 0 && statusSelect.value === 'paid') {
-                statusSelect.value = 'due';
-            }
-            handleAdminNsExpenseStatusChange(statusSelect.value, false);
-        }
-    }
-
-    function toggleAdminNsExpensePaymentMode(mode) {
-        const detailsContainer = document.getElementById('admin_ns_payment_mode_details');
-        const bankContainer = document.getElementById('admin_ns_bank_details');
-        const upiContainer = document.getElementById('admin_ns_upi_details');
-
-        if (!detailsContainer) return;
-
-        if (mode === 'bank_transfer' || mode === 'cheque') {
-            detailsContainer.style.display = 'block';
-            if (bankContainer) bankContainer.style.display = 'block';
-            if (upiContainer) upiContainer.style.display = 'none';
-        } else if (mode === 'upi') {
-            detailsContainer.style.display = 'block';
-            if (bankContainer) bankContainer.style.display = 'none';
-            if (upiContainer) upiContainer.style.display = 'block';
+            const gstAmountField = document.getElementById('gst_amount');
+            if (gstAmountField) gstAmountField.value = gstAmount.toFixed(2);
         } else {
-            detailsContainer.style.display = 'none';
-            if (bankContainer) bankContainer.style.display = 'none';
-            if (upiContainer) upiContainer.style.display = 'none';
+            const gstAmountField = document.getElementById('gst_amount');
+            if (gstAmountField) gstAmountField.value = '0.00';
+        }
+
+        const applyTDS = document.getElementById('apply_tds');
+        if (applyTDS && applyTDS.checked) {
+            const tdsPercentage = parseFloat(document.getElementById('tds_percentage')?.value) || 0;
+            tdsAmount = (baseAmount * tdsPercentage) / 100;
+            amountAfterTDS = baseAmount;
+
+            const tdsAmountField = document.getElementById('tds_amount');
+            const amountAfterTDSField = document.getElementById('amount_after_tds');
+            if (tdsAmountField) tdsAmountField.value = tdsAmount.toFixed(2);
+            if (amountAfterTDSField) amountAfterTDSField.value = (baseAmount - tdsAmount).toFixed(2);
+        } else {
+            const tdsAmountField = document.getElementById('tds_amount');
+            const amountAfterTDSField = document.getElementById('amount_after_tds');
+            if (tdsAmountField) tdsAmountField.value = '0.00';
+            if (amountAfterTDSField) amountAfterTDSField.value = baseAmount.toFixed(2);
+        }
+
+        const grandTotalField = document.getElementById('grand_total');
+        const netPayable = baseAmount + gstAmount - tdsAmount;
+
+        if (grandTotalField) grandTotalField.value = (baseAmount + gstAmount).toFixed(2);
+
+        const scheduleAmountInput = document.getElementById('schedule_amount');
+        const paidAmountInput = document.getElementById('paid_amount');
+
+        const oldScheduleAmount = parseFloat(scheduleAmountInput?.value) || 0;
+        const currentPaidAmount = parseFloat(paidAmountInput?.value) || 0;
+
+        if (scheduleAmountInput) scheduleAmountInput.value = netPayable.toFixed(2);
+
+        if (paidAmountInput && (Math.abs(currentPaidAmount - oldScheduleAmount) < 0.01)) {
+            paidAmountInput.value = netPayable.toFixed(2);
+        }
+
+        calculateBalance();
+        handleStatusBehavior('non-standard-add');
+    }
+
+    function calculateBalance() {
+        const scheduleAmountInput = document.getElementById('schedule_amount');
+        const paid_amountInput = document.getElementById('paid_amount');
+        const balanceAmountInput = document.getElementById('balance_amount');
+
+        if (scheduleAmountInput && paid_amountInput && balanceAmountInput) {
+            const scheduleAmount = parseFloat(scheduleAmountInput.value) || 0;
+            let paidAmount = parseFloat(paid_amountInput.value) || 0;
+
+            const statusDropdown = document.getElementById('payment_status');
+            if (statusDropdown && document.activeElement === statusDropdown && (statusDropdown.value === 'settle' || statusDropdown.value === 'paid')) {
+                paidAmount = scheduleAmount;
+                if (paid_amountInput) paid_amountInput.value = paidAmount.toFixed(2);
+            }
+
+            if (paidAmount > scheduleAmount + 0.01 && scheduleAmount > 0) {
+                paidAmount = scheduleAmount;
+                paid_amountInput.value = scheduleAmount.toFixed(2);
+            } else if (paidAmount < 0) {
+                paidAmount = 0;
+                paid_amountInput.value = '0.00';
+            }
+
+            const balance = Math.max(0, scheduleAmount - paidAmount);
+            balanceAmountInput.value = balance.toFixed(2);
+
+            if (statusDropdown) {
+                if (balance > 0.01) {
+                    if (statusDropdown.value === 'paid' || (!statusDropdown.value && paidAmount <= 0 && statusDropdown.value !== 'settle')) {
+                        statusDropdown.value = 'due';
+                    }
+                }
+            }
         }
     }
 
-    function handleAdminNsExpenseStatusChange(status, updatePaidAmount = true) {
-        const netPayable = parseFloat(document.getElementById('admin_ns_net_payable_display')?.value) || 0;
-        const paidAmountInput = document.getElementById('admin_ns_paid_amount');
+    function togglePaymentModeDetails(selectEl) {
+        const modal = selectEl.closest('.modal');
+        if (!modal) return;
 
-        if (updatePaidAmount) {
-            if (status === 'paid') {
-                if (paidAmountInput) paidAmountInput.value = netPayable.toFixed(2);
-                calculateAdminNsExpenseBalance(false);
-            } else if (status === 'due' || status === 'upcoming' || status === 'pending') {
-                if (paidAmountInput && Math.abs(parseFloat(paidAmountInput.value) - netPayable) < 0.01) {
-                    paidAmountInput.value = '0.00';
+        const val = selectEl.value;
+        const detailsRow = modal.querySelector('.payment-mode-details');
+        if (!detailsRow) return;
+
+        const bankDetails = detailsRow.querySelectorAll('.bank-details');
+        const upiDetails = detailsRow.querySelectorAll('.upi-details');
+
+        const allInputs = detailsRow.querySelectorAll('select, input');
+        allInputs.forEach(input => {
+            input.required = false;
+            input.removeAttribute('required');
+        });
+
+        const allLabels = detailsRow.querySelectorAll('.form-label');
+        allLabels.forEach(label => {
+            label.innerHTML = label.innerHTML.replace(' <span class="text-danger">*</span>', '');
+        });
+
+        detailsRow.style.display = 'none';
+        bankDetails.forEach(el => el.style.display = 'none');
+        upiDetails.forEach(el => el.style.display = 'none');
+
+        if (val === 'bank_transfer' || val === 'cheque') {
+            detailsRow.style.display = 'flex';
+            bankDetails.forEach(el => {
+                el.style.display = 'block';
+                const input = el.querySelector('select, input');
+                const label = el.querySelector('.form-label');
+                if (input) {
+                    input.required = true;
+                    input.setAttribute('required', 'required');
                 }
-                calculateAdminNsExpenseBalance(false);
-            }
+                if (label && !label.innerHTML.includes('*')) {
+                    label.innerHTML += ' <span class="text-danger">*</span>';
+                }
+            });
+        } else if (val === 'upi' || val === 'online') {
+            detailsRow.style.display = 'flex';
+            upiDetails.forEach(el => {
+                el.style.display = 'block';
+                const input = el.querySelector('select, input');
+                const label = el.querySelector('.form-label');
+                if (input) {
+                    input.required = true;
+                    input.setAttribute('required', 'required');
+                }
+                if (label && !label.innerHTML.includes('*')) {
+                    label.innerHTML += ' <span class="text-danger">*</span>';
+                }
+            });
+        }
+    }
+
+    function handleStatusBehavior(modalType) {
+        if (modalType !== 'non-standard-add') return;
+
+        const statusEl = document.getElementById('payment_status');
+        const dueDateEl = document.getElementById('add_due_date');
+        const notesEl = document.getElementById('addSettleNotes');
+        const notesContainer = document.getElementById('addSettleNotesContainer');
+        const dueDateContainer = document.getElementById('due_date_container');
+
+        if (!statusEl) return;
+        const status = statusEl.value;
+        const isDue = (status === 'due' || status === 'pending' || status === 'upcoming');
+
+        if (dueDateContainer) {
+            dueDateContainer.style.display = isDue ? 'block' : 'none';
         }
 
-        const dueContainer = document.getElementById('admin_ns_due_date_container');
-        const settleContainer = document.getElementById('admin_ns_settle_notes_container');
-        const dueDateInput = document.getElementById('admin_ns_due_date');
-        const settleNotesInput = document.getElementById('admin_ns_settle_notes');
-
-        if (status === 'due' || status === 'upcoming') {
-            if (dueContainer) dueContainer.style.display = 'block';
-            if (dueDateInput) dueDateInput.required = true;
-            if (settleContainer) settleContainer.style.display = 'none';
-            if (settleNotesInput) settleNotesInput.required = false;
-        } else if (status === 'settle') {
-            if (dueContainer) dueContainer.style.display = 'none';
-            if (dueDateInput) dueDateInput.required = false;
-            if (settleContainer) settleContainer.style.display = 'block';
-            if (settleNotesInput) settleNotesInput.required = true;
+        if (status === 'settle' || status === 'paid') {
+            if (dueDateEl) {
+                dueDateEl.disabled = true;
+                dueDateEl.required = false;
+                dueDateEl.value = '';
+            }
+            if (notesEl && notesContainer) {
+                notesContainer.style.display = 'block';
+                notesEl.required = true;
+            }
+        } else if (status === 'due') {
+            if (dueDateEl) {
+                dueDateEl.disabled = false;
+                dueDateEl.required = true;
+            }
+            if (notesEl && notesContainer) {
+                notesContainer.style.display = 'none';
+                notesEl.required = false;
+            }
         } else {
-            if (dueContainer) dueContainer.style.display = 'none';
-            if (dueDateInput) dueDateInput.required = false;
-            if (settleContainer) settleContainer.style.display = 'none';
-            if (settleNotesInput) settleNotesInput.required = false;
+            if (dueDateEl) {
+                dueDateEl.disabled = false;
+                dueDateEl.required = false;
+            }
+            if (notesEl && notesContainer) {
+                notesContainer.style.display = 'none';
+                notesEl.required = false;
+            }
+        }
+    }
+
+    function handleTdsStatusBehavior(statusId, fileId) {
+        const statusEl = document.getElementById(statusId);
+        const fileEl = document.getElementById(fileId);
+
+        if (!statusEl || !fileEl) return;
+
+        const status = statusEl.value;
+        if (status === 'received' || status === 'paid') {
+            fileEl.required = true;
+            fileEl.setAttribute('required', 'required');
+            const label = fileEl.closest('[class*="col-"]')?.querySelector('.form-label');
+            if (label && !label.innerHTML.includes('*')) {
+                label.innerHTML += ' <span class="text-danger">*</span>';
+            }
+        } else {
+            fileEl.required = false;
+            fileEl.removeAttribute('required');
+            const label = fileEl.closest('[class*="col-"]')?.querySelector('.form-label');
+            if (label) {
+                label.innerHTML = label.innerHTML.replace(' <span class="text-danger">*</span>', '');
+            }
         }
     }
 
@@ -3119,17 +3250,55 @@
     document.addEventListener('DOMContentLoaded', function() {
         const nsModal = document.getElementById('addNonStandardModal');
         if (nsModal) {
+            const actualAmountInput = document.getElementById('actual_amount');
+            const gstCheckbox = document.getElementById('apply_gst');
+            const gstPercentageInput = document.getElementById('gst_percentage');
+            const tdsCheckbox = document.getElementById('apply_tds');
+            const tdsPercentageInput = document.getElementById('tds_percentage');
+            const paidAmountInput = document.getElementById('paid_amount');
+            const paymentStatusSelect = document.getElementById('payment_status');
+            const addTdsStatusSelect = document.getElementById('addTdsStatus');
+
+            if (actualAmountInput) actualAmountInput.addEventListener('input', calculateTaxNonStandardAdd);
+            if (gstCheckbox) gstCheckbox.addEventListener('change', calculateTaxNonStandardAdd);
+            if (gstPercentageInput) gstPercentageInput.addEventListener('input', calculateTaxNonStandardAdd);
+            if (tdsCheckbox) tdsCheckbox.addEventListener('change', calculateTaxNonStandardAdd);
+            if (tdsPercentageInput) tdsPercentageInput.addEventListener('input', calculateTaxNonStandardAdd);
+            if (paidAmountInput) paidAmountInput.addEventListener('input', () => {
+                calculateBalance();
+                handleStatusBehavior('non-standard-add');
+            });
+            if (paymentStatusSelect) paymentStatusSelect.addEventListener('change', () => {
+                handleStatusBehavior('non-standard-add');
+                if (paymentStatusSelect.value !== 'settle' && paymentStatusSelect.value !== 'paid') {
+                    calculateTaxNonStandardAdd();
+                }
+            });
+            if (addTdsStatusSelect) addTdsStatusSelect.addEventListener('change', () => {
+                handleTdsStatusBehavior('addTdsStatus', 'addTdsReceipt');
+            });
+
             nsModal.addEventListener('show.bs.modal', function() {
-                const form = document.getElementById('adminAddNsExpenseForm');
+                const form = document.getElementById('addNonStandardForm');
                 if (form) form.reset();
-                const paidInput = document.getElementById('admin_ns_paid_amount');
-                if (paidInput) paidInput.value = '0.00';
-                calculateAdminNsExpenseTax(false);
+                calculateTaxNonStandardAdd();
             });
         }
     });
 </script>
 <style>
+    .tax-section {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+
+    .section-divider {
+        border-top: 2px solid #e2e8f0;
+        margin: 24px 0;
+    }
     /* Additional styles for better alignment */
     .card-body {
         padding: 1.25rem !important;
