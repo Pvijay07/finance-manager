@@ -410,12 +410,6 @@
                                                 @endif
                                             @else
                                                 @if(!in_array(strtolower($incItem->status ?? ''), ['paid', 'received', 'settle', 'settled']))
-                                                <form action="{{ route('admin.invoices.non-standard.mark-received', $incItem->id) }}" method="POST" class="d-inline">
-                                                    @csrf
-                                                    <button type="submit" class="btn btn-outline-success btn-sm" title="Mark Received" onclick="return confirm('Mark this income as received?')">
-                                                        <i class="fas fa-check"></i>
-                                                    </button>
-                                                </form>
                                                 <button type="button" class="btn btn-outline-primary btn-sm" onclick="openEditNonStandardIncomeModal({{ $incItem->id }})" title="Edit Non-Standard Income">
                                                     <i class="fas fa-edit"></i>
                                                 </button>
@@ -1325,12 +1319,6 @@
                                     <td style="padding: 12px 16px; text-align: center;">
                                         <div class="d-flex align-items-center justify-content-center gap-1">
                                             @if(!in_array(strtolower($nsIncome->status ?? ''), ['paid', 'received', 'settle', 'settled']))
-                                                <form action="{{ route('admin.invoices.non-standard.mark-received', $nsIncome->id) }}" method="POST" class="d-inline">
-                                                    @csrf
-                                                    <button type="submit" class="btn btn-sm btn-outline-success py-1 px-2" title="Mark Received" onclick="return confirm('Mark this income as received?')">
-                                                        <i class="fas fa-check"></i>
-                                                    </button>
-                                                </form>
                                                 <button type="button" class="btn btn-sm btn-outline-primary py-1 px-2" title="Edit" onclick="openEditNonStandardIncomeModal({{ $nsIncome->id }})">
                                                     <i class="fas fa-edit"></i>
                                                 </button>
@@ -1681,7 +1669,6 @@
                                 onchange="handleEditNsIncStatusChange()">
                                 <option value="due">Due</option>
                                 <option value="pending">Pending</option>
-                                <option value="received">Received</option>
                                 <option value="settle">Settle</option>
                             </select>
                         </div>
@@ -2033,7 +2020,7 @@ async function openEditNonStandardIncomeModal(id) {
         document.getElementById('edit_ns_inc_received_amount').value = inc.received_amount || 0;
         document.getElementById('edit_ns_inc_received_date').value = inc.received_date || '';
         document.getElementById('edit_ns_inc_dueDate').value = inc.due_date || '';
-        document.getElementById('edit_ns_inc_status').value = inc.status || 'due';
+        document.getElementById('edit_ns_inc_status').value = (inc.status === 'due' || inc.status === 'pending' || inc.status === 'settle') ? inc.status : 'due';
         document.getElementById('edit_ns_inc_mailStatus').checked = (inc.mail_status == 1);
         document.getElementById('edit_ns_inc_notes').value = inc.notes || '';
         document.getElementById('edit_ns_inc_settleNotes').value = inc.settle_notes || '';

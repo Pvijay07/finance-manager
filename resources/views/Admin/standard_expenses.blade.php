@@ -300,9 +300,6 @@
                                 <td class="text-end pe-4 text-nowrap">
                                     <div class="btn-group btn-group-sm">
                                         @if(!in_array($exp->status, ['paid', 'settle', 'settled']))
-                                        <button type="button" class="btn btn-outline-success btn-sm" onclick="markAllExpenseAsPaid({{ $exp->id }}, '{{ addslashes($exp->expense_name ?: $exp->name) }}', {{ $exp->balance_amount > 0 ? $exp->balance_amount : ($exp->schedule_amount ?: $exp->planned_amount) }}, '{{ $exp->source }}')" title="Mark as Paid">
-                                            <i class="fas fa-check"></i>
-                                        </button>
                                         @if($exp->source === 'standard')
                                         <button type="button" class="btn btn-outline-primary btn-sm" onclick="editTemplate({{ $exp->id }})" title="Edit Standard Expense">
                                             <i class="fas fa-edit"></i>
@@ -1170,12 +1167,6 @@
                             <td style="padding: 12px 16px; text-align: center;">
                                 <div class="d-flex align-items-center justify-content-center gap-1">
                                     @if(!in_array($nsExpense->status, ['paid', 'settle', 'settled']))
-                                    <form action="{{ route('admin.standard-expenses.non-standard.mark-paid', $nsExpense->id) }}" method="POST" class="d-inline">
-                                        @csrf
-                                        <button type="submit" class="btn btn-sm btn-outline-success py-1 px-2" title="Mark Paid" onclick="return confirm('Mark this expense as paid?')">
-                                            <i class="fas fa-check"></i>
-                                        </button>
-                                    </form>
                                     <button type="button" class="btn btn-sm btn-outline-primary py-1 px-2" title="Edit" onclick="editNonStandardExpense({{ $nsExpense->id }})">
                                         <i class="fas fa-edit"></i>
                                     </button>
@@ -1672,7 +1663,6 @@
                             <select class="form-select" name="status" required id="edit_ns_status" onchange="toggleEditNsStatusDetails()">
                                 <option value="upcoming">Upcoming</option>
                                 <option value="pending">Pending</option>
-                                <option value="paid">Paid</option>
                                 <option value="settle">Settle</option>
                             </select>
                         </div>
@@ -3721,7 +3711,7 @@
             document.getElementById('edit_ns_payment_mode').value = exp.payment_mode || 'cash';
             document.getElementById('edit_ns_payment_date').value = exp.payment_date || '';
             document.getElementById('edit_ns_due_date').value = exp.due_date || '';
-            document.getElementById('edit_ns_status').value = (exp.status === 'upcoming' || exp.status === 'due') ? 'upcoming' : (exp.status || 'pending');
+            document.getElementById('edit_ns_status').value = (exp.status === 'upcoming' || exp.status === 'due') ? 'upcoming' : ((exp.status === 'settle') ? 'settle' : 'pending');
             document.getElementById('edit_ns_party_name').value = exp.party_name || '';
             document.getElementById('edit_ns_mobile_number').value = exp.mobile_number || '';
             document.getElementById('edit_ns_notes').value = exp.notes || '';
