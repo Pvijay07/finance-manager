@@ -106,14 +106,50 @@
 <section id="invoices-page" class="page">
     <div class="container-fluid">
         @php
-        $activeTab = request()->get('tab');
-        if (!$activeTab) {
+        $requestedTab = request()->get('tab');
+        $mainTab = in_array($requestedTab, ['non-standard', 'non_standard']) ? 'non-standard' : 'standard';
+        $activeTab = $requestedTab;
+        if (!$activeTab || $activeTab === 'standard') {
             $activeTab = request()->hasAny(['search', 'company', 'status', 'date_range', 'start_date', 'end_date', 'page', 'per_page']) ? 'proformas' : 'create';
         }
         $settings = $settings ?? session('settings') ?? [];
         @endphp
 
-        <h4 class="mb-3">Invoices &amp; Proformas</h4>
+        <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
+            <div>
+                <h1 style="font-weight: 800; color: #0f172a; font-size: 1.85rem; letter-spacing: -0.5px; margin: 0;">Manage Income</h1>
+                <p class="text-muted small mb-0 mt-1">Monitor, filter, and track corporate standard invoices, repeated incomes, and non-standard incomes.</p>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addNonStandardIncomeModal" style="border-radius: 8px; font-weight: 600; padding: 8px 16px;">
+                    <i class="fas fa-hand-holding-usd me-1"></i> Add Non-Standard Income
+                </button>
+            </div>
+        </div>
+
+        <!-- 2 Primary Tabs: Standard Income vs Non-Standard Income -->
+        <div class="d-flex align-items-center gap-2 mb-4 border-bottom pb-3">
+            <a href="{{ route('admin.invoices', ['tab' => 'standard']) }}"
+               class="btn py-2 px-4 d-inline-flex align-items-center gap-2 {{ $mainTab === 'standard' ? 'btn-primary shadow-sm text-white' : 'btn-light border text-muted' }}"
+               style="border-radius: 10px; font-weight: 600; font-size: 0.95rem; text-decoration: none; {{ $mainTab === 'standard' ? 'background-color: #4f46e5; border-color: #4f46e5;' : '' }}">
+                <i class="fas fa-file-invoice-dollar"></i>
+                <span>Standard Income</span>
+                <span class="badge {{ $mainTab === 'standard' ? 'bg-white text-dark' : 'bg-secondary text-white' }} ms-1">
+                    {{ $pendingProformasCount + $invoices->total() }}
+                </span>
+            </a>
+            <a href="{{ route('admin.invoices', ['tab' => 'non-standard']) }}"
+               class="btn py-2 px-4 d-inline-flex align-items-center gap-2 {{ $mainTab === 'non-standard' ? 'btn-primary shadow-sm text-white' : 'btn-light border text-muted' }}"
+               style="border-radius: 10px; font-weight: 600; font-size: 0.95rem; text-decoration: none; {{ $mainTab === 'non-standard' ? 'background-color: #4f46e5; border-color: #4f46e5;' : '' }}">
+                <i class="fas fa-hand-holding-usd"></i>
+                <span>Non-Standard Income</span>
+                <span class="badge {{ $mainTab === 'non-standard' ? 'bg-white text-dark' : 'bg-secondary text-white' }} ms-1">
+                    {{ $nsIncomeStatusCounts['all'] ?? 0 }}
+                </span>
+            </a>
+        </div>
+
+        @if($mainTab === 'standard')
 
         <!-- Statistics Cards -->
         <!-- <div class="row mb-4">
@@ -785,8 +821,306 @@
             </div>
 
         </div>
+        @else
+        <!-- Non-Standard Income Section -->
+        <div id="non-standard-income-section">
+            <!-- Status Tabs -->
+            <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+                <button type="button" 
+                    class="btn btn-sm py-2 px-3 {{ ($status ?? 'all') == 'all' ? 'active shadow-sm text-white' : 'btn-light border text-muted' }}"
+                    onclick="setNsIncomeStatusFilter('all')"
+                    style="border-radius: 8px; font-weight: 600; font-size: 0.85rem; {{ ($status ?? 'all') == 'all' ? 'background-color: #4f46e5; border-color: #4f46e5;' : 'background-color: #ffffff;' }}">
+                    <i class="fas fa-list-ul me-1"></i> All Incomes
+                    <span class="badge ms-1 {{ ($status ?? 'all') == 'all' ? 'bg-white text-dark' : 'bg-secondary text-white' }}">{{ $nsIncomeStatusCounts['all'] ?? 0 }}</span>
+                </button>
+                <button type="button" 
+                    class="btn btn-sm py-2 px-3 {{ ($status ?? '') == 'pending' ? 'active shadow-sm text-white' : 'btn-light border text-muted' }}"
+                    onclick="setNsIncomeStatusFilter('pending')"
+                    style="border-radius: 8px; font-weight: 600; font-size: 0.85rem; {{ ($status ?? '') == 'pending' ? 'background-color: #f59e0b; border-color: #f59e0b;' : 'background-color: #ffffff;' }}">
+                    <i class="fas fa-clock me-1"></i> Pending
+                    <span class="badge ms-1 {{ ($status ?? '') == 'pending' ? 'bg-white text-dark' : 'bg-warning text-dark' }}">{{ $nsIncomeStatusCounts['pending'] ?? 0 }}</span>
+                </button>
+                <button type="button" 
+                    class="btn btn-sm py-2 px-3 {{ ($status ?? '') == 'upcoming' ? 'active shadow-sm text-white' : 'btn-light border text-muted' }}"
+                    onclick="setNsIncomeStatusFilter('upcoming')"
+                    style="border-radius: 8px; font-weight: 600; font-size: 0.85rem; {{ ($status ?? '') == 'upcoming' ? 'background-color: #3b82f6; border-color: #3b82f6;' : 'background-color: #ffffff;' }}">
+                    <i class="fas fa-calendar-check me-1"></i> Upcoming
+                    <span class="badge ms-1 {{ ($status ?? '') == 'upcoming' ? 'bg-white text-primary' : 'bg-info text-white' }}">{{ $nsIncomeStatusCounts['upcoming'] ?? 0 }}</span>
+                </button>
+                <button type="button" 
+                    class="btn btn-sm py-2 px-3 {{ ($status ?? '') == 'paid' ? 'active shadow-sm text-white' : 'btn-light border text-muted' }}"
+                    onclick="setNsIncomeStatusFilter('paid')"
+                    style="border-radius: 8px; font-weight: 600; font-size: 0.85rem; {{ ($status ?? '') == 'paid' ? 'background-color: #10b981; border-color: #10b981;' : 'background-color: #ffffff;' }}">
+                    <i class="fas fa-check-circle me-1"></i> Paid / Received
+                    <span class="badge ms-1 {{ ($status ?? '') == 'paid' ? 'bg-white text-success' : 'bg-success text-white' }}">{{ $nsIncomeStatusCounts['paid'] ?? 0 }}</span>
+                </button>
+            </div>
+
+            <!-- Filter Card -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <form id="nsIncomeFilterForm" method="GET" action="{{ route('admin.invoices') }}" class="row g-3 align-items-end">
+                        <input type="hidden" name="tab" value="non-standard">
+                        <input type="hidden" name="status" id="nsIncomeStatusInput" value="{{ $status ?? 'all' }}">
+
+                        <!-- Search -->
+                        <div class="col-md-3 col-sm-6">
+                            <label class="form-label small mb-1">Search</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                <input type="text" class="form-control" name="search" value="{{ $search ?? '' }}" placeholder="Search client, notes...">
+                            </div>
+                        </div>
+
+                        <!-- Company -->
+                        <div class="col-md-2 col-sm-6">
+                            <label class="form-label small mb-1">Company</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text"><i class="fas fa-building"></i></span>
+                                <select class="form-select" name="company" onchange="this.form.submit()">
+                                    <option value="all" {{ (($companyFilter ?? '') == 'all' || !($companyFilter ?? '')) ? 'selected' : '' }}>All Companies</option>
+                                    @foreach ($companies as $comp)
+                                        <option value="{{ $comp->id }}" {{ ($companyFilter ?? '') == $comp->id ? 'selected' : '' }}>{{ $comp->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Date Range -->
+                        <div class="col-md-2 col-sm-6">
+                            <label class="form-label small mb-1">Date Range</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                                <select class="form-select" name="date_range" id="nsIncomeDateRange" onchange="handleNsIncomeDateRangeChange(this.value)">
+                                    <option value="all" {{ ($dateRange == 'all' || !$dateRange) ? 'selected' : '' }}>All Dates</option>
+                                    <option value="today" {{ $dateRange == 'today' ? 'selected' : '' }}>Today</option>
+                                    <option value="week" {{ $dateRange == 'week' ? 'selected' : '' }}>This Week</option>
+                                    <option value="month" {{ $dateRange == 'month' ? 'selected' : '' }}>This Month</option>
+                                    <option value="quarter" {{ $dateRange == 'quarter' ? 'selected' : '' }}>This Quarter</option>
+                                    <option value="year" {{ $dateRange == 'year' ? 'selected' : '' }}>This Year</option>
+                                    <option value="custom" {{ $dateRange == 'custom' ? 'selected' : '' }}>Custom Range</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Per Page -->
+                        <div class="col-md-2 col-sm-6">
+                            <label class="form-label small mb-1">Per Page</label>
+                            <div class="input-group input-group-sm">
+                                <select class="form-select" name="per_page" onchange="this.form.submit()">
+                                    <option value="10" {{ ($perPage == 10 || !$perPage) ? 'selected' : '' }}>10</option>
+                                    <option value="25" {{ $perPage == 25 ? 'selected' : '' }}>25</option>
+                                    <option value="50" {{ $perPage == 50 ? 'selected' : '' }}>50</option>
+                                    <option value="100" {{ $perPage == 100 ? 'selected' : '' }}>100</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="col-md-3 col-sm-12">
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary btn-sm flex-fill" style="background-color: #4f46e5; border-color: #4f46e5;">
+                                    <i class="fas fa-search me-1"></i> Filter
+                                </button>
+                                <a href="{{ route('admin.invoices', ['tab' => 'non-standard']) }}" class="btn btn-outline-secondary btn-sm flex-fill">
+                                    <i class="fas fa-redo me-1"></i> Reset
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Custom Date Range Row -->
+                        <div class="col-12 mt-2" id="nsIncomeCustomDateRow" style="display: {{ $dateRange == 'custom' ? 'block' : 'none' }};">
+                            <div class="p-3 bg-light rounded border d-flex align-items-center gap-3 flex-wrap">
+                                <span class="fw-semibold small text-muted"><i class="fas fa-calendar-day me-1"></i> Custom Range:</span>
+                                <div class="d-flex align-items-center gap-2">
+                                    <label class="form-label small mb-0">From:</label>
+                                    <input type="date" class="form-control form-control-sm" name="start_date" value="{{ $startDate ?? '' }}" style="width: auto;">
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <label class="form-label small mb-0">To:</label>
+                                    <input type="date" class="form-control form-control-sm" name="end_date" value="{{ $endDate ?? '' }}" style="width: auto;">
+                                </div>
+                                <button type="submit" class="btn btn-sm btn-primary" style="background-color: #4f46e5; border-color: #4f46e5;">Apply</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Non-Standard Incomes Table -->
+                <div style="overflow-x: auto;">
+                    <table class="table table-hover align-middle mb-0" style="width: 100%; border-collapse: collapse;">
+                        <thead class="bg-light">
+                            <tr style="border-bottom: 1px solid #e0e0e0;">
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; font-size: 13px; color: #1a1a1a;">Date</th>
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; font-size: 13px; color: #1a1a1a;">Company</th>
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; font-size: 13px; color: #1a1a1a;">Client / Party</th>
+                                <th style="padding: 12px 16px; text-align: right; font-weight: 600; font-size: 13px; color: #1a1a1a;">Amount</th>
+                                <th style="padding: 12px 16px; text-align: right; font-weight: 600; font-size: 13px; color: #1a1a1a;">Received</th>
+                                <th style="padding: 12px 16px; text-align: right; font-weight: 600; font-size: 13px; color: #1a1a1a;">Balance</th>
+                                <th style="padding: 12px 16px; text-align: center; font-weight: 600; font-size: 13px; color: #1a1a1a;">Status</th>
+                                <th style="padding: 12px 16px; text-align: center; font-weight: 600; font-size: 13px; color: #1a1a1a;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse ($nonStandardIncomes as $nsIncome)
+                                <tr style="border-bottom: 1px solid #f0f0f0;">
+                                    <td style="padding: 12px 16px; font-size: 13px;">
+                                        {{ $nsIncome->income_date ? \Carbon\Carbon::parse($nsIncome->income_date)->format('d M Y') : ($nsIncome->created_at ? $nsIncome->created_at->format('d M Y') : '—') }}
+                                    </td>
+                                    <td style="padding: 12px 16px;">
+                                        <span class="badge bg-light text-dark border">{{ $nsIncome->company->name ?? 'N/A' }}</span>
+                                    </td>
+                                    <td style="padding: 12px 16px;">
+                                        <div class="fw-semibold text-dark">{{ $nsIncome->party_name ?: ($nsIncome->client_name ?: 'Client') }}</div>
+                                        @if($nsIncome->notes)
+                                            <div class="text-muted small text-truncate" style="max-width: 200px;">{{ $nsIncome->notes }}</div>
+                                        @endif
+                                    </td>
+                                    <td style="padding: 12px 16px; text-align: right; font-weight: 600; color: #1e293b;">
+                                        ₹ {{ number_format($nsIncome->amount ?? $nsIncome->planned_amount ?? 0, 2) }}
+                                    </td>
+                                    <td style="padding: 12px 16px; text-align: right; font-weight: 600; color: #10b981;">
+                                        ₹ {{ number_format($nsIncome->received_amount ?? $nsIncome->actual_amount ?? 0, 2) }}
+                                    </td>
+                                    <td style="padding: 12px 16px; text-align: right; font-weight: 600; color: #ef4444;">
+                                        ₹ {{ number_format($nsIncome->balance_amount ?? 0, 2) }}
+                                    </td>
+                                    <td style="padding: 12px 16px; text-align: center;">
+                                        @if(in_array($nsIncome->status, ['paid', 'received', 'settle', 'settled']))
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">Received</span>
+                                        @elseif($nsIncome->status === 'pending')
+                                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1">Pending</span>
+                                        @else
+                                            <span class="badge bg-info-subtle text-info border border-info-subtle px-2 py-1">{{ ucfirst($nsIncome->status) }}</span>
+                                        @endif
+                                    </td>
+                                    <td style="padding: 12px 16px; text-align: center;">
+                                        <div class="d-flex align-items-center justify-content-center gap-1">
+                                            @if(!in_array($nsIncome->status, ['paid', 'received', 'settle', 'settled']))
+                                                <form action="{{ route('admin.invoices.non-standard.mark-received', $nsIncome->id) }}" method="POST" class="d-inline">
+                                                    @csrf
+                                                    <button type="submit" class="btn btn-sm btn-outline-success py-1 px-2" title="Mark Received" onclick="return confirm('Mark this income as received?')">
+                                                        <i class="fas fa-check"></i>
+                                                    </button>
+                                                </form>
+                                            @endif
+                                            <form action="{{ route('admin.invoices.non-standard.destroy', $nsIncome->id) }}" method="POST" class="d-inline">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="btn btn-sm btn-outline-danger py-1 px-2" title="Delete" onclick="return confirm('Delete this non-standard income entry?')">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="8" style="padding: 40px; text-align: center; color: #94a3b8;">
+                                        <i class="fas fa-hand-holding-usd mb-2" style="font-size: 36px; color: #cbd5e1; display: block;"></i>
+                                        No non-standard incomes found matching your filter criteria.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Non-Standard Pagination -->
+                @if ($nonStandardIncomes->hasPages())
+                    <div class="p-3 border-top">
+                        {{ $nonStandardIncomes->links('pagination::bootstrap-4') }}
+                    </div>
+                @endif
+            </div>
+        </div>
+        @endif
     </div>
 </section>
+
+<!-- Add Non-Standard Income Modal -->
+<div id="addNonStandardIncomeModal" class="modal fade" tabindex="-1" aria-labelledby="addNonStandardIncomeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
+            <div class="modal-header border-bottom">
+                <h5 class="modal-title font-semibold" id="addNonStandardIncomeModalLabel">
+                    <i class="fas fa-plus-circle text-primary me-2"></i> Add Non-Standard Income
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ route('admin.invoices.non-standard.store') }}" method="POST">
+                @csrf
+                <div class="modal-body space-y-3 p-4">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Company *</label>
+                        <select name="company_id" class="form-select form-select-sm" required>
+                            <option value="" disabled selected>Select Company</option>
+                            @foreach($companies as $comp)
+                                <option value="{{ $comp->id }}">{{ $comp->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Client / Party Name *</label>
+                        <input type="text" name="party_name" class="form-control form-control-sm" placeholder="Client or Source name" required>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Amount (₹) *</label>
+                            <input type="number" step="0.01" min="0" name="amount" class="form-control form-control-sm" placeholder="0.00" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Status *</label>
+                            <select name="status" class="form-select form-select-sm" required>
+                                <option value="received" selected>Received</option>
+                                <option value="pending">Pending</option>
+                                <option value="upcoming">Upcoming</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Income Date</label>
+                            <input type="date" name="income_date" class="form-control form-control-sm" value="{{ date('Y-m-d') }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Due Date</label>
+                            <input type="date" name="due_date" class="form-control form-control-sm" value="{{ date('Y-m-d') }}">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Notes / Purpose</label>
+                        <textarea name="notes" rows="2" class="form-control form-control-sm" placeholder="Any details about this income"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-top bg-light">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-sm btn-primary px-3" style="background-color: #4f46e5; border-color: #4f46e5;">Save Income</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function setNsIncomeStatusFilter(status) {
+    const statusInput = document.getElementById('nsIncomeStatusInput');
+    if (statusInput) statusInput.value = status;
+    const form = document.getElementById('nsIncomeFilterForm');
+    if (form) form.submit();
+}
+
+function handleNsIncomeDateRangeChange(value) {
+    const customRow = document.getElementById('nsIncomeCustomDateRow');
+    if (value === 'custom') {
+        if (customRow) customRow.style.display = 'block';
+    } else {
+        if (customRow) customRow.style.display = 'none';
+        const form = document.getElementById('nsIncomeFilterForm');
+        if (form) form.submit();
+    }
+}
+</script>
 
 <!-- Partial Payment / Split Modal -->
 

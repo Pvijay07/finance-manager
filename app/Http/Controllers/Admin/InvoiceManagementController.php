@@ -168,6 +168,56 @@ class InvoiceManagementController extends Controller
 
     $companyFilter = $company;
 
+    // Query Non-Standard Income
+    $nsIncomeQuery = Income::with(['company'])
+      ->where(function($q) {
+        $q->where('income_type', 'non-standard')
+          ->orWhere(function($sq) {
+            $sq->whereNull('invoice_id')->where('source', 'manual');
+          });
+      });
+
+    if ($search) {
+      $nsIncomeQuery->where(function ($q) use ($search) {
+        $q->where('party_name', 'like', "%{$search}%")
+          ->orWhere('invoice_number', 'like', "%{$search}%")
+          ->orWhere('notes', 'like', "%{$search}%");
+      });
+    }
+
+    if ($company && $company !== 'all') {
+      $nsIncomeQuery->where('company_id', $company);
+    }
+
+    if ($filterStartDate && $filterEndDate) {
+      $nsIncomeQuery->whereBetween('income_date', [$filterStartDate, $filterEndDate]);
+    } elseif ($filterStartDate) {
+      $nsIncomeQuery->where('income_date', '>=', $filterStartDate);
+    } elseif ($filterEndDate) {
+      $nsIncomeQuery->where('income_date', '<=', $filterEndDate);
+    }
+
+    $nsCountQuery = clone $nsIncomeQuery;
+    $nsIncomeStatusCounts = [
+      'all'      => (clone $nsCountQuery)->count(),
+      'pending'  => (clone $nsCountQuery)->where('status', 'pending')->count(),
+      'upcoming' => (clone $nsCountQuery)->where('status', 'upcoming')->count(),
+      'paid'     => (clone $nsCountQuery)->whereIn('status', ['paid', 'received', 'settle', 'settled'])->count(),
+    ];
+
+    if ($status && $status !== 'all') {
+      if ($status === 'paid') {
+        $nsIncomeQuery->whereIn('status', ['paid', 'received', 'settle', 'settled']);
+      } else {
+        $nsIncomeQuery->where('status', $status);
+      }
+    }
+
+    $nonStandardIncomes = $nsIncomeQuery->orderBy('income_date', 'desc')->paginate($perPage, ['*'], 'ns_page')->withQueryString();
+
+    $requestedTab = $request->input('tab', 'standard');
+    $mainTab = in_array($requestedTab, ['non-standard', 'non_standard']) ? 'non-standard' : 'standard';
+
     return view('Admin.invoices', compact(
       'invoices',
       'companies',
@@ -182,8 +232,89 @@ class InvoiceManagementController extends Controller
       'startDate',
       'endDate',
       'perPage',
-      'statusCounts'
+      'statusCounts',
+      'nonStandardIncomes',
+      'nsIncomeStatusCounts',
+      'mainTab',
+      'requestedTab'
     ));
+  }
+
+  public function storeNonStandardIncome(Request $request)
+  {
+    $request->validate([
+      'company_id'  => 'required|exists:companies,id',
+      'party_name'  => 'required|string|max:255',
+      'amount'      => 'required|numeric|min:0',
+      'income_date' => 'nullable|date',
+      'due_date'    => 'nullable|date',
+      'status'      => 'required|in:upcoming,pending,received,paid',
+      'notes'       => 'nullable|string'
+    ]);
+
+    try {
+      $incomeDate = $request->income_date ?: now()->format('Y-m-d');
+      $isReceived = in_array($request->status, ['received', 'paid']);
+      $receivedAmount = $isReceived ? $request->amount : 0;
+      $balanceAmount = $isReceived ? 0 : $request->amount;
+
+      Income::create([
+        'company_id'      => $request->company_id,
+        'party_name'      => $request->party_name,
+        'amount'          => $request->amount,
+        'planned_amount'  => $request->amount,
+        'actual_amount'   => $receivedAmount,
+        'received_amount' => $receivedAmount,
+        'balance_amount'  => $balanceAmount,
+        'income_date'     => $incomeDate,
+        'due_date'        => $request->due_date ?: $incomeDate,
+        'paid_date'       => $isReceived ? $incomeDate : null,
+        'status'          => $request->status === 'paid' ? 'received' : $request->status,
+        'notes'           => $request->notes,
+        'income_type'     => 'non-standard',
+        'source'          => 'manual',
+        'currency'        => 'INR',
+        'created_by'      => auth()->id(),
+      ]);
+
+      return redirect()->route('admin.invoices', ['tab' => 'non-standard'])
+        ->with('success', 'Non-standard income created successfully.');
+    } catch (\Exception $e) {
+      return back()->with('error', 'Error creating non-standard income: ' . $e->getMessage());
+    }
+  }
+
+  public function destroyNonStandardIncome($id)
+  {
+    try {
+      $income = Income::where('income_type', 'non-standard')
+        ->orWhere(function($q) {
+          $q->whereNull('invoice_id')->where('source', 'manual');
+        })->findOrFail($id);
+      $income->delete();
+      return redirect()->route('admin.invoices', ['tab' => 'non-standard'])
+        ->with('success', 'Non-standard income deleted successfully.');
+    } catch (\Exception $e) {
+      return back()->with('error', 'Error deleting income: ' . $e->getMessage());
+    }
+  }
+
+  public function markNonStandardIncomeReceived(Request $request, $id)
+  {
+    try {
+      $income = Income::findOrFail($id);
+      $receivedAmount = $request->amount ?? $income->amount;
+      $income->update([
+        'status'          => 'received',
+        'actual_amount'   => $receivedAmount,
+        'received_amount' => $receivedAmount,
+        'paid_date'       => $request->paid_date ?? now(),
+        'balance_amount'  => 0
+      ]);
+      return back()->with('success', 'Income marked as received.');
+    } catch (\Exception $e) {
+      return back()->with('error', 'Error updating income: ' . $e->getMessage());
+    }
   }
 
   public function store(Request $request)

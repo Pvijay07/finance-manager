@@ -194,14 +194,73 @@
                 <span class="material-symbols-outlined text-[20px]">corporate_fare</span>
                 <span class="text-base font-medium">Company Management</span>
             </a>
-            <a class="flex items-center gap-md px-md py-3 rounded-xl transition-all duration-200 ease-in-out {{ request()->routeIs('admin.standard-expenses') ? 'text-white font-medium shadow-sm' : 'hover:text-white' }}" style="{{ request()->routeIs('admin.standard-expenses') ? 'background-color: #334155;' : 'color: #94a3b8;' }}" href="{{ route('admin.standard-expenses') }}">
-                <span class="material-symbols-outlined text-[20px]">payments</span>
-                <span class="text-base font-medium">Standard Expenses</span>
-            </a>
-            <a class="flex items-center gap-md px-md py-3 rounded-xl transition-all duration-200 ease-in-out {{ request()->routeIs('admin.invoices') ? 'text-white font-medium shadow-sm' : 'hover:text-white' }}" style="{{ request()->routeIs('admin.invoices') ? 'background-color: #334155;' : 'color: #94a3b8;' }}" href="{{ route('admin.invoices') }}">
-                <span class="material-symbols-outlined text-[20px]">account_balance_wallet</span>
-                <span class="text-base font-medium">Standard Income</span>
-            </a>
+            <!-- Manage Expenses Accordion -->
+            @php
+                $isExpenseRoute = request()->routeIs('admin.standard-expenses*');
+                $expenseActiveTab = request()->get('tab', 'standard');
+                $isStdExpenseActive = $isExpenseRoute && ($expenseActiveTab === 'standard' || $expenseActiveTab === 'table-tab' || $expenseActiveTab === 'form-tab' || !$expenseActiveTab);
+                $isNonStdExpenseActive = $isExpenseRoute && $expenseActiveTab === 'non-standard';
+            @endphp
+            <div class="sidebar-accordion" id="accordion-expenses">
+                <button type="button" 
+                    onclick="toggleSidebarAccordion('accordion-expenses-menu', 'accordion-expenses-chevron')"
+                    class="w-full flex items-center justify-between px-md py-3 rounded-xl transition-all duration-200 ease-in-out text-left border-0 bg-transparent cursor-pointer {{ $isExpenseRoute ? 'text-white font-medium shadow-sm' : 'hover:text-white' }}"
+                    style="{{ $isExpenseRoute ? 'background-color: #334155;' : 'color: #94a3b8;' }}">
+                    <div class="flex items-center gap-md">
+                        <span class="material-symbols-outlined text-[20px]">payments</span>
+                        <span class="text-base font-medium">Manage Expenses</span>
+                    </div>
+                    <span id="accordion-expenses-chevron" class="material-symbols-outlined text-[18px] transition-transform duration-200 {{ $isExpenseRoute ? 'rotate-180 text-white' : 'text-slate-400' }}">
+                        expand_more
+                    </span>
+                </button>
+                <div id="accordion-expenses-menu" class="space-y-1 mt-1 pl-4 {{ $isExpenseRoute ? 'block' : 'hidden' }}">
+                    <a href="{{ route('admin.standard-expenses', ['tab' => 'standard']) }}"
+                       class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all duration-150 {{ $isStdExpenseActive ? 'text-white font-semibold bg-indigo-600/40 shadow-sm' : 'text-slate-400 hover:text-white hover:bg-slate-700/50' }}">
+                        <i class="fas fa-circle text-[6px] {{ $isStdExpenseActive ? 'text-indigo-400' : 'text-slate-500' }}"></i>
+                        <span>Standard Expenses</span>
+                    </a>
+                    <a href="{{ route('admin.standard-expenses', ['tab' => 'non-standard']) }}"
+                       class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all duration-150 {{ $isNonStdExpenseActive ? 'text-white font-semibold bg-indigo-600/40 shadow-sm' : 'text-slate-400 hover:text-white hover:bg-slate-700/50' }}">
+                        <i class="fas fa-circle text-[6px] {{ $isNonStdExpenseActive ? 'text-indigo-400' : 'text-slate-500' }}"></i>
+                        <span>Non-Standard Expenses</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Manage Income Accordion -->
+            @php
+                $isIncomeRoute = request()->routeIs('admin.invoices*');
+                $incomeActiveTab = request()->get('tab', 'standard');
+                $isStdIncomeActive = $isIncomeRoute && ($incomeActiveTab === 'standard' || $incomeActiveTab === 'proformas' || $incomeActiveTab === 'create' || !$incomeActiveTab);
+                $isNonStdIncomeActive = $isIncomeRoute && $incomeActiveTab === 'non-standard';
+            @endphp
+            <div class="sidebar-accordion" id="accordion-income">
+                <button type="button" 
+                    onclick="toggleSidebarAccordion('accordion-income-menu', 'accordion-income-chevron')"
+                    class="w-full flex items-center justify-between px-md py-3 rounded-xl transition-all duration-200 ease-in-out text-left border-0 bg-transparent cursor-pointer {{ $isIncomeRoute ? 'text-white font-medium shadow-sm' : 'hover:text-white' }}"
+                    style="{{ $isIncomeRoute ? 'background-color: #334155;' : 'color: #94a3b8;' }}">
+                    <div class="flex items-center gap-md">
+                        <span class="material-symbols-outlined text-[20px]">account_balance_wallet</span>
+                        <span class="text-base font-medium">Manage Income</span>
+                    </div>
+                    <span id="accordion-income-chevron" class="material-symbols-outlined text-[18px] transition-transform duration-200 {{ $isIncomeRoute ? 'rotate-180 text-white' : 'text-slate-400' }}">
+                        expand_more
+                    </span>
+                </button>
+                <div id="accordion-income-menu" class="space-y-1 mt-1 pl-4 {{ $isIncomeRoute ? 'block' : 'hidden' }}">
+                    <a href="{{ route('admin.invoices', ['tab' => 'standard']) }}"
+                       class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all duration-150 {{ $isStdIncomeActive ? 'text-white font-semibold bg-indigo-600/40 shadow-sm' : 'text-slate-400 hover:text-white hover:bg-slate-700/50' }}">
+                        <i class="fas fa-circle text-[6px] {{ $isStdIncomeActive ? 'text-indigo-400' : 'text-slate-500' }}"></i>
+                        <span>Standard Income</span>
+                    </a>
+                    <a href="{{ route('admin.invoices', ['tab' => 'non-standard']) }}"
+                       class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all duration-150 {{ $isNonStdIncomeActive ? 'text-white font-semibold bg-indigo-600/40 shadow-sm' : 'text-slate-400 hover:text-white hover:bg-slate-700/50' }}">
+                        <i class="fas fa-circle text-[6px] {{ $isNonStdIncomeActive ? 'text-indigo-400' : 'text-slate-500' }}"></i>
+                        <span>Non-Standard Income</span>
+                    </a>
+                </div>
+            </div>
             <a class="flex items-center gap-md px-md py-3 rounded-xl transition-all duration-200 ease-in-out {{ request()->routeIs('admin.users') ? 'text-white font-medium shadow-sm' : 'hover:text-white' }}" style="{{ request()->routeIs('admin.users') ? 'background-color: #334155;' : 'color: #94a3b8;' }}" href="{{ route('admin.users') }}">
                 <span class="material-symbols-outlined text-[20px]">manage_accounts</span>
                 <span class="text-base font-medium">User Management</span>
@@ -305,6 +364,21 @@
                 overlay.classList.toggle('hidden');
             }
         }
+
+        function toggleSidebarAccordion(menuId, chevronId) {
+            const menu = document.getElementById(menuId);
+            const chevron = document.getElementById(chevronId);
+            if (!menu) return;
+            if (menu.classList.contains('hidden')) {
+                menu.classList.remove('hidden');
+                menu.classList.add('block');
+                if (chevron) chevron.classList.add('rotate-180', 'text-white');
+            } else {
+                menu.classList.remove('block');
+                menu.classList.add('hidden');
+                if (chevron) chevron.classList.remove('rotate-180', 'text-white');
+            }
+        }
     </script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
@@ -330,8 +404,7 @@
         Swal.fire({
             icon: 'success',
             title: 'Success',
-            text: '{{ session('
-            success ') }}',
+            text: "{{ session('success') }}",
             timer: 3000,
             showConfirmButton: false
         });
@@ -341,8 +414,7 @@
         Swal.fire({
             icon: 'error',
             title: 'Error',
-            text: '{{ session('
-            error ') }}',
+            text: "{{ session('error') }}",
             confirmButtonColor: '#3b82f6',
         });
         @endif

@@ -164,21 +164,175 @@ class StandardExpensesController extends Controller
         return $item;
     });
 
+    // Query Non-Standard Expenses
+    $nonStandardQuery = Expense::where('source', '!=', 'standard')
+      ->with(['company', 'categoryRelation']);
+
+    if ($search) {
+      $nonStandardQuery->where(function ($q) use ($search) {
+        $q->where('expense_name', 'like', "%{$search}%")
+          ->orWhere('party_name', 'like', "%{$search}%")
+          ->orWhere('expense_number', 'like', "%{$search}%")
+          ->orWhere('purpose_comment', 'like', "%{$search}%");
+      });
+    }
+
+    if ($companyFilter && $companyFilter !== 'all') {
+      $nonStandardQuery->where('company_id', $companyFilter);
+    }
+
+    if ($categoryFilter && $categoryFilter !== 'all') {
+      $nonStandardQuery->where(function ($q) use ($categoryFilter) {
+        $q->where('category_id', $categoryFilter)
+          ->orWhereHas('categoryRelation', function ($sq) use ($categoryFilter) {
+            $sq->where('category_type', $categoryFilter)->orWhere('name', 'like', "%{$categoryFilter}%");
+          });
+      });
+    }
+
+    if ($filterStartDate && $filterEndDate) {
+      $nonStandardQuery->whereBetween('due_date', [$filterStartDate, $filterEndDate]);
+    } elseif ($filterStartDate) {
+      $nonStandardQuery->where('due_date', '>=', $filterStartDate);
+    } elseif ($filterEndDate) {
+      $nonStandardQuery->where('due_date', '<=', $filterEndDate);
+    }
+
+    $nsCountQuery = clone $nonStandardQuery;
+    $nsStatusCounts = [
+      'all' => (clone $nsCountQuery)->count(),
+      'pending' => (clone $nsCountQuery)->where(function ($q) use ($today) {
+        $q->where('status', 'pending')
+          ->orWhere(function ($sq) use ($today) {
+            $sq->whereNotIn('status', ['paid', 'settle', 'settled'])
+               ->whereDate('due_date', '<', $today);
+          });
+      })->count(),
+      'upcoming' => (clone $nsCountQuery)->where(function ($q) use ($today) {
+        $q->where('status', 'upcoming')
+          ->orWhere(function ($sq) use ($today) {
+            $sq->whereNotIn('status', ['paid', 'settle', 'settled'])
+               ->whereDate('due_date', '>=', $today);
+          });
+      })->count(),
+      'paid' => (clone $nsCountQuery)->whereIn('status', ['paid', 'settle', 'settled'])->count(),
+    ];
+
+    if ($statusFilter && $statusFilter !== 'all') {
+      if ($statusFilter === 'paid') {
+        $nonStandardQuery->whereIn('status', ['paid', 'settle', 'settled']);
+      } elseif ($statusFilter === 'pending') {
+        $nonStandardQuery->where(function ($q) use ($today) {
+          $q->where('status', 'pending')
+            ->orWhere(function ($sq) use ($today) {
+              $sq->whereNotIn('status', ['paid', 'settle', 'settled'])
+                 ->whereDate('due_date', '<', $today);
+            });
+        });
+      } elseif ($statusFilter === 'upcoming') {
+        $nonStandardQuery->where(function ($q) use ($today) {
+          $q->where('status', 'upcoming')
+            ->orWhere(function ($sq) use ($today) {
+              $sq->whereNotIn('status', ['paid', 'settle', 'settled'])
+                 ->whereDate('due_date', '>=', $today);
+            });
+        });
+      }
+    }
+
+    $nonStandardExpenses = $nonStandardQuery->latest('due_date')->paginate($perPage, ['*'], 'ns_page')->withQueryString();
+
     $companies = Company::where('status', 'active')->get();
+    $categories = Category::where('status', 'active')->get();
+    $requestedTab = $request->input('tab', 'standard');
+    $mainTab = in_array($requestedTab, ['non-standard', 'non_standard']) ? 'non-standard' : 'standard';
 
     return view('Admin.standard_expenses', [
-      'expenseTypes'   => $templates,
-      'companies'      => $companies,
-      'perPage'        => $perPage,
-      'search'         => $search,
-      'companyFilter'  => $companyFilter,
-      'categoryFilter' => $categoryFilter,
-      'statusFilter'   => $statusFilter,
-      'dateRange'      => $dateRange,
-      'startDate'      => $startDate,
-      'endDate'        => $endDate,
-      'statusCounts'   => $statusCounts
+      'expenseTypes'        => $templates,
+      'nonStandardExpenses' => $nonStandardExpenses,
+      'companies'           => $companies,
+      'categories'          => $categories,
+      'perPage'             => $perPage,
+      'search'              => $search,
+      'companyFilter'       => $companyFilter,
+      'categoryFilter'      => $categoryFilter,
+      'statusFilter'        => $statusFilter,
+      'dateRange'           => $dateRange,
+      'startDate'           => $startDate,
+      'endDate'             => $endDate,
+      'statusCounts'        => $statusCounts,
+      'nsStatusCounts'      => $nsStatusCounts,
+      'mainTab'             => $mainTab,
+      'requestedTab'        => $requestedTab
     ]);
+  }
+
+  public function storeNonStandard(Request $request)
+  {
+    $request->validate([
+      'company_id'      => 'required|exists:companies,id',
+      'expense_name'    => 'required|string|max:255',
+      'category_id'     => 'nullable',
+      'planned_amount'  => 'required|numeric|min:0',
+      'due_date'        => 'nullable|date',
+      'status'          => 'required|in:upcoming,pending,paid',
+      'party_name'      => 'nullable|string|max:255',
+      'purpose_comment' => 'nullable|string'
+    ]);
+
+    try {
+      $dueDate = $request->due_date ?: now()->format('Y-m-d');
+      Expense::create([
+        'company_id'      => $request->company_id,
+        'expense_name'    => $request->expense_name,
+        'category_id'     => $request->category_id ?: null,
+        'planned_amount'  => $request->planned_amount,
+        'actual_amount'   => $request->status === 'paid' ? $request->planned_amount : null,
+        'paid_amount'     => $request->status === 'paid' ? $request->planned_amount : 0,
+        'balance_amount'  => $request->status === 'paid' ? 0 : $request->planned_amount,
+        'due_date'        => $dueDate,
+        'paid_date'       => $request->status === 'paid' ? now()->format('Y-m-d') : null,
+        'status'          => $request->status,
+        'party_name'      => $request->party_name,
+        'purpose_comment' => $request->purpose_comment,
+        'source'          => 'manual',
+        'created_by'      => auth()->id(),
+      ]);
+
+      return redirect()->route('admin.standard-expenses', ['tab' => 'non-standard'])
+        ->with('success', 'Non-standard expense created successfully.');
+    } catch (\Exception $e) {
+      return back()->with('error', 'Error creating non-standard expense: ' . $e->getMessage());
+    }
+  }
+
+  public function destroyNonStandard($id)
+  {
+    try {
+      $expense = Expense::where('source', '!=', 'standard')->findOrFail($id);
+      $expense->delete();
+      return redirect()->route('admin.standard-expenses', ['tab' => 'non-standard'])
+        ->with('success', 'Non-standard expense deleted successfully.');
+    } catch (\Exception $e) {
+      return back()->with('error', 'Error deleting expense: ' . $e->getMessage());
+    }
+  }
+
+  public function markNonStandardPaid(Request $request, $id)
+  {
+    try {
+      $expense = Expense::findOrFail($id);
+      $expense->update([
+        'status'         => 'paid',
+        'actual_amount'  => $request->actual_amount ?? $expense->planned_amount,
+        'paid_amount'    => $request->actual_amount ?? $expense->planned_amount,
+        'paid_date'      => $request->paid_date ?? now(),
+        'balance_amount' => 0
+      ]);
+      return back()->with('success', 'Expense marked as paid.');
+    } catch (\Exception $e) {
+      return back()->with('error', 'Error updating expense: ' . $e->getMessage());
+    }
   }
 
   public function store(Request $request)
