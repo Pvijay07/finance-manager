@@ -243,43 +243,137 @@ class InvoiceManagementController extends Controller
   public function storeNonStandardIncome(Request $request)
   {
     $request->validate([
-      'company_id'  => 'required|exists:companies,id',
-      'party_name'  => 'required|string|max:255',
-      'amount'      => 'required|numeric|min:0',
-      'income_date' => 'nullable|date',
-      'due_date'    => 'nullable|date',
-      'status'      => 'required|in:upcoming,pending,received,paid',
-      'notes'       => 'nullable|string'
+      'company_id'      => 'required|exists:companies,id',
+      'client_name'     => 'required|string|max:255',
+      'amount'          => 'required|numeric|min:0',
+      'mobile_number'   => 'nullable|string|max:20',
+      'apply_gst'       => 'nullable|in:0,1',
+      'gst_percentage'  => 'nullable|numeric|min:0|max:100',
+      'gst_amount'      => 'nullable|numeric|min:0',
+      'apply_tds'       => 'nullable|in:0,1',
+      'tds_percentage'  => 'nullable|numeric|min:0|max:100',
+      'tds_amount'      => 'nullable|numeric|min:0',
+      'grand_total'     => 'nullable|numeric|min:0',
+      'received_amount' => 'nullable|numeric|min:0',
+      'balance_amount'  => 'nullable|numeric|min:0',
+      'received_date'   => 'nullable|date',
+      'due_date'        => 'nullable|date',
+      'status'          => 'required|in:due,settle,paid,received,pending',
+      'settle_notes'    => 'nullable|string',
+      'mail_status'     => 'nullable|in:0,1',
+      'notes'           => 'nullable|string',
+      'tds_status'      => 'nullable|in:received,not_received,paid',
+      'tds_receipt'     => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:5120',
     ]);
 
     try {
-      $incomeDate = $request->income_date ?: now()->format('Y-m-d');
-      $isReceived = in_array($request->status, ['received', 'paid']);
-      $receivedAmount = $isReceived ? $request->amount : 0;
-      $balanceAmount = $isReceived ? 0 : $request->amount;
+      DB::beginTransaction();
 
-      Income::create([
+      $actualTotalBase = floatval($request->amount);
+      $applyGst = $request->boolean('apply_gst') || $request->input('apply_gst') == '1';
+      $applyTds = $request->boolean('apply_tds') || $request->input('apply_tds') == '1';
+
+      $gstPercentage = $applyGst ? floatval($request->gst_percentage ?? 0) : 0;
+      $gstAmountTotal = $applyGst ? floatval($request->gst_amount ?? round($actualTotalBase * ($gstPercentage / 100), 2)) : 0;
+
+      $tdsPercentage = $applyTds ? floatval($request->tds_percentage ?? 0) : 0;
+      $tdsAmountTotal = $applyTds ? floatval($request->tds_amount ?? round($actualTotalBase * ($tdsPercentage / 100), 2)) : 0;
+
+      $plannedAmountTotal = $actualTotalBase + $gstAmountTotal;
+      $payableAmountTotal = $plannedAmountTotal - $tdsAmountTotal;
+      $receivedAmount = floatval($request->received_amount ?? 0);
+
+      if ($receivedAmount > $payableAmountTotal && $payableAmountTotal > 0) {
+        return back()->with('error', 'Received amount cannot exceed net payable amount.');
+      }
+
+      $balanceAmount = max(0, $payableAmountTotal - $receivedAmount);
+
+      $status = $request->status;
+      if (in_array($status, ['paid', 'received']) || ($balanceAmount <= 0.01 && $receivedAmount > 0)) {
+        $status = 'received';
+      } elseif ($status === 'settle') {
+        $status = 'settle';
+      } else {
+        $status = 'pending';
+      }
+
+      $receivedDate = $request->received_date ?: now()->format('Y-m-d');
+      $dueDate = $request->due_date ?: $receivedDate;
+
+      $income = Income::create([
         'company_id'      => $request->company_id,
-        'party_name'      => $request->party_name,
-        'amount'          => $request->amount,
-        'planned_amount'  => $request->amount,
-        'actual_amount'   => $receivedAmount,
+        'party_name'      => $request->client_name,
+        'amount'          => $payableAmountTotal,
         'received_amount' => $receivedAmount,
+        'planned_amount'  => $plannedAmountTotal,
+        'actual_amount'   => $actualTotalBase,
+        'original_amount' => $actualTotalBase,
+        'schedule_amount' => $plannedAmountTotal,
         'balance_amount'  => $balanceAmount,
-        'income_date'     => $incomeDate,
-        'due_date'        => $request->due_date ?: $incomeDate,
-        'paid_date'       => $isReceived ? $incomeDate : null,
-        'status'          => $request->status === 'paid' ? 'received' : $request->status,
+        'due_date'        => $dueDate,
+        'status'          => $status,
+        'income_date'     => $receivedDate,
+        'paid_date'       => in_array($status, ['received', 'settle']) ? $receivedDate : null,
+        'mail_status'     => $request->mail_status ?? 0,
         'notes'           => $request->notes,
+        'settle_notes'    => $request->settle_notes,
+        'client_details'  => json_encode(['mobile_number' => $request->mobile_number ?? null]),
         'income_type'     => 'non-standard',
         'source'          => 'manual',
         'currency'        => 'INR',
-        'created_by'      => auth()->id(),
+        'created_by'      => auth()->id()
       ]);
 
+      // Handle GST Tax
+      if ($applyGst && $gstAmountTotal > 0) {
+        $income->taxes()->create([
+          'taxable_type'   => Income::class,
+          'taxable_id'     => $income->id,
+          'tax_type'       => 'gst',
+          'tax_percentage' => $gstPercentage,
+          'tax_amount'     => $gstAmountTotal,
+          'payment_status' => in_array($status, ['settle', 'received']) ? 'received' : 'not_received',
+          'direction'      => 'income',
+          'taxable_amount' => $actualTotalBase
+        ]);
+      }
+
+      // Handle TDS Tax
+      if ($applyTds && $tdsAmountTotal > 0) {
+        $path = null;
+        if ($request->hasFile('tds_receipt')) {
+          $tdsReceipt = $request->file('tds_receipt');
+          if ($tdsReceipt->isValid()) {
+            $filename = 'tds_receipt_' . time() . '_' . uniqid() . '.' . $tdsReceipt->getClientOriginalExtension();
+            $destinationPath = public_path('uploads/receipts');
+            if (!file_exists($destinationPath)) {
+              mkdir($destinationPath, 0755, true);
+            }
+            $tdsReceipt->move($destinationPath, $filename);
+            $path = 'uploads/receipts/' . $filename;
+          }
+        }
+
+        $income->taxes()->create([
+          'taxable_type'    => Income::class,
+          'taxable_id'      => $income->id,
+          'tax_type'        => 'tds',
+          'tax_percentage'  => $tdsPercentage,
+          'tax_amount'      => $tdsAmountTotal,
+          'payment_status'  => $request->tds_status ?? 'not_received',
+          'tds_proof_path'  => $path,
+          'direction'       => 'income',
+          'taxable_amount'  => $actualTotalBase
+        ]);
+      }
+
+      DB::commit();
+
       return redirect()->route('admin.invoices', ['tab' => 'non-standard'])
-        ->with('success', 'Non-standard income created successfully.');
+        ->with('success', 'Non-standard income created successfully and synced across Incomes!');
     } catch (\Exception $e) {
+      DB::rollBack();
       return back()->with('error', 'Error creating non-standard income: ' . $e->getMessage());
     }
   }

@@ -8,6 +8,7 @@ use App\Models\CategoryAssignment;
 use App\Models\Expense;
 use App\Models\Company;
 use App\Models\Tax;
+use App\Models\Receipt;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -21,19 +22,31 @@ class StandardExpensesController extends Controller
     $companyFilter  = $request->input('company_id');
     $categoryFilter = $request->input('category_type');
     $statusFilter   = $request->input('status', 'all');
+    $typeFilter     = $request->input('type', 'all');
     $dateRange      = $request->input('date_range', 'all');
     $startDate      = $request->input('start_date');
     $endDate        = $request->input('end_date');
 
-    $query = Expense::where('source', 'standard')
-      ->with(['company', 'categoryRelation']);
+    // Main Expenses query - includes both standard and non-standard expenses
+    $query = Expense::with(['company', 'categoryRelation']);
+
+    if ($typeFilter === 'standard') {
+      $query->where('source', 'standard');
+    } elseif ($typeFilter === 'non-standard') {
+      $query->where(function ($q) {
+        $q->where('source', '!=', 'standard')
+          ->orWhere('type', 'non_standard');
+      });
+    }
 
     // Apply search filter
     if ($search) {
       $query->where(function ($q) use ($search) {
         $q->where('expense_name', 'like', "%{$search}%")
+          ->orWhere('name', 'like', "%{$search}%")
           ->orWhere('party_name', 'like', "%{$search}%")
-          ->orWhere('expense_number', 'like', "%{$search}%");
+          ->orWhere('expense_number', 'like', "%{$search}%")
+          ->orWhere('purpose_comment', 'like', "%{$search}%");
       });
     }
 
@@ -272,36 +285,194 @@ class StandardExpensesController extends Controller
     $request->validate([
       'company_id'      => 'required|exists:companies,id',
       'expense_name'    => 'required|string|max:255',
-      'category_id'     => 'nullable',
-      'planned_amount'  => 'required|numeric|min:0',
-      'due_date'        => 'nullable|date',
-      'status'          => 'required|in:upcoming,pending,paid',
+      'category_id'     => 'nullable|exists:categories,id',
+      'actual_amount'   => 'nullable|numeric|min:0',
+      'planned_amount'  => 'nullable|numeric|min:0',
+      'apply_gst'       => 'nullable|in:0,1',
+      'gst_percentage'  => 'nullable|numeric|min:0|max:100',
+      'gst_amount'      => 'nullable|numeric|min:0',
+      'apply_tds'       => 'nullable|in:0,1',
+      'tds_percentage'  => 'nullable|numeric|min:0|max:100',
+      'tds_amount'      => 'nullable|numeric|min:0',
+      'grand_total'     => 'nullable|numeric|min:0',
+      'paid_amount'     => 'nullable|numeric|min:0',
+      'balance_amount'  => 'nullable|numeric|min:0',
+      'payment_mode'    => 'nullable|in:cash,bank_transfer,cheque,upi,online',
+      'bank_name'       => 'nullable|string|max:255',
+      'upi_type'        => 'nullable|string|max:255',
+      'upi_number'      => 'nullable|string|max:20',
       'party_name'      => 'nullable|string|max:255',
-      'purpose_comment' => 'nullable|string'
+      'mobile_number'   => 'nullable|string|max:20',
+      'notes'           => 'nullable|string',
+      'settle_notes'    => 'nullable|string',
+      'payment_date'    => 'nullable|date',
+      'due_date'        => 'nullable|date',
+      'status'          => 'required|in:upcoming,pending,paid,settle,due,convert_to_tds',
+      'tds_status'      => 'nullable|in:received,not_received,paid',
+      'receipts.*'      => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:5120',
+      'tds_receipt'     => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:5120',
     ]);
 
     try {
+      DB::beginTransaction();
+
+      // Handle "Convert to TDS" special status
+      if ($request->status === 'convert_to_tds') {
+        $pAmount = floatval($request->grand_total ?: $request->actual_amount ?: $request->planned_amount);
+        $rAmount = floatval($request->paid_amount ?? 0);
+        $targetTds = $pAmount - $rAmount;
+
+        if ($targetTds > 0) {
+          $request->merge([
+            'apply_tds' => '1',
+            'tds_amount' => $targetTds,
+            'tds_percentage' => ($pAmount > 0) ? ($targetTds / $pAmount) * 100 : 0,
+            'status' => 'settle'
+          ]);
+        } else {
+          $request->merge(['status' => 'settle']);
+        }
+      }
+
+      $actualTotalBase = floatval($request->actual_amount ?? $request->planned_amount ?? 0);
+      $applyGst = $request->boolean('apply_gst') || $request->input('apply_gst') == '1';
+      $applyTds = $request->boolean('apply_tds') || $request->input('apply_tds') == '1';
+
+      $gstPercentage = $applyGst ? floatval($request->gst_percentage ?? 0) : 0;
+      $gstAmount = $applyGst ? floatval($request->gst_amount ?? round($actualTotalBase * ($gstPercentage / 100), 2)) : 0;
+
+      $tdsPercentage = $applyTds ? floatval($request->tds_percentage ?? 0) : 0;
+      $tdsAmount = $applyTds ? floatval($request->tds_amount ?? round($actualTotalBase * ($tdsPercentage / 100), 2)) : 0;
+
+      $grandTotal = $actualTotalBase + $gstAmount;
+      $netPayableAmount = $grandTotal - $tdsAmount;
+      $paidAmount = floatval($request->paid_amount ?? 0);
+
+      if ($paidAmount == 0 && in_array($request->status, ['paid'])) {
+        $paidAmount = $netPayableAmount;
+      }
+
+      $balanceAmount = max(0, $netPayableAmount - $paidAmount);
       $dueDate = $request->due_date ?: now()->format('Y-m-d');
-      Expense::create([
+      $status = $request->status;
+      if ($status === 'due') {
+        $status = 'upcoming';
+      }
+
+      $expense = Expense::create([
         'company_id'      => $request->company_id,
         'expense_name'    => $request->expense_name,
+        'name'            => $request->expense_name,
         'category_id'     => $request->category_id ?: null,
-        'planned_amount'  => $request->planned_amount,
-        'actual_amount'   => $request->status === 'paid' ? $request->planned_amount : null,
-        'paid_amount'     => $request->status === 'paid' ? $request->planned_amount : 0,
-        'balance_amount'  => $request->status === 'paid' ? 0 : $request->planned_amount,
+        'actual_amount'   => $actualTotalBase,
+        'planned_amount'  => $grandTotal,
+        'original_amount' => $actualTotalBase,
+        'schedule_amount' => $netPayableAmount,
+        'paid_amount'     => $paidAmount,
+        'balance_amount'  => $balanceAmount,
         'due_date'        => $dueDate,
-        'paid_date'       => $request->status === 'paid' ? now()->format('Y-m-d') : null,
-        'status'          => $request->status,
+        'payment_date'    => $request->payment_date,
+        'paid_date'       => in_array($status, ['paid', 'settle']) ? ($request->payment_date ?: now()->format('Y-m-d')) : null,
+        'status'          => $status,
+        'payment_mode'    => $request->payment_mode ?? 'cash',
+        'bank_name'       => $request->bank_name,
+        'upi_type'        => $request->upi_type,
+        'upi_number'      => $request->upi_number,
         'party_name'      => $request->party_name,
-        'purpose_comment' => $request->purpose_comment,
+        'mobile_number'   => $request->mobile_number,
+        'notes'           => $request->notes,
+        'purpose_comment' => $request->notes ?: $request->purpose_comment,
+        'settle_notes'    => $request->settle_notes,
+        'month_year'      => Carbon::parse($dueDate)->format('Y-m'),
+        'type'            => 'non_standard',
         'source'          => 'manual',
         'created_by'      => auth()->id(),
+        'expense_number'  => Expense::generateNewExpenseNumber(),
       ]);
 
+      // Handle GST Tax if applied
+      if ($applyGst && $gstAmount > 0) {
+        Tax::create([
+          'taxable_type'   => Expense::class,
+          'taxable_id'     => $expense->id,
+          'tax_type'       => 'gst',
+          'tax_percentage' => $gstPercentage,
+          'tax_amount'     => $gstAmount,
+          'amount_paid'    => 0,
+          'payment_status' => in_array($status, ['paid', 'settle']) ? 'received' : 'not_received',
+          'direction'      => 'expense',
+          'taxable_amount' => $actualTotalBase
+        ]);
+      }
+
+      // Handle TDS Tax if applied
+      if ($applyTds && $tdsAmount > 0) {
+        $tdsPaymentStatus = $request->tds_status ?? 'not_received';
+        $tdsPaidDate = ($tdsPaymentStatus === 'received' || $tdsPaymentStatus === 'paid') ? now()->format('Y-m-d') : null;
+
+        Tax::create([
+          'taxable_type'   => Expense::class,
+          'taxable_id'     => $expense->id,
+          'tax_type'       => 'tds',
+          'tax_percentage' => $tdsPercentage,
+          'tax_amount'     => $tdsAmount,
+          'amount_paid'    => in_array($tdsPaymentStatus, ['received', 'paid']) ? $tdsAmount : 0,
+          'paid_date'      => $tdsPaidDate,
+          'payment_status' => $tdsPaymentStatus,
+          'direction'      => 'expense',
+          'taxable_amount' => $actualTotalBase
+        ]);
+      }
+
+      // Handle TDS receipt file upload
+      if ($request->hasFile('tds_receipt')) {
+        $tdsReceiptFile = $request->file('tds_receipt');
+        if ($tdsReceiptFile->isValid()) {
+          $filename = 'tds_proof_' . $expense->id . '_' . time() . '_' . uniqid() . '.' . $tdsReceiptFile->getClientOriginalExtension();
+          $path = $tdsReceiptFile->storeAs('tds_proofs', $filename, 'public');
+          $tdsTax = Tax::where('taxable_type', Expense::class)
+            ->where('taxable_id', $expense->id)
+            ->where('tax_type', 'tds')
+            ->first();
+          if ($tdsTax) {
+            $tdsTax->update([
+              'tds_proof_path' => $path,
+              'payment_status' => 'received'
+            ]);
+          }
+        }
+      }
+
+      // Handle general receipts upload
+      if ($request->hasFile('receipts')) {
+        foreach ($request->file('receipts') as $file) {
+          if ($file && $file->isValid()) {
+            $originalName = $file->getClientOriginalName();
+            $extension = $file->getClientOriginalExtension();
+            $filename = 'receipt_' . time() . '_' . uniqid() . '.' . $extension;
+            $destinationPath = public_path('uploads/receipts');
+            if (!file_exists($destinationPath)) {
+              mkdir($destinationPath, 0755, true);
+            }
+            $file->move($destinationPath, $filename);
+            $filePath = 'uploads/receipts/' . $filename;
+            Receipt::create([
+              'expense_id' => $expense->id,
+              'file_name'  => $originalName,
+              'file_path'  => $filePath,
+              'file_type'  => $extension,
+              'file_size'  => $file->getSize() . ' bytes'
+            ]);
+          }
+        }
+      }
+
+      DB::commit();
+
       return redirect()->route('admin.standard-expenses', ['tab' => 'non-standard'])
-        ->with('success', 'Non-standard expense created successfully.');
+        ->with('success', 'Non-standard expense created successfully and synced across Expenses!');
     } catch (\Exception $e) {
+      DB::rollBack();
       return back()->with('error', 'Error creating non-standard expense: ' . $e->getMessage());
     }
   }

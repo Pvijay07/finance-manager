@@ -218,7 +218,7 @@
                     <a href="{{ route('admin.standard-expenses', ['tab' => 'standard']) }}"
                        class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all duration-150 {{ $isStdExpenseActive ? 'text-white font-semibold bg-indigo-600/40 shadow-sm' : 'text-slate-400 hover:text-white hover:bg-slate-700/50' }}">
                         <i class="fas fa-circle text-[6px] {{ $isStdExpenseActive ? 'text-indigo-400' : 'text-slate-500' }}"></i>
-                        <span>Standard Expenses</span>
+                        <span>Expenses</span>
                     </a>
                     <a href="{{ route('admin.standard-expenses', ['tab' => 'non-standard']) }}"
                        class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all duration-150 {{ $isNonStdExpenseActive ? 'text-white font-semibold bg-indigo-600/40 shadow-sm' : 'text-slate-400 hover:text-white hover:bg-slate-700/50' }}">
@@ -252,7 +252,7 @@
                     <a href="{{ route('admin.invoices', ['tab' => 'standard']) }}"
                        class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all duration-150 {{ $isStdIncomeActive ? 'text-white font-semibold bg-indigo-600/40 shadow-sm' : 'text-slate-400 hover:text-white hover:bg-slate-700/50' }}">
                         <i class="fas fa-circle text-[6px] {{ $isStdIncomeActive ? 'text-indigo-400' : 'text-slate-500' }}"></i>
-                        <span>Standard Income</span>
+                        <span>Incomes</span>
                     </a>
                     <a href="{{ route('admin.invoices', ['tab' => 'non-standard']) }}"
                        class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all duration-150 {{ $isNonStdIncomeActive ? 'text-white font-semibold bg-indigo-600/40 shadow-sm' : 'text-slate-400 hover:text-white hover:bg-slate-700/50' }}">
