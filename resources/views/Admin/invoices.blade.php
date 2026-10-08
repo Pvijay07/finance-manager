@@ -1374,7 +1374,7 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="companyId" class="form-label">Company *</label>
-                            <select class="form-select" id="companyId" name="company_id" required>
+                            <select class="form-select" id="companyId" name="company_id" required onchange="loadCompanyManagersForNsIncome(this.value, 'add')">
                                 <option value="">Select Company</option>
                                 @foreach ($companies as $company)
                                 <option value="{{ $company->id }}">{{ $company->name }}</option>
@@ -1588,7 +1588,7 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="edit_ns_inc_companyId" class="form-label">Company <span class="text-danger">*</span></label>
-                            <select class="form-select" id="edit_ns_inc_companyId" name="company_id" required>
+                            <select class="form-select" id="edit_ns_inc_companyId" name="company_id" required onchange="loadCompanyManagersForNsIncome(this.value, 'edit')">
                                 <option value="">Select Company</option>
                                 @foreach ($companies as $company)
                                 <option value="{{ $company->id }}">{{ $company->name }}</option>
@@ -1887,8 +1887,14 @@ document.addEventListener('DOMContentLoaded', function() {
         nsIncomeModal.addEventListener('show.bs.modal', function() {
             const form = document.getElementById('incomeForm');
             if (form) form.reset();
-            document.querySelectorAll('#addNonStandardIncomeModal .ns-inc-manager-checkbox').forEach(cb => cb.checked = false);
-            updateNsIncManagerDropdownText('add');
+            const companySelect = document.getElementById('companyId');
+            if (companySelect && companySelect.value) {
+                loadCompanyManagersForNsIncome(companySelect.value, 'add');
+            } else {
+                const container = document.querySelector('#addNonStandardIncomeModal .manager-options-container');
+                if (container) container.innerHTML = '<div class="text-muted small px-3 py-1">Please select a company first</div>';
+                updateNsIncManagerDropdownText('add');
+            }
             handleStatusChange(document.getElementById('status'), 'dueDateContainer', 'dueDate');
             calculateIncomeTax();
         });
@@ -2040,9 +2046,73 @@ async function openEditNonStandardIncomeModal(id) {
 
         const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('editNonStandardIncomeModal'));
         modal.show();
+
+        // Load company assigned managers for this income's company
+        if (inc.company_id) {
+            await loadCompanyManagersForNsIncome(inc.company_id, 'edit', inc.assigned_managers || []);
+        }
     } catch (err) {
         console.error('Error in openEditNonStandardIncomeModal:', err);
         alert('Failed to load income details');
+    }
+}
+
+async function loadCompanyManagersForNsIncome(companyId, mode, preselectedManagerIds = null) {
+    const modalId = mode === 'edit' ? 'editNonStandardIncomeModal' : 'addNonStandardIncomeModal';
+    const modal = document.getElementById(modalId);
+    if (!modal) return;
+    const container = modal.querySelector('.manager-options-container');
+    if (!container) return;
+
+    if (!companyId) {
+        container.innerHTML = '<div class="text-muted small px-3 py-1">Please select a company first</div>';
+        updateNsIncManagerDropdownText(mode);
+        return;
+    }
+
+    let currentSelected = preselectedManagerIds ? preselectedManagerIds.map(String) : [];
+    if (!preselectedManagerIds) {
+        modal.querySelectorAll('.ns-inc-manager-checkbox:checked').forEach(cb => {
+            currentSelected.push(String(cb.value));
+        });
+    }
+
+    container.innerHTML = '<div class="text-muted small px-3 py-2 text-center"><i class="fas fa-spinner fa-spin me-1"></i> Loading managers...</div>';
+
+    try {
+        const res = await fetch(`${window.APP_URL}/admin/companies/${companyId}/managers`, {
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+        const data = await res.json();
+        const managers = (data && data.managers) ? data.managers : [];
+
+        if (managers.length === 0) {
+            container.innerHTML = '<div class="text-muted small px-3 py-1">No managers assigned to this company</div>';
+        } else {
+            let html = '';
+            const prefix = mode === 'edit' ? 'edit_ns_inc_mgr_' : 'add_ns_inc_mgr_';
+            managers.forEach(m => {
+                const isChecked = currentSelected.includes(String(m.id));
+                const emailHtml = m.email ? `<div class="text-muted small" style="font-size: 0.75rem;">${m.email}</div>` : '';
+                html += `
+                    <div class="form-check py-1 px-3 manager-option-item" data-name="${(m.name || '').toLowerCase()}" data-email="${(m.email || '').toLowerCase()}">
+                        <input class="form-check-input ns-inc-manager-checkbox" type="checkbox" name="assigned_managers[]" value="${m.id}" id="${prefix}${m.id}" ${isChecked ? 'checked' : ''} onchange="updateNsIncManagerDropdownText('${mode}')">
+                        <label class="form-check-label w-100 cursor-pointer" for="${prefix}${m.id}">
+                            <div class="fw-medium text-dark">${m.name}</div>
+                            ${emailHtml}
+                        </label>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+        updateNsIncManagerDropdownText(mode);
+    } catch (err) {
+        console.error('Error loading company managers for income:', err);
+        container.innerHTML = '<div class="text-danger small px-3 py-1">Failed to load managers</div>';
     }
 }
 

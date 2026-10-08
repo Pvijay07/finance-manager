@@ -138,6 +138,47 @@ public function index(Request $request)
     }
   }
 
+  public function getManagers($id)
+  {
+    try {
+      $company = Company::with(['manager', 'managers', 'users'])->findOrFail($id);
+
+      $managerIds = $company->managers->pluck('id')->toArray();
+      if (empty($managerIds)) {
+        $managerIds = $company->users->pluck('id')->toArray();
+      }
+      if ($company->manager_id && !in_array($company->manager_id, $managerIds)) {
+        $managerIds[] = (int) $company->manager_id;
+      }
+      $managerIds = array_values(array_unique(array_filter($managerIds)));
+
+      $managers = User::whereIn('id', $managerIds)
+        ->where('status', 'active')
+        ->orderBy('name')
+        ->get(['id', 'name', 'email', 'role']);
+
+      // Fallback: If no managers assigned specifically to this company, get users with company_id matching
+      if ($managers->isEmpty()) {
+        $managers = User::where('company_id', $company->id)
+          ->whereIn('role', ['manager', 'user'])
+          ->where('status', 'active')
+          ->orderBy('name')
+          ->get(['id', 'name', 'email', 'role']);
+      }
+
+      return response()->json([
+        'success'  => true,
+        'managers' => $managers
+      ]);
+    } catch (\Exception $e) {
+      return response()->json([
+        'success'  => false,
+        'message'  => 'Company not found',
+        'managers' => []
+      ], 404);
+    }
+  }
+
   public function update(Request $request, $id)
   {
     try {

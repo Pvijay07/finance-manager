@@ -69,6 +69,7 @@ Route::middleware(['auth', 'role:admin'])
         Route::post('/companies', [CompanyController::class, 'store'])->name('companies.store');
 
         Route::get('/companies/{id}/edit', [CompanyController::class, 'edit'])->name('companies.edit');
+        Route::get('/companies/{id}/managers', [CompanyController::class, 'getManagers'])->name('companies.managers');
         Route::put('/companies/{company}', [CompanyController::class, 'update'])->name('companies.update');
         Route::delete('/companies/{company}', [CompanyController::class, 'destroy'])->name('companies.destroy');
         Route::post('/companies/settings', [CompanyController::class, 'updateSettings'])->name('companies.settings.update');
