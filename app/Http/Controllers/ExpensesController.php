@@ -760,7 +760,6 @@ class ExpensesController extends Controller
         'schedule_amount' => $actualTotalBase, // Store original total base for context
 
         // Schedule payment fields
-        'paid_amount'     => $paidAmount,
         'balance_amount'  => $isSplitPayment ? 0 : $balanceAmount,
       ];
 

@@ -47,7 +47,6 @@ class Expense extends Model
         'upi_number',
         'original_amount',
         'schedule_amount',
-        'paid_amount',
         'balance_amount',
         'expense_number'
     ];
@@ -270,5 +269,16 @@ class Expense extends Model
         
         $prefix = "{$financialYear}-EXP-";
         return $prefix . str_pad($this->id, 5, '0', STR_PAD_LEFT);
+    }
+
+    public function getPaidAmountAttribute($value = null)
+    {
+        if ($value !== null && $value > 0) {
+            return (float)$value;
+        }
+        if (in_array(strtolower($this->status ?? ''), ['paid', 'settle', 'settled'])) {
+            return (float)($this->actual_amount ?: ($this->schedule_amount ?: ($this->planned_amount ?: 0)));
+        }
+        return (float)($this->actual_amount ?? 0);
     }
 }

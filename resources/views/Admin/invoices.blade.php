@@ -392,6 +392,9 @@
                                                 <a href="{{ route('admin.invoices.view', $incItem->id) }}" class="btn btn-outline-primary btn-sm" title="View Details">
                                                     <i class="fas fa-eye"></i>
                                                 </a>
+                                                <button type="button" class="btn btn-outline-success btn-sm btn-update-invoice" data-invoice-id="{{ $incItem->id }}" title="Edit Standard Invoice">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
                                             @else
                                                 @if(!in_array($incItem->status, ['paid', 'received', 'settle', 'settled']))
                                                 <form action="{{ route('admin.invoices.non-standard.mark-received', $incItem->id) }}" method="POST" class="d-inline">
@@ -401,6 +404,9 @@
                                                     </button>
                                                 </form>
                                                 @endif
+                                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="openEditNonStandardIncomeModal({{ $incItem->id }})" title="Edit Non-Standard Income">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
                                                 <form action="{{ route('admin.invoices.non-standard.destroy', $incItem->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this non-standard income record?');">
                                                     @csrf
                                                     @method('DELETE')
@@ -1078,12 +1084,10 @@
                                                     onclick="viewProforma({{ $invoice->id }})">
                                                     View
                                                 </button>
-                                                @if($invoice->status !== 'paid')
                                                 <button class="btn btn-outline-success btn-update-invoice"
-                                                    data-invoice-id="{{ $invoice->id }}">
+                                                    data-invoice-id="{{ $invoice->id }}" title="Edit">
                                                     <i class="fas fa-edit"></i>
                                                 </button>
-                                                @endif
                                             </div>
                                         </td>
                                     </tr>
@@ -1302,6 +1306,9 @@
                                                     </button>
                                                 </form>
                                             @endif
+                                            <button type="button" class="btn btn-sm btn-outline-primary py-1 px-2" title="Edit" onclick="openEditNonStandardIncomeModal({{ $nsIncome->id }})">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
                                             <form action="{{ route('admin.invoices.non-standard.destroy', $nsIncome->id) }}" method="POST" class="d-inline">
                                                 @csrf
                                                 @method('DELETE')
@@ -1512,6 +1519,181 @@
     </div>
 </div>
 
+<!-- Edit Non-standard Income Modal -->
+<div class="modal fade" id="editNonStandardIncomeModal" tabindex="-1" aria-labelledby="editNonStandardIncomeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editNonStandardIncomeModalLabel"><i class="fas fa-edit me-2"></i>Edit Non-standard Income</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editNonStandardIncomeForm" method="POST" enctype="multipart/form-data">
+                @csrf
+                @method('PUT')
+                <input type="hidden" id="edit_ns_inc_id" name="id">
+                <input type="hidden" name="source" value="manual">
+                <input type="hidden" id="edit_ns_inc_grand_total" name="grand_total">
+
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="edit_ns_inc_companyId" class="form-label">Company <span class="text-danger">*</span></label>
+                            <select class="form-select" id="edit_ns_inc_companyId" name="company_id" required>
+                                <option value="">Select Company</option>
+                                @foreach ($companies as $company)
+                                <option value="{{ $company->id }}">{{ $company->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="edit_ns_inc_clientName" class="form-label">Client Name / Description <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="edit_ns_inc_clientName" name="client_name" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="edit_ns_inc_actualAmount" class="form-label">Base Amount (₹) <span class="text-danger">*</span></label>
+                            <input type="number" step="0.01" class="form-control" id="edit_ns_inc_actualAmount" name="amount"
+                                value="" required placeholder="0.00">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="edit_ns_inc_mobileNumber" class="form-label">Mobile Number</label>
+                            <input type="text" class="form-control" id="edit_ns_inc_mobileNumber" name="mobile_number"
+                                placeholder="Enter mobile number">
+                        </div>
+
+                        <!-- Tax Section -->
+                        <div class="col-12 mb-3">
+                            <!-- GST Section -->
+                            <div class="tax-section mb-3">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" name="apply_gst" id="edit_ns_inc_applyGst"
+                                            value="1">
+                                        <label class="form-check-label fw-bold text-uppercase small text-muted" for="edit_ns_inc_applyGst">GST</label>
+                                    </div>
+                                </div>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label small text-muted fw-bold">GST %</label>
+                                        <div class="input-group">
+                                            <input type="number" class="form-control" id="edit_ns_inc_gst_percentage"
+                                                name="gst_percentage" value="18" min="0" max="100" step="0.01">
+                                            <span class="input-group-text">%</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small text-muted fw-bold">GST Amount</label>
+                                        <input type="number" class="form-control" id="edit_ns_inc_gst_amount" name="gst_amount"
+                                            readonly value="0.00">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- TDS Section -->
+                            <div class="tax-section mb-3">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" name="apply_tds"
+                                            id="edit_ns_inc_applyTds" value="1">
+                                        <label class="form-check-label fw-bold text-uppercase small text-muted" for="edit_ns_inc_applyTds">TDS</label>
+                                    </div>
+                                </div>
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label small text-muted fw-bold">TDS %</label>
+                                        <div class="input-group">
+                                            <input type="number" class="form-control" id="edit_ns_inc_tds_percentage"
+                                                name="tds_percentage" value="10" min="0" max="100" step="0.01">
+                                            <span class="input-group-text">%</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small text-muted fw-bold">TDS Amount</label>
+                                        <input type="number" class="form-control" id="edit_ns_inc_tds_amount" name="tds_amount"
+                                            readonly value="0.00">
+                                    </div>
+                                </div>
+
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label small text-muted fw-bold">TDS Status</label>
+                                        <select class="form-select" id="edit_ns_inc_addTdsStatus" name="tds_status">
+                                            <option value="received">Received</option>
+                                            <option value="not_received">Not Received</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small text-muted fw-bold">TDS Certificate/Receipt</label>
+                                        <input type="file" id="edit_ns_inc_addTdsReceipt" name="tds_receipt"
+                                            class="form-control" accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Amount Received Section -->
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Received Amount (₹)</label>
+                                <input type="number" class="form-control" id="edit_ns_inc_received_amount"
+                                    name="received_amount" step="0.01" value="0.00">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Received Date</label>
+                                <input type="date" class="form-control" id="edit_ns_inc_received_date" name="received_date"
+                                    max="{{ date ( 'Y-m-d' ) }}">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Balance (₹)</label>
+                                <input type="number" class="form-control bg-light" id="edit_ns_inc_balance_amount" name="balance_amount"
+                                    step="0.01" readonly value="0.00">
+                            </div>
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label for="edit_ns_inc_status" class="form-label">Status <span class="text-danger">*</span></label>
+                            <select class="form-select" id="edit_ns_inc_status" name="status" required
+                                onchange="handleEditNsIncStatusChange()">
+                                <option value="due">Due</option>
+                                <option value="pending">Pending</option>
+                                <option value="received">Received</option>
+                                <option value="settle">Settle</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3" id="edit_ns_inc_settleNotesContainer" style="display:none;">
+                            <label for="edit_ns_inc_settleNotes" class="form-label">Settle Notes <span class="text-danger">*</span></label>
+                            <textarea class="form-control" id="edit_ns_inc_settleNotes" name="settle_notes" rows="1"
+                                placeholder="Enter notes for settled status..."></textarea>
+                        </div>
+                        <div class="col-md-4 mb-3" id="edit_ns_inc_dueDateContainer">
+                            <label for="edit_ns_inc_dueDate" class="form-label">Due Date</label>
+                            <input type="date" class="form-control" id="edit_ns_inc_dueDate" name="due_date">
+                        </div>
+
+                        <div class="col-12 mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="edit_ns_inc_mailStatus" name="mail_status" value="1">
+                                <label class="form-check-label" for="edit_ns_inc_mailStatus">Send Email Confirmation</label>
+                            </div>
+                        </div>
+
+                        <div class="col-12 mb-3">
+                            <label for="edit_ns_inc_notes" class="form-label">Notes</label>
+                            <textarea class="form-control" id="edit_ns_inc_notes" name="notes" rows="2"
+                                placeholder="Add any additional notes..."></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="edit_ns_inc_submitBtn">
+                        <i class="fas fa-save me-2"></i> Update Income
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
 // Manager Panel Equivalent Income Tax and Status Handling
 function handleStatusChange(selectElement, containerId, inputId) {
@@ -1677,7 +1859,169 @@ document.addEventListener('DOMContentLoaded', function() {
             calculateIncomeTax();
         });
     }
+
+    // Edit Non-Standard Income event listeners
+    const editNsIncAmount = document.getElementById('edit_ns_inc_actualAmount');
+    const editNsIncGst = document.getElementById('edit_ns_inc_applyGst');
+    const editNsIncTds = document.getElementById('edit_ns_inc_applyTds');
+    const editNsIncGstPct = document.getElementById('edit_ns_inc_gst_percentage');
+    const editNsIncTdsPct = document.getElementById('edit_ns_inc_tds_percentage');
+    const editNsIncRecAmount = document.getElementById('edit_ns_inc_received_amount');
+    const editNsIncTdsStatus = document.getElementById('edit_ns_inc_addTdsStatus');
+
+    if (editNsIncAmount) editNsIncAmount.addEventListener('input', calculateEditIncomeTax);
+    if (editNsIncGst) editNsIncGst.addEventListener('change', calculateEditIncomeTax);
+    if (editNsIncTds) editNsIncTds.addEventListener('change', calculateEditIncomeTax);
+    if (editNsIncGstPct) editNsIncGstPct.addEventListener('input', calculateEditIncomeTax);
+    if (editNsIncTdsPct) editNsIncTdsPct.addEventListener('input', calculateEditIncomeTax);
+    if (editNsIncRecAmount) editNsIncRecAmount.addEventListener('input', calculateEditIncomeTax);
+    if (editNsIncTdsStatus) editNsIncTdsStatus.addEventListener('change', () => {
+        handleIncomeTdsStatusBehavior('edit_ns_inc_addTdsStatus', 'edit_ns_inc_addTdsReceipt');
+    });
+
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest('.btn-update-invoice');
+        if (btn) {
+            const invoiceId = btn.getAttribute('data-invoice-id') || btn.closest('tr')?.querySelector('[data-invoice-id]')?.getAttribute('data-invoice-id');
+            if (invoiceId) {
+                openEditInvoiceModal(invoiceId);
+            }
+        }
+    });
 });
+
+function handleEditNsIncStatusChange() {
+    const statusEl = document.getElementById('edit_ns_inc_status');
+    if (!statusEl) return;
+    const status = statusEl.value;
+    const settleContainer = document.getElementById('edit_ns_inc_settleNotesContainer');
+    const settleNotes = document.getElementById('edit_ns_inc_settleNotes');
+    const dueDateContainer = document.getElementById('edit_ns_inc_dueDateContainer');
+    const dueDate = document.getElementById('edit_ns_inc_dueDate');
+
+    if (status === 'settle') {
+        if (settleContainer) settleContainer.style.display = 'block';
+        if (settleNotes) settleNotes.required = true;
+        if (dueDateContainer) dueDateContainer.style.display = 'none';
+        if (dueDate) dueDate.required = false;
+    } else if (status === 'due') {
+        if (settleContainer) settleContainer.style.display = 'none';
+        if (settleNotes) settleNotes.required = false;
+        if (dueDateContainer) dueDateContainer.style.display = 'block';
+        if (dueDate) dueDate.required = true;
+    } else {
+        if (settleContainer) settleContainer.style.display = 'none';
+        if (settleNotes) settleNotes.required = false;
+        if (dueDateContainer) dueDateContainer.style.display = 'block';
+        if (dueDate) dueDate.required = false;
+    }
+}
+
+function calculateEditIncomeTax(event) {
+    const actualAmountInput = document.getElementById('edit_ns_inc_actualAmount');
+    const gstCheckbox = document.getElementById('edit_ns_inc_applyGst');
+    const tdsCheckbox = document.getElementById('edit_ns_inc_applyTds');
+    const gstPercentageInput = document.getElementById('edit_ns_inc_gst_percentage');
+    const tdsPercentageInput = document.getElementById('edit_ns_inc_tds_percentage');
+    const receivedAmountInput = document.getElementById('edit_ns_inc_received_amount');
+
+    if (!actualAmountInput || !gstCheckbox || !tdsCheckbox) return;
+
+    const isReceivedAmount = event && event.target && (event.target.id === 'edit_ns_inc_received_amount');
+
+    const actualAmount = parseFloat(actualAmountInput.value) || 0;
+    const applyGst = gstCheckbox.checked;
+    const applyTds = tdsCheckbox.checked;
+    const gstPercentage = parseFloat(gstPercentageInput?.value) || 0;
+    const tdsPercentage = parseFloat(tdsPercentageInput?.value) || 0;
+    const receivedAmount = parseFloat(receivedAmountInput?.value) || 0;
+
+    let gstAmount = 0;
+    let tdsAmount = 0;
+    let amountAfterGst = actualAmount;
+    let grandTotal = actualAmount;
+
+    if (!isReceivedAmount) {
+        if (applyGst && gstPercentage > 0) {
+            gstAmount = (actualAmount * gstPercentage) / 100;
+            amountAfterGst = actualAmount + gstAmount;
+            grandTotal = amountAfterGst;
+        }
+
+        if (applyTds && tdsPercentage > 0) {
+            const baseForTds = applyGst ? amountAfterGst : actualAmount;
+            tdsAmount = (baseForTds * tdsPercentage) / 100;
+        }
+
+        const gstAmountEl = document.getElementById('edit_ns_inc_gst_amount');
+        const tdsAmountEl = document.getElementById('edit_ns_inc_tds_amount');
+        const grandTotalEl = document.getElementById('edit_ns_inc_grand_total');
+
+        if (gstAmountEl) gstAmountEl.value = gstAmount.toFixed(2);
+        if (tdsAmountEl) tdsAmountEl.value = tdsAmount.toFixed(2);
+        if (grandTotalEl) grandTotalEl.value = grandTotal.toFixed(2);
+    } else {
+        gstAmount = parseFloat(document.getElementById('edit_ns_inc_gst_amount')?.value) || 0;
+        tdsAmount = parseFloat(document.getElementById('edit_ns_inc_tds_amount')?.value) || 0;
+        grandTotal = parseFloat(document.getElementById('edit_ns_inc_grand_total')?.value) || (actualAmount + gstAmount);
+    }
+
+    const netPayable = grandTotal - tdsAmount;
+    const balance = Math.max(0, netPayable - receivedAmount);
+    const balanceEl = document.getElementById('edit_ns_inc_balance_amount');
+    if (balanceEl) balanceEl.value = balance.toFixed(2);
+
+    if (gstPercentageInput) gstPercentageInput.disabled = !applyGst;
+    if (tdsPercentageInput) tdsPercentageInput.disabled = !applyTds;
+}
+
+async function openEditNonStandardIncomeModal(id) {
+    try {
+        const response = await fetch(`${window.APP_URL}/admin/invoices/non-standard/${id}`, {
+            headers: { 'Accept': 'application/json' }
+        });
+        const data = await response.json();
+        if (!data.success || !data.income) {
+            alert(data.message || 'Could not load income data');
+            return;
+        }
+        const inc = data.income;
+        const form = document.getElementById('editNonStandardIncomeForm');
+        form.action = `${window.APP_URL}/admin/invoices/non-standard/${inc.id}`;
+
+        document.getElementById('edit_ns_inc_id').value = inc.id;
+        document.getElementById('edit_ns_inc_companyId').value = inc.company_id || '';
+        document.getElementById('edit_ns_inc_clientName').value = inc.client_name || '';
+        document.getElementById('edit_ns_inc_actualAmount').value = inc.amount || '';
+        document.getElementById('edit_ns_inc_mobileNumber').value = inc.mobile_number || '';
+
+        document.getElementById('edit_ns_inc_applyGst').checked = !!inc.has_gst;
+        document.getElementById('edit_ns_inc_gst_percentage').value = inc.gst_percentage || 18;
+        document.getElementById('edit_ns_inc_gst_amount').value = (inc.gst_amount || 0).toFixed(2);
+
+        document.getElementById('edit_ns_inc_applyTds').checked = !!inc.has_tds;
+        document.getElementById('edit_ns_inc_tds_percentage').value = inc.tds_percentage || 10;
+        document.getElementById('edit_ns_inc_tds_amount').value = (inc.tds_amount || 0).toFixed(2);
+        document.getElementById('edit_ns_inc_addTdsStatus').value = inc.tds_status || 'not_received';
+
+        document.getElementById('edit_ns_inc_received_amount').value = inc.received_amount || 0;
+        document.getElementById('edit_ns_inc_received_date').value = inc.received_date || '';
+        document.getElementById('edit_ns_inc_dueDate').value = inc.due_date || '';
+        document.getElementById('edit_ns_inc_status').value = inc.status || 'due';
+        document.getElementById('edit_ns_inc_mailStatus').checked = (inc.mail_status == 1);
+        document.getElementById('edit_ns_inc_notes').value = inc.notes || '';
+        document.getElementById('edit_ns_inc_settleNotes').value = inc.settle_notes || '';
+
+        handleEditNsIncStatusChange();
+        calculateEditIncomeTax();
+
+        const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('editNonStandardIncomeModal'));
+        modal.show();
+    } catch (err) {
+        console.error('Error in openEditNonStandardIncomeModal:', err);
+        alert('Failed to load income details');
+    }
+}
 </script>
 
 <!-- Partial Payment / Split Modal -->

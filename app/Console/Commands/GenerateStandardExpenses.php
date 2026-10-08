@@ -107,7 +107,6 @@ class GenerateStandardExpenses extends Command
             'planned_amount' => $template->planned_amount,
             'actual_amount' => $template->planned_amount,
             'balance_amount' => $template->planned_amount,
-            'paid_amount' => 0,
             'due_date' => $dueDate,
             'status' => 'pending',
             'tax_type' => $template->tax_type,

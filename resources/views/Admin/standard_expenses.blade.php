@@ -296,7 +296,14 @@
                                             <i class="fas fa-check"></i>
                                         </button>
                                         @endif
-                                        @if($exp->source !== 'standard')
+                                        @if($exp->source === 'standard')
+                                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="editTemplate({{ $exp->id }})" title="Edit Standard Expense">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        @else
+                                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="editNonStandardExpense({{ $exp->id }})" title="Edit Non-Standard Expense">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
                                         <form action="{{ route('admin.standard-expenses.non-standard.destroy', $exp->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this non-standard expense record?');">
                                             @csrf
                                             @method('DELETE')
@@ -834,13 +841,10 @@
                                 </span>
                             </td>
                             <td style="padding: 14px 16px; text-align: center;">
-                                @if (!in_array($type->status, ['paid', 'settle', 'settled']) && !$type->is_split)
                                 <button class="btn-edit" onclick="editTemplate({{ $type->id }})"
                                     style="padding: 6px 16px; background: white; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; font-size: 13px; color: #2563eb;">
                                     Edit
                                 </button>
-                                @endif
-
                             </td>
                         </tr>
                         @empty
@@ -1150,6 +1154,9 @@
                                         </button>
                                     </form>
                                     @endif
+                                    <button type="button" class="btn btn-sm btn-outline-primary py-1 px-2" title="Edit" onclick="editNonStandardExpense({{ $nsExpense->id }})">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
                                     <form action="{{ route('admin.standard-expenses.non-standard.destroy', $nsExpense->id) }}" method="POST" class="d-inline">
                                         @csrf
                                         @method('DELETE')
@@ -1447,6 +1454,245 @@
                 <button type="button" onclick="submitEditForm()" class="btn btn-primary"
                     style="padding: 8px 30px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">Update Expense</button>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Non-standard Expense Modal -->
+<div class="modal fade" id="editNonStandardModal" tabindex="-1" aria-labelledby="editNonStandardModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editNonStandardModalLabel"><i class="fas fa-edit me-2"></i>Edit Non-standard Expense</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editNonStandardExpenseForm" method="POST" enctype="multipart/form-data">
+                @csrf
+                @method('PUT')
+                <input type="hidden" id="edit_ns_expense_id" name="id">
+                <input type="hidden" name="source" value="manual">
+
+                <div class="modal-body">
+                    <!-- Company & Expense Name -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Company <span class="text-danger">*</span></label>
+                            <select class="form-select" id="edit_ns_company_id" name="company_id" required>
+                                <option value="" selected disabled>Select Company</option>
+                                @foreach ($companies as $company)
+                                    <option value="{{ $company->id }}">{{ $company->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Expense Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="edit_ns_expense_name" name="expense_name" required
+                                placeholder="e.g., Server Maintenance">
+                        </div>
+                    </div>
+
+                    <!-- Category & Amount -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label">Category</label>
+                            <select class="form-select" id="edit_ns_category_id" name="category_id">
+                                <option value="">Select Category</option>
+                                @foreach ($categories as $category)
+                                    <option value="{{ $category->id }}">{{ $category->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Actual / Base Amount (₹) <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="edit_ns_actual_amount" name="actual_amount"
+                                step="0.01" required value="" placeholder="0.00">
+                        </div>
+                    </div>
+                    <div class="section-divider"></div>
+
+                    <!-- GST Section -->
+                    <div class="tax-section mb-3">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-auto">
+                                <div class="form-check" style="margin-top: 32px;">
+                                    <input class="form-check-input" type="checkbox" id="edit_ns_apply_gst" name="apply_gst"
+                                        value="1">
+                                    <label class="form-check-label fw-bold text-uppercase small text-muted" for="edit_ns_apply_gst">GST</label>
+                                </div>
+                            </div>
+                            <div class="col">
+                                <label class="form-label fw-bold text-uppercase small text-muted">GST %</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="edit_ns_gst_percentage" name="gst_percentage"
+                                        value="18" min="0" max="100" step="0.01">
+                                    <span class="input-group-text">%</span>
+                                </div>
+                            </div>
+                            <div class="col">
+                                <label class="form-label fw-bold text-uppercase small text-muted">GST Amount</label>
+                                <input type="number" class="form-control" id="edit_ns_gst_amount" name="gst_amount" value="0.00"
+                                    readonly>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TDS Section -->
+                    <div class="tax-section mb-3">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-auto">
+                                <div class="form-check" style="margin-top: 32px;">
+                                    <input class="form-check-input" type="checkbox" id="edit_ns_apply_tds" name="apply_tds"
+                                        value="1">
+                                    <label class="form-check-label fw-bold text-uppercase small text-muted" for="edit_ns_apply_tds">TDS</label>
+                                </div>
+                            </div>
+                            <div class="col">
+                                <label class="form-label fw-bold text-uppercase small text-muted">TDS %</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="edit_ns_tds_percentage" name="tds_percentage"
+                                        value="10" min="0" max="100" step="0.01">
+                                    <span class="input-group-text">%</span>
+                                </div>
+                            </div>
+                            <div class="col">
+                                <label class="form-label fw-bold text-uppercase small text-muted">TDS Amount</label>
+                                <input type="number" class="form-control" id="edit_ns_tds_amount" name="tds_amount" value="0.00"
+                                    readonly>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TDS Details -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-uppercase small text-muted">TDS Status</label>
+                            <select class="form-select" id="edit_ns_tds_status" name="tds_status">
+                                <option value="received">Paid</option>
+                                <option value="not_received">Not Paid</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-uppercase small text-muted">TDS Certificate/Receipt</label>
+                            <input type="file" id="edit_ns_tds_receipt" name="tds_receipt" class="form-control"
+                                accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
+                        </div>
+                    </div>
+
+                    <input type="hidden" class="form-control" id="edit_ns_grand_total" name="grand_total" value="0.00">
+                    <input type="hidden" class="form-control" id="edit_ns_schedule_amount" name="planned_amount" value="0.00">
+
+                    <div class="section-divider"></div>
+
+                    <!-- Paid, Mode, Date, Receipt -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Paid Amount (₹)</label>
+                            <input type="number" class="form-control" id="edit_ns_paid_amount" name="paid_amount" step="0.01"
+                                value="0.00">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Payment Mode</label>
+                            <select class="form-select" name="payment_mode" id="edit_ns_payment_mode"
+                                onchange="toggleEditNsPaymentModeDetails()">
+                                <option value="cash">Cash</option>
+                                <option value="bank_transfer">Bank Transfer</option>
+                                <option value="cheque">Cheque</option>
+                                <option value="upi">UPI</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Payment Date</label>
+                            <input type="date" class="form-control" name="payment_date" id="edit_ns_payment_date" max="{{ date('Y-m-d') }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Add Receipts</label>
+                            <input type="file" name="receipts[]" class="form-control" id="edit_ns_receipts"
+                                multiple accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
+                        </div>
+                    </div>
+
+                    <!-- Payment Mode Details Row -->
+                    <div class="row g-3 mb-3" id="edit_ns_payment_mode_details" style="display: none;">
+                        <div class="col-md-6" id="edit_ns_bank_details" style="display: none;">
+                            <label class="form-label">Select Bank</label>
+                            <select class="form-select" name="bank_name" id="edit_ns_bank_name">
+                                <option value="">Select Bank</option>
+                                <option value="SBI">State Bank of India</option>
+                                <option value="HDFC">HDFC Bank</option>
+                                <option value="ICICI">ICICI Bank</option>
+                                <option value="Axis">Axis Bank</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6" id="edit_ns_upi_details" style="display: none;">
+                            <label class="form-label">UPI Type</label>
+                            <select class="form-select" name="upi_type" id="edit_ns_upi_type">
+                                <option value="GPay">Google Pay</option>
+                                <option value="PhonePe">PhonePe</option>
+                                <option value="Paytm">Paytm</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6" id="edit_ns_upi_number_details" style="display: none;">
+                            <label class="form-label">UPI Phone Number</label>
+                            <input type="text" class="form-control" id="edit_ns_upi_number" name="upi_number" placeholder="Enter phone number" maxlength="10" pattern="[0-9]{10}">
+                        </div>
+                    </div>
+
+                    <!-- Balance, Status, Settle Notes, Due Date -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Balance</label>
+                            <input type="number" class="form-control bg-light" id="edit_ns_balance_amount" name="balance_amount"
+                                step="0.01" readonly value="0.00">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Status <span class="text-danger">*</span></label>
+                            <select class="form-select" name="status" required id="edit_ns_status" onchange="toggleEditNsStatusDetails()">
+                                <option value="upcoming">Upcoming</option>
+                                <option value="pending">Pending</option>
+                                <option value="paid">Paid</option>
+                                <option value="settle">Settle</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3" id="edit_ns_settle_notes_container" style="display:none;">
+                            <label class="form-label" for="edit_ns_settle_notes">Settle Notes <span class="text-danger">*</span></label>
+                            <textarea class="form-control" id="edit_ns_settle_notes" name="settle_notes" rows="1" placeholder="Enter notes..."></textarea>
+                        </div>
+                        <div class="col-md-3" id="edit_ns_due_date_container">
+                            <label class="form-label">Due Date</label>
+                            <input type="date" class="form-control" name="due_date" id="edit_ns_due_date">
+                        </div>
+                    </div>
+                    <div class="section-divider"></div>
+
+                    <!-- Party/Vendor & Mobile -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Party/Vendor Name</label>
+                            <input type="text" class="form-control" id="edit_ns_party_name" name="party_name" placeholder="Optional">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Mobile Number</label>
+                            <input type="number" class="form-control" id="edit_ns_mobile_number" name="mobile_number" placeholder="Optional">
+                        </div>
+                    </div>
+
+                    <!-- Notes -->
+                    <div class="mb-3">
+                        <label class="form-label" for="edit_ns_notes">Notes</label>
+                        <textarea class="form-control" id="edit_ns_notes" name="notes" rows="2" placeholder="Optional notes..."></textarea>
+                    </div>
+
+                    <!-- Existing Receipts -->
+                    <div class="mb-2" id="edit_ns_existing_receipts"></div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Update Expense
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -2248,15 +2494,15 @@
 
     // Fill form when editing template
     async function editTemplate(id) {
+        const editBtn = (typeof event !== 'undefined' && event && event.target) ? (event.target.closest('button') || event.target) : null;
+        const originalHtml = editBtn ? editBtn.innerHTML : '';
         try {
             console.log('Starting edit for ID:', id);
 
-            // Store the edit button for loading state
-            const editBtn = event.target;
-            const originalText = editBtn.textContent;
-            editBtn.textContent = 'Loading...';
-            editBtn.disabled = true;
-            editBtn.classList.add('loading');
+            if (editBtn) {
+                editBtn.disabled = true;
+                editBtn.classList.add('loading');
+            }
 
             // Load expense data
             const expenseResponse = await fetch(
@@ -2292,9 +2538,11 @@
             initializeEditForm(id, expenseData);
 
             // Restore edit button
-            editBtn.textContent = originalText;
-            editBtn.disabled = false;
-            editBtn.classList.remove('loading');
+            if (editBtn) {
+                editBtn.innerHTML = originalHtml;
+                editBtn.disabled = false;
+                editBtn.classList.remove('loading');
+            }
 
             console.log('Edit form loaded in modal');
 
@@ -2303,9 +2551,8 @@
             alert('Error loading template data: ' + (error.message || 'Unknown error'));
 
             // Restore edit button on error
-            const editBtn = event.target;
             if (editBtn) {
-                editBtn.textContent = 'Edit';
+                editBtn.innerHTML = originalHtml;
                 editBtn.disabled = false;
                 editBtn.classList.remove('loading');
             }
@@ -3284,7 +3531,185 @@
                 calculateTaxNonStandardAdd();
             });
         }
+
+        const editNsActual = document.getElementById('edit_ns_actual_amount');
+        const editNsApplyGst = document.getElementById('edit_ns_apply_gst');
+        const editNsGstPct = document.getElementById('edit_ns_gst_percentage');
+        const editNsApplyTds = document.getElementById('edit_ns_apply_tds');
+        const editNsTdsPct = document.getElementById('edit_ns_tds_percentage');
+        const editNsPaid = document.getElementById('edit_ns_paid_amount');
+
+        if (editNsActual) editNsActual.addEventListener('input', calculateEditNsTax);
+        if (editNsApplyGst) editNsApplyGst.addEventListener('change', calculateEditNsTax);
+        if (editNsGstPct) editNsGstPct.addEventListener('input', calculateEditNsTax);
+        if (editNsApplyTds) editNsApplyTds.addEventListener('change', calculateEditNsTax);
+        if (editNsTdsPct) editNsTdsPct.addEventListener('input', calculateEditNsTax);
+        if (editNsPaid) editNsPaid.addEventListener('input', calculateEditNsTax);
     });
+
+    function toggleEditNsPaymentModeDetails() {
+        const mode = document.getElementById('edit_ns_payment_mode')?.value;
+        const detailsRow = document.getElementById('edit_ns_payment_mode_details');
+        const bankDetails = document.getElementById('edit_ns_bank_details');
+        const upiDetails = document.getElementById('edit_ns_upi_details');
+        const upiNumberDetails = document.getElementById('edit_ns_upi_number_details');
+
+        if (!detailsRow) return;
+
+        if (mode === 'bank_transfer' || mode === 'cheque') {
+            detailsRow.style.display = 'flex';
+            if (bankDetails) bankDetails.style.display = 'block';
+            if (upiDetails) upiDetails.style.display = 'none';
+            if (upiNumberDetails) upiNumberDetails.style.display = 'none';
+        } else if (mode === 'upi') {
+            detailsRow.style.display = 'flex';
+            if (bankDetails) bankDetails.style.display = 'none';
+            if (upiDetails) upiDetails.style.display = 'block';
+            if (upiNumberDetails) upiNumberDetails.style.display = 'block';
+        } else {
+            detailsRow.style.display = 'none';
+            if (bankDetails) bankDetails.style.display = 'none';
+            if (upiDetails) upiDetails.style.display = 'none';
+            if (upiNumberDetails) upiNumberDetails.style.display = 'none';
+        }
+    }
+
+    function toggleEditNsStatusDetails() {
+        const status = document.getElementById('edit_ns_status')?.value;
+        const settleContainer = document.getElementById('edit_ns_settle_notes_container');
+        const settleNotes = document.getElementById('edit_ns_settle_notes');
+        const dueDateContainer = document.getElementById('edit_ns_due_date_container');
+        const dueDate = document.getElementById('edit_ns_due_date');
+
+        if (status === 'settle') {
+            if (settleContainer) settleContainer.style.display = 'block';
+            if (settleNotes) settleNotes.required = true;
+            if (dueDateContainer) dueDateContainer.style.display = 'none';
+            if (dueDate) dueDate.required = false;
+        } else if (status === 'upcoming') {
+            if (settleContainer) settleContainer.style.display = 'none';
+            if (settleNotes) settleNotes.required = false;
+            if (dueDateContainer) dueDateContainer.style.display = 'block';
+            if (dueDate) dueDate.required = true;
+        } else {
+            if (settleContainer) settleContainer.style.display = 'none';
+            if (settleNotes) settleNotes.required = false;
+            if (dueDateContainer) dueDateContainer.style.display = 'block';
+            if (dueDate) dueDate.required = false;
+        }
+    }
+
+    function calculateEditNsTax() {
+        const baseAmount = parseFloat(document.getElementById('edit_ns_actual_amount')?.value) || 0;
+        let gstAmount = 0;
+        let tdsAmount = 0;
+
+        const applyGst = document.getElementById('edit_ns_apply_gst');
+        if (applyGst && applyGst.checked) {
+            const gstPercentage = parseFloat(document.getElementById('edit_ns_gst_percentage')?.value) || 0;
+            gstAmount = (baseAmount * gstPercentage) / 100;
+            const gstField = document.getElementById('edit_ns_gst_amount');
+            if (gstField) gstField.value = gstAmount.toFixed(2);
+        } else {
+            const gstField = document.getElementById('edit_ns_gst_amount');
+            if (gstField) gstField.value = '0.00';
+        }
+
+        const applyTds = document.getElementById('edit_ns_apply_tds');
+        if (applyTds && applyTds.checked) {
+            const tdsPercentage = parseFloat(document.getElementById('edit_ns_tds_percentage')?.value) || 0;
+            tdsAmount = (baseAmount * tdsPercentage) / 100;
+            const tdsField = document.getElementById('edit_ns_tds_amount');
+            if (tdsField) tdsField.value = tdsAmount.toFixed(2);
+        } else {
+            const tdsField = document.getElementById('edit_ns_tds_amount');
+            if (tdsField) tdsField.value = '0.00';
+        }
+
+        const grandTotal = baseAmount + gstAmount;
+        const netPayable = grandTotal - tdsAmount;
+
+        const grandTotalEl = document.getElementById('edit_ns_grand_total');
+        if (grandTotalEl) grandTotalEl.value = grandTotal.toFixed(2);
+
+        const scheduleEl = document.getElementById('edit_ns_schedule_amount');
+        if (scheduleEl) scheduleEl.value = netPayable.toFixed(2);
+
+        const paidAmountInput = document.getElementById('edit_ns_paid_amount');
+        const paidAmount = parseFloat(paidAmountInput?.value) || 0;
+
+        const balance = Math.max(0, netPayable - paidAmount);
+        const balanceField = document.getElementById('edit_ns_balance_amount');
+        if (balanceField) balanceField.value = balance.toFixed(2);
+    }
+
+    async function editNonStandardExpense(id) {
+        try {
+            const response = await fetch(`${window.APP_URL}/admin/standard-expenses/non-standard/${id}`, {
+                headers: { 'Accept': 'application/json' }
+            });
+            const data = await response.json();
+            if (!data.success || !data.expense) {
+                alert(data.message || 'Could not load expense data');
+                return;
+            }
+            const exp = data.expense;
+            const form = document.getElementById('editNonStandardExpenseForm');
+            form.action = `${window.APP_URL}/admin/standard-expenses/non-standard/${exp.id}`;
+
+            document.getElementById('edit_ns_expense_id').value = exp.id;
+            document.getElementById('edit_ns_company_id').value = exp.company_id || '';
+            document.getElementById('edit_ns_expense_name').value = exp.expense_name || '';
+            document.getElementById('edit_ns_category_id').value = exp.category_id || '';
+            document.getElementById('edit_ns_actual_amount').value = exp.actual_amount || '';
+
+            document.getElementById('edit_ns_apply_gst').checked = !!exp.has_gst;
+            document.getElementById('edit_ns_gst_percentage').value = exp.gst_percentage || 18;
+            document.getElementById('edit_ns_gst_amount').value = (exp.gst_amount || 0).toFixed(2);
+
+            document.getElementById('edit_ns_apply_tds').checked = !!exp.has_tds;
+            document.getElementById('edit_ns_tds_percentage').value = exp.tds_percentage || 10;
+            document.getElementById('edit_ns_tds_amount').value = (exp.tds_amount || 0).toFixed(2);
+            document.getElementById('edit_ns_tds_status').value = exp.tds_status || 'not_received';
+
+            document.getElementById('edit_ns_paid_amount').value = exp.paid_amount || 0;
+            document.getElementById('edit_ns_payment_mode').value = exp.payment_mode || 'cash';
+            document.getElementById('edit_ns_payment_date').value = exp.payment_date || '';
+            document.getElementById('edit_ns_due_date').value = exp.due_date || '';
+            document.getElementById('edit_ns_status').value = (exp.status === 'upcoming' || exp.status === 'due') ? 'upcoming' : (exp.status || 'pending');
+            document.getElementById('edit_ns_party_name').value = exp.party_name || '';
+            document.getElementById('edit_ns_mobile_number').value = exp.mobile_number || '';
+            document.getElementById('edit_ns_notes').value = exp.notes || '';
+            document.getElementById('edit_ns_settle_notes').value = exp.settle_notes || '';
+
+            if (exp.bank_name) document.getElementById('edit_ns_bank_name').value = exp.bank_name;
+            if (exp.upi_type) document.getElementById('edit_ns_upi_type').value = exp.upi_type;
+            if (exp.upi_number) document.getElementById('edit_ns_upi_number').value = exp.upi_number;
+
+            toggleEditNsPaymentModeDetails();
+            toggleEditNsStatusDetails();
+            calculateEditNsTax();
+
+            const receiptsContainer = document.getElementById('edit_ns_existing_receipts');
+            if (receiptsContainer) {
+                receiptsContainer.innerHTML = '';
+                if (exp.receipts && exp.receipts.length > 0) {
+                    let html = '<label class="form-label small text-muted fw-bold">Existing Receipts:</label><div class="d-flex flex-wrap gap-2">';
+                    exp.receipts.forEach(r => {
+                        html += `<a href="${window.APP_URL}/${r.file_path}" target="_blank" class="badge bg-light text-dark border p-2 text-decoration-none"><i class="fas fa-file me-1 text-primary"></i>${r.file_name}</a>`;
+                    });
+                    html += '</div>';
+                    receiptsContainer.innerHTML = html;
+                }
+            }
+
+            const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('editNonStandardModal'));
+            modal.show();
+        } catch (err) {
+            console.error('Error in editNonStandardExpense:', err);
+            alert('Failed to load expense details');
+        }
+    }
 </script>
 <style>
     .tax-section {

@@ -85,6 +85,8 @@ Route::middleware(['auth', 'role:admin'])
         Route::get('/standard-expenses', [StandardExpensesController::class, 'index'])->name('standard-expenses');
         Route::post('/standard-expenses/store', [StandardExpensesController::class, 'store'])->name('standard-expenses.store');
         Route::post('/standard-expenses/non-standard', [StandardExpensesController::class, 'storeNonStandard'])->name('standard-expenses.non-standard.store');
+        Route::get('/standard-expenses/non-standard/{id}', [StandardExpensesController::class, 'editNonStandard'])->name('standard-expenses.non-standard.edit');
+        Route::put('/standard-expenses/non-standard/{id}', [StandardExpensesController::class, 'updateNonStandard'])->name('standard-expenses.non-standard.update');
         Route::delete('/standard-expenses/non-standard/{id}', [StandardExpensesController::class, 'destroyNonStandard'])->name('standard-expenses.non-standard.destroy');
         Route::post('/standard-expenses/non-standard/{id}/mark-paid', [StandardExpensesController::class, 'markNonStandardPaid'])->name('standard-expenses.non-standard.mark-paid');
         Route::get('/standard-expenses/{id}', [StandardExpensesController::class, 'show'])->name('standard-expenses.show');
@@ -101,6 +103,8 @@ Route::middleware(['auth', 'role:admin'])
             Route::get('/', [InvoiceManagementController::class, 'index'])->name('invoices');
             Route::post('/', [InvoiceManagementController::class, 'store'])->name('invoices.store');
             Route::post('/non-standard', [InvoiceManagementController::class, 'storeNonStandardIncome'])->name('invoices.non-standard.store');
+            Route::get('/non-standard/{id}', [InvoiceManagementController::class, 'editNonStandardIncome'])->name('invoices.non-standard.edit');
+            Route::put('/non-standard/{id}', [InvoiceManagementController::class, 'updateNonStandardIncome'])->name('invoices.non-standard.update');
             Route::delete('/non-standard/{id}', [InvoiceManagementController::class, 'destroyNonStandardIncome'])->name('invoices.non-standard.destroy');
             Route::post('/non-standard/{id}/mark-received', [InvoiceManagementController::class, 'markNonStandardIncomeReceived'])->name('invoices.non-standard.mark-received');
             Route::post('/partial-payment', [InvoiceManagementController::class, 'processPartialPayment'])->name('invoices.partial-payment');
