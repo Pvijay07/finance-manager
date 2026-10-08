@@ -117,45 +117,28 @@
 
         <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
             <div>
-                <h1 style="font-weight: 800; color: #0f172a; font-size: 1.85rem; letter-spacing: -0.5px; margin: 0;">Manage Income</h1>
-                <p class="text-muted small mb-0 mt-1">Monitor, filter, and track corporate standard invoices, repeated incomes, and non-standard incomes.</p>
+                @if(($mainTab ?? '') === 'standard')
+                    <h1 style="font-weight: 800; color: #0f172a; font-size: 1.85rem; letter-spacing: -0.5px; margin: 0;">Standard Income</h1>
+                    <p class="text-muted small mb-0 mt-1">Monitor, filter, and track corporate invoices and recurring proformas.</p>
+                @elseif(($mainTab ?? '') === 'non-standard')
+                    <h1 style="font-weight: 800; color: #0f172a; font-size: 1.85rem; letter-spacing: -0.5px; margin: 0;">Non-Standard Income</h1>
+                    <p class="text-muted small mb-0 mt-1">Create and track non-standard incoming payments and revenue settlements.</p>
+                @else
+                    <h1 style="font-weight: 800; color: #0f172a; font-size: 1.85rem; letter-spacing: -0.5px; margin: 0;">Incomes</h1>
+                    <p class="text-muted small mb-0 mt-1">Unified view of all corporate standard and non-standard incomes.</p>
+                @endif
             </div>
             <div class="d-flex gap-2">
-                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addNonStandardIncomeModal" style="border-radius: 8px; font-weight: 600; padding: 8px 16px;">
-                    <i class="fas fa-hand-holding-usd me-1"></i> Add Non-Standard Income
-                </button>
+                @if(($mainTab ?? '') === 'standard')
+                    <a href="{{ route('admin.invoices', ['tab' => 'standard', 'subtab' => 'create']) }}" class="btn btn-sm btn-primary" style="border-radius: 8px; font-weight: 600; padding: 8px 16px; background-color: #4f46e5; border-color: #4f46e5;">
+                        <i class="fas fa-plus-circle me-1"></i> Create Invoice
+                    </a>
+                @else
+                    <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addNonStandardIncomeModal" style="border-radius: 8px; font-weight: 600; padding: 8px 16px; background-color: #4f46e5; border-color: #4f46e5;">
+                        <i class="fas fa-hand-holding-usd me-1"></i> Add Non-Standard Income
+                    </button>
+                @endif
             </div>
-        </div>
-
-        <!-- 3 Primary Tabs: Incomes (All), Standard Income, and Non-Standard Income -->
-        <div class="d-flex align-items-center gap-2 mb-4 border-bottom pb-3 flex-wrap">
-            <a href="{{ route('admin.invoices', ['tab' => 'incomes']) }}"
-               class="btn py-2 px-4 d-inline-flex align-items-center gap-2 {{ ($mainTab ?? 'incomes') === 'incomes' ? 'btn-primary shadow-sm text-white' : 'btn-light border text-muted' }}"
-               style="border-radius: 10px; font-weight: 600; font-size: 0.95rem; text-decoration: none; {{ ($mainTab ?? 'incomes') === 'incomes' ? 'background-color: #4f46e5; border-color: #4f46e5;' : '' }}">
-                <i class="fas fa-layer-group"></i>
-                <span>Incomes</span>
-                <span class="badge {{ ($mainTab ?? 'incomes') === 'incomes' ? 'bg-white text-dark' : 'bg-secondary text-white' }} ms-1">
-                    {{ $allIncomeStatusCounts['all'] ?? 0 }}
-                </span>
-            </a>
-            <a href="{{ route('admin.invoices', ['tab' => 'standard']) }}"
-               class="btn py-2 px-4 d-inline-flex align-items-center gap-2 {{ ($mainTab ?? '') === 'standard' ? 'btn-primary shadow-sm text-white' : 'btn-light border text-muted' }}"
-               style="border-radius: 10px; font-weight: 600; font-size: 0.95rem; text-decoration: none; {{ ($mainTab ?? '') === 'standard' ? 'background-color: #4f46e5; border-color: #4f46e5;' : '' }}">
-                <i class="fas fa-file-invoice-dollar"></i>
-                <span>Standard Income</span>
-                <span class="badge {{ ($mainTab ?? '') === 'standard' ? 'bg-white text-dark' : 'bg-secondary text-white' }} ms-1">
-                    {{ $pendingProformasCount + $invoices->total() }}
-                </span>
-            </a>
-            <a href="{{ route('admin.invoices', ['tab' => 'non-standard']) }}"
-               class="btn py-2 px-4 d-inline-flex align-items-center gap-2 {{ ($mainTab ?? '') === 'non-standard' ? 'btn-primary shadow-sm text-white' : 'btn-light border text-muted' }}"
-               style="border-radius: 10px; font-weight: 600; font-size: 0.95rem; text-decoration: none; {{ ($mainTab ?? '') === 'non-standard' ? 'background-color: #4f46e5; border-color: #4f46e5;' : '' }}">
-                <i class="fas fa-hand-holding-usd"></i>
-                <span>Non-Standard Income</span>
-                <span class="badge {{ ($mainTab ?? '') === 'non-standard' ? 'bg-white text-dark' : 'bg-secondary text-white' }} ms-1">
-                    {{ $nsIncomeStatusCounts['all'] ?? 0 }}
-                </span>
-            </a>
         </div>
 
         @if(($mainTab ?? 'incomes') === 'incomes')

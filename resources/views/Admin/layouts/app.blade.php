@@ -198,29 +198,25 @@
             @php
                 $isExpenseRoute = request()->routeIs('admin.standard-expenses*');
                 $expenseActiveTab = request()->get('tab', 'expenses');
-                $isAllExpenseActive = $isExpenseRoute && ($expenseActiveTab === 'expenses' || $expenseActiveTab === 'all');
-                $isStdExpenseActive = $isExpenseRoute && ($expenseActiveTab === 'standard' || $expenseActiveTab === 'table-tab' || $expenseActiveTab === 'form-tab');
+                $isManageExpenseActive = $isExpenseRoute && in_array($expenseActiveTab, ['standard', 'non-standard', 'table-tab', 'form-tab']);
+                $isStdExpenseActive = $isExpenseRoute && in_array($expenseActiveTab, ['standard', 'table-tab', 'form-tab']);
                 $isNonStdExpenseActive = $isExpenseRoute && $expenseActiveTab === 'non-standard';
+                $isAllExpenseActive = $isExpenseRoute && ($expenseActiveTab === 'expenses' || $expenseActiveTab === 'all');
             @endphp
             <div class="sidebar-accordion" id="accordion-expenses">
                 <button type="button" 
                     onclick="toggleSidebarAccordion('accordion-expenses-menu', 'accordion-expenses-chevron')"
-                    class="w-full flex items-center justify-between px-md py-3 rounded-xl transition-all duration-200 ease-in-out text-left border-0 bg-transparent cursor-pointer {{ $isExpenseRoute ? 'text-white font-medium shadow-sm' : 'hover:text-white' }}"
-                    style="{{ $isExpenseRoute ? 'background-color: #334155;' : 'color: #94a3b8;' }}">
+                    class="w-full flex items-center justify-between px-md py-3 rounded-xl transition-all duration-200 ease-in-out text-left border-0 bg-transparent cursor-pointer {{ $isManageExpenseActive ? 'text-white font-medium shadow-sm' : 'hover:text-white' }}"
+                    style="{{ $isManageExpenseActive ? 'background-color: #334155;' : 'color: #94a3b8;' }}">
                     <div class="flex items-center gap-md">
-                        <span class="material-symbols-outlined text-[20px]">payments</span>
+                        <span class="material-symbols-outlined text-[20px]">tune</span>
                         <span class="text-base font-medium">Manage Expenses</span>
                     </div>
-                    <span id="accordion-expenses-chevron" class="material-symbols-outlined text-[18px] transition-transform duration-200 {{ $isExpenseRoute ? 'rotate-180 text-white' : 'text-slate-400' }}">
+                    <span id="accordion-expenses-chevron" class="material-symbols-outlined text-[18px] transition-transform duration-200 {{ $isManageExpenseActive ? 'rotate-180 text-white' : 'text-slate-400' }}">
                         expand_more
                     </span>
                 </button>
-                <div id="accordion-expenses-menu" class="space-y-1 mt-1 pl-4 {{ $isExpenseRoute ? 'block' : 'hidden' }}">
-                    <a href="{{ route('admin.standard-expenses', ['tab' => 'expenses']) }}"
-                       class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all duration-150 {{ $isAllExpenseActive ? 'text-white font-semibold bg-indigo-600/40 shadow-sm' : 'text-slate-400 hover:text-white hover:bg-slate-700/50' }}">
-                        <i class="fas fa-circle text-[6px] {{ $isAllExpenseActive ? 'text-indigo-400' : 'text-slate-500' }}"></i>
-                        <span>Expenses</span>
-                    </a>
+                <div id="accordion-expenses-menu" class="space-y-1 mt-1 pl-4 {{ $isManageExpenseActive ? 'block' : 'hidden' }}">
                     <a href="{{ route('admin.standard-expenses', ['tab' => 'standard']) }}"
                        class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all duration-150 {{ $isStdExpenseActive ? 'text-white font-semibold bg-indigo-600/40 shadow-sm' : 'text-slate-400 hover:text-white hover:bg-slate-700/50' }}">
                         <i class="fas fa-circle text-[6px] {{ $isStdExpenseActive ? 'text-indigo-400' : 'text-slate-500' }}"></i>
@@ -234,33 +230,37 @@
                 </div>
             </div>
 
+            <!-- Standalone Expenses Menu Item -->
+            <a class="flex items-center gap-md px-md py-3 rounded-xl transition-all duration-200 ease-in-out {{ $isAllExpenseActive ? 'text-white font-medium shadow-sm' : 'hover:text-white' }}" 
+               style="{{ $isAllExpenseActive ? 'background-color: #334155;' : 'color: #94a3b8;' }}" 
+               href="{{ route('admin.standard-expenses', ['tab' => 'expenses']) }}">
+                <span class="material-symbols-outlined text-[20px]">payments</span>
+                <span class="text-base font-medium">Expenses</span>
+            </a>
+
             <!-- Manage Income Accordion -->
             @php
                 $isIncomeRoute = request()->routeIs('admin.invoices*');
                 $incomeActiveTab = request()->get('tab', 'incomes');
-                $isAllIncomeActive = $isIncomeRoute && ($incomeActiveTab === 'incomes' || $incomeActiveTab === 'all');
-                $isStdIncomeActive = $isIncomeRoute && ($incomeActiveTab === 'standard' || $incomeActiveTab === 'proformas' || $incomeActiveTab === 'create');
+                $isManageIncomeActive = $isIncomeRoute && in_array($incomeActiveTab, ['standard', 'non-standard', 'proformas', 'create']);
+                $isStdIncomeActive = $isIncomeRoute && in_array($incomeActiveTab, ['standard', 'proformas', 'create']);
                 $isNonStdIncomeActive = $isIncomeRoute && $incomeActiveTab === 'non-standard';
+                $isAllIncomeActive = $isIncomeRoute && ($incomeActiveTab === 'incomes' || $incomeActiveTab === 'all');
             @endphp
             <div class="sidebar-accordion" id="accordion-income">
                 <button type="button" 
                     onclick="toggleSidebarAccordion('accordion-income-menu', 'accordion-income-chevron')"
-                    class="w-full flex items-center justify-between px-md py-3 rounded-xl transition-all duration-200 ease-in-out text-left border-0 bg-transparent cursor-pointer {{ $isIncomeRoute ? 'text-white font-medium shadow-sm' : 'hover:text-white' }}"
-                    style="{{ $isIncomeRoute ? 'background-color: #334155;' : 'color: #94a3b8;' }}">
+                    class="w-full flex items-center justify-between px-md py-3 rounded-xl transition-all duration-200 ease-in-out text-left border-0 bg-transparent cursor-pointer {{ $isManageIncomeActive ? 'text-white font-medium shadow-sm' : 'hover:text-white' }}"
+                    style="{{ $isManageIncomeActive ? 'background-color: #334155;' : 'color: #94a3b8;' }}">
                     <div class="flex items-center gap-md">
-                        <span class="material-symbols-outlined text-[20px]">account_balance_wallet</span>
+                        <span class="material-symbols-outlined text-[20px]">finance</span>
                         <span class="text-base font-medium">Manage Income</span>
                     </div>
-                    <span id="accordion-income-chevron" class="material-symbols-outlined text-[18px] transition-transform duration-200 {{ $isIncomeRoute ? 'rotate-180 text-white' : 'text-slate-400' }}">
+                    <span id="accordion-income-chevron" class="material-symbols-outlined text-[18px] transition-transform duration-200 {{ $isManageIncomeActive ? 'rotate-180 text-white' : 'text-slate-400' }}">
                         expand_more
                     </span>
                 </button>
-                <div id="accordion-income-menu" class="space-y-1 mt-1 pl-4 {{ $isIncomeRoute ? 'block' : 'hidden' }}">
-                    <a href="{{ route('admin.invoices', ['tab' => 'incomes']) }}"
-                       class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all duration-150 {{ $isAllIncomeActive ? 'text-white font-semibold bg-indigo-600/40 shadow-sm' : 'text-slate-400 hover:text-white hover:bg-slate-700/50' }}">
-                        <i class="fas fa-circle text-[6px] {{ $isAllIncomeActive ? 'text-indigo-400' : 'text-slate-500' }}"></i>
-                        <span>Incomes</span>
-                    </a>
+                <div id="accordion-income-menu" class="space-y-1 mt-1 pl-4 {{ $isManageIncomeActive ? 'block' : 'hidden' }}">
                     <a href="{{ route('admin.invoices', ['tab' => 'standard']) }}"
                        class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all duration-150 {{ $isStdIncomeActive ? 'text-white font-semibold bg-indigo-600/40 shadow-sm' : 'text-slate-400 hover:text-white hover:bg-slate-700/50' }}">
                         <i class="fas fa-circle text-[6px] {{ $isStdIncomeActive ? 'text-indigo-400' : 'text-slate-500' }}"></i>
@@ -273,6 +273,14 @@
                     </a>
                 </div>
             </div>
+
+            <!-- Standalone Incomes Menu Item -->
+            <a class="flex items-center gap-md px-md py-3 rounded-xl transition-all duration-200 ease-in-out {{ $isAllIncomeActive ? 'text-white font-medium shadow-sm' : 'hover:text-white' }}" 
+               style="{{ $isAllIncomeActive ? 'background-color: #334155;' : 'color: #94a3b8;' }}" 
+               href="{{ route('admin.invoices', ['tab' => 'incomes']) }}">
+                <span class="material-symbols-outlined text-[20px]">account_balance_wallet</span>
+                <span class="text-base font-medium">Incomes</span>
+            </a>
             <a class="flex items-center gap-md px-md py-3 rounded-xl transition-all duration-200 ease-in-out {{ request()->routeIs('admin.users') ? 'text-white font-medium shadow-sm' : 'hover:text-white' }}" style="{{ request()->routeIs('admin.users') ? 'background-color: #334155;' : 'color: #94a3b8;' }}" href="{{ route('admin.users') }}">
                 <span class="material-symbols-outlined text-[20px]">manage_accounts</span>
                 <span class="text-base font-medium">User Management</span>
