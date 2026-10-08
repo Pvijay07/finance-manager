@@ -197,8 +197,9 @@
             <!-- Manage Expenses Accordion -->
             @php
                 $isExpenseRoute = request()->routeIs('admin.standard-expenses*');
-                $expenseActiveTab = request()->get('tab', 'standard');
-                $isStdExpenseActive = $isExpenseRoute && ($expenseActiveTab === 'standard' || $expenseActiveTab === 'table-tab' || $expenseActiveTab === 'form-tab' || !$expenseActiveTab);
+                $expenseActiveTab = request()->get('tab', 'expenses');
+                $isAllExpenseActive = $isExpenseRoute && ($expenseActiveTab === 'expenses' || $expenseActiveTab === 'all');
+                $isStdExpenseActive = $isExpenseRoute && ($expenseActiveTab === 'standard' || $expenseActiveTab === 'table-tab' || $expenseActiveTab === 'form-tab');
                 $isNonStdExpenseActive = $isExpenseRoute && $expenseActiveTab === 'non-standard';
             @endphp
             <div class="sidebar-accordion" id="accordion-expenses">
@@ -215,10 +216,15 @@
                     </span>
                 </button>
                 <div id="accordion-expenses-menu" class="space-y-1 mt-1 pl-4 {{ $isExpenseRoute ? 'block' : 'hidden' }}">
+                    <a href="{{ route('admin.standard-expenses', ['tab' => 'expenses']) }}"
+                       class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all duration-150 {{ $isAllExpenseActive ? 'text-white font-semibold bg-indigo-600/40 shadow-sm' : 'text-slate-400 hover:text-white hover:bg-slate-700/50' }}">
+                        <i class="fas fa-circle text-[6px] {{ $isAllExpenseActive ? 'text-indigo-400' : 'text-slate-500' }}"></i>
+                        <span>Expenses</span>
+                    </a>
                     <a href="{{ route('admin.standard-expenses', ['tab' => 'standard']) }}"
                        class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all duration-150 {{ $isStdExpenseActive ? 'text-white font-semibold bg-indigo-600/40 shadow-sm' : 'text-slate-400 hover:text-white hover:bg-slate-700/50' }}">
                         <i class="fas fa-circle text-[6px] {{ $isStdExpenseActive ? 'text-indigo-400' : 'text-slate-500' }}"></i>
-                        <span>Expenses</span>
+                        <span>Standard Expenses</span>
                     </a>
                     <a href="{{ route('admin.standard-expenses', ['tab' => 'non-standard']) }}"
                        class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all duration-150 {{ $isNonStdExpenseActive ? 'text-white font-semibold bg-indigo-600/40 shadow-sm' : 'text-slate-400 hover:text-white hover:bg-slate-700/50' }}">
@@ -231,8 +237,9 @@
             <!-- Manage Income Accordion -->
             @php
                 $isIncomeRoute = request()->routeIs('admin.invoices*');
-                $incomeActiveTab = request()->get('tab', 'standard');
-                $isStdIncomeActive = $isIncomeRoute && ($incomeActiveTab === 'standard' || $incomeActiveTab === 'proformas' || $incomeActiveTab === 'create' || !$incomeActiveTab);
+                $incomeActiveTab = request()->get('tab', 'incomes');
+                $isAllIncomeActive = $isIncomeRoute && ($incomeActiveTab === 'incomes' || $incomeActiveTab === 'all');
+                $isStdIncomeActive = $isIncomeRoute && ($incomeActiveTab === 'standard' || $incomeActiveTab === 'proformas' || $incomeActiveTab === 'create');
                 $isNonStdIncomeActive = $isIncomeRoute && $incomeActiveTab === 'non-standard';
             @endphp
             <div class="sidebar-accordion" id="accordion-income">
@@ -249,10 +256,15 @@
                     </span>
                 </button>
                 <div id="accordion-income-menu" class="space-y-1 mt-1 pl-4 {{ $isIncomeRoute ? 'block' : 'hidden' }}">
+                    <a href="{{ route('admin.invoices', ['tab' => 'incomes']) }}"
+                       class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all duration-150 {{ $isAllIncomeActive ? 'text-white font-semibold bg-indigo-600/40 shadow-sm' : 'text-slate-400 hover:text-white hover:bg-slate-700/50' }}">
+                        <i class="fas fa-circle text-[6px] {{ $isAllIncomeActive ? 'text-indigo-400' : 'text-slate-500' }}"></i>
+                        <span>Incomes</span>
+                    </a>
                     <a href="{{ route('admin.invoices', ['tab' => 'standard']) }}"
                        class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all duration-150 {{ $isStdIncomeActive ? 'text-white font-semibold bg-indigo-600/40 shadow-sm' : 'text-slate-400 hover:text-white hover:bg-slate-700/50' }}">
                         <i class="fas fa-circle text-[6px] {{ $isStdIncomeActive ? 'text-indigo-400' : 'text-slate-500' }}"></i>
-                        <span>Incomes</span>
+                        <span>Standard Income</span>
                     </a>
                     <a href="{{ route('admin.invoices', ['tab' => 'non-standard']) }}"
                        class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all duration-150 {{ $isNonStdIncomeActive ? 'text-white font-semibold bg-indigo-600/40 shadow-sm' : 'text-slate-400 hover:text-white hover:bg-slate-700/50' }}">

@@ -19,29 +19,319 @@
         </div>
     </div>
 
-    <!-- 2 Primary Tabs: Standard Expenses vs Non-Standard Expenses -->
-    <div class="d-flex align-items-center gap-2 mb-4 border-bottom pb-3">
-        <a href="{{ route('admin.standard-expenses', ['tab' => 'standard']) }}"
-            class="btn py-2 px-4 d-inline-flex align-items-center gap-2 {{ ($mainTab ?? 'standard') === 'standard' ? 'btn-primary shadow-sm text-white' : 'btn-light border text-muted' }}"
-            style="border-radius: 10px; font-weight: 600; font-size: 0.95rem; text-decoration: none; {{ ($mainTab ?? 'standard') === 'standard' ? 'background-color: #4f46e5; border-color: #4f46e5;' : '' }}">
+    <!-- 3 Primary Tabs: Expenses (All), Standard Expenses, and Non-Standard Expenses -->
+    <div class="d-flex align-items-center gap-2 mb-4 border-bottom pb-3 flex-wrap">
+        <a href="{{ route('admin.standard-expenses', ['tab' => 'expenses']) }}"
+            class="btn py-2 px-4 d-inline-flex align-items-center gap-2 {{ ($mainTab ?? 'expenses') === 'expenses' ? 'btn-primary shadow-sm text-white' : 'btn-light border text-muted' }}"
+            style="border-radius: 10px; font-weight: 600; font-size: 0.95rem; text-decoration: none; {{ ($mainTab ?? 'expenses') === 'expenses' ? 'background-color: #4f46e5; border-color: #4f46e5;' : '' }}">
             <i class="fas fa-layer-group"></i>
             <span>Expenses</span>
-            <span class="badge {{ ($mainTab ?? 'standard') === 'standard' ? 'bg-white text-dark' : 'bg-secondary text-white' }} ms-1">
+            <span class="badge {{ ($mainTab ?? 'expenses') === 'expenses' ? 'bg-white text-dark' : 'bg-secondary text-white' }} ms-1">
+                {{ $allStatusCounts['all'] ?? 0 }}
+            </span>
+        </a>
+        <a href="{{ route('admin.standard-expenses', ['tab' => 'standard']) }}"
+            class="btn py-2 px-4 d-inline-flex align-items-center gap-2 {{ ($mainTab ?? '') === 'standard' ? 'btn-primary shadow-sm text-white' : 'btn-light border text-muted' }}"
+            style="border-radius: 10px; font-weight: 600; font-size: 0.95rem; text-decoration: none; {{ ($mainTab ?? '') === 'standard' ? 'background-color: #4f46e5; border-color: #4f46e5;' : '' }}">
+            <i class="fas fa-calendar-alt"></i>
+            <span>Standard Expenses</span>
+            <span class="badge {{ ($mainTab ?? '') === 'standard' ? 'bg-white text-dark' : 'bg-secondary text-white' }} ms-1">
                 {{ $statusCounts['all'] ?? 0 }}
             </span>
         </a>
         <a href="{{ route('admin.standard-expenses', ['tab' => 'non-standard']) }}"
-            class="btn py-2 px-4 d-inline-flex align-items-center gap-2 {{ ($mainTab ?? 'standard') === 'non-standard' ? 'btn-primary shadow-sm text-white' : 'btn-light border text-muted' }}"
-            style="border-radius: 10px; font-weight: 600; font-size: 0.95rem; text-decoration: none; {{ ($mainTab ?? 'standard') === 'non-standard' ? 'background-color: #4f46e5; border-color: #4f46e5;' : '' }}">
+            class="btn py-2 px-4 d-inline-flex align-items-center gap-2 {{ ($mainTab ?? '') === 'non-standard' ? 'btn-primary shadow-sm text-white' : 'btn-light border text-muted' }}"
+            style="border-radius: 10px; font-weight: 600; font-size: 0.95rem; text-decoration: none; {{ ($mainTab ?? '') === 'non-standard' ? 'background-color: #4f46e5; border-color: #4f46e5;' : '' }}">
             <i class="fas fa-receipt"></i>
             <span>Non-Standard Expenses</span>
-            <span class="badge {{ ($mainTab ?? 'standard') === 'non-standard' ? 'bg-white text-dark' : 'bg-secondary text-white' }} ms-1">
+            <span class="badge {{ ($mainTab ?? '') === 'non-standard' ? 'bg-white text-dark' : 'bg-secondary text-white' }} ms-1">
                 {{ $nsStatusCounts['all'] ?? 0 }}
             </span>
         </a>
     </div>
 
-    @if(($mainTab ?? 'standard') === 'standard')
+    @if(($mainTab ?? 'expenses') === 'expenses')
+    <!-- All Expenses Section (Show all Standard and Non-Standard Expenses in one place) -->
+    <div id="all-expenses-section">
+        <!-- Status Tabs for All Expenses -->
+        <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+            <button type="button"
+                class="btn btn-sm py-2 px-3 status-tab-btn {{ ($statusFilter ?? 'all') == 'all' ? 'active shadow-sm text-white' : 'btn-light border text-muted' }}"
+                onclick="setAllExpensesStatusFilter('all')"
+                style="border-radius: 8px; font-weight: 600; font-size: 0.85rem; {{ ($statusFilter ?? 'all') == 'all' ? 'background-color: #4f46e5; border-color: #4f46e5;' : 'background-color: #ffffff;' }}">
+                <i class="fas fa-list-ul me-1"></i> All Expenses
+                <span class="badge ms-1 {{ ($statusFilter ?? 'all') == 'all' ? 'bg-white text-dark' : 'bg-secondary text-white' }}">{{ $allStatusCounts['all'] ?? 0 }}</span>
+            </button>
+            <button type="button"
+                class="btn btn-sm py-2 px-3 status-tab-btn {{ ($statusFilter ?? '') == 'pending' ? 'active shadow-sm text-white' : 'btn-light border text-muted' }}"
+                onclick="setAllExpensesStatusFilter('pending')"
+                style="border-radius: 8px; font-weight: 600; font-size: 0.85rem; {{ ($statusFilter ?? '') == 'pending' ? 'background-color: #f59e0b; border-color: #f59e0b;' : 'background-color: #ffffff;' }}">
+                <i class="fas fa-clock me-1"></i> Pending
+                <span class="badge ms-1 {{ ($statusFilter ?? '') == 'pending' ? 'bg-white text-dark' : 'bg-warning text-dark' }}">{{ $allStatusCounts['pending'] ?? 0 }}</span>
+            </button>
+            <button type="button"
+                class="btn btn-sm py-2 px-3 status-tab-btn {{ ($statusFilter ?? '') == 'upcoming' ? 'active shadow-sm text-white' : 'btn-light border text-muted' }}"
+                onclick="setAllExpensesStatusFilter('upcoming')"
+                style="border-radius: 8px; font-weight: 600; font-size: 0.85rem; {{ ($statusFilter ?? '') == 'upcoming' ? 'background-color: #3b82f6; border-color: #3b82f6;' : 'background-color: #ffffff;' }}">
+                <i class="fas fa-calendar-check me-1"></i> Upcoming
+                <span class="badge ms-1 {{ ($statusFilter ?? '') == 'upcoming' ? 'bg-white text-primary' : 'bg-info text-white' }}">{{ $allStatusCounts['upcoming'] ?? 0 }}</span>
+            </button>
+            <button type="button"
+                class="btn btn-sm py-2 px-3 status-tab-btn {{ ($statusFilter ?? '') == 'paid' ? 'active shadow-sm text-white' : 'btn-light border text-muted' }}"
+                onclick="setAllExpensesStatusFilter('paid')"
+                style="border-radius: 8px; font-weight: 600; font-size: 0.85rem; {{ ($statusFilter ?? '') == 'paid' ? 'background-color: #10b981; border-color: #10b981;' : 'background-color: #ffffff;' }}">
+                <i class="fas fa-check-circle me-1"></i> Paid
+                <span class="badge ms-1 {{ ($statusFilter ?? '') == 'paid' ? 'bg-white text-success' : 'bg-success text-white' }}">{{ $allStatusCounts['paid'] ?? 0 }}</span>
+            </button>
+        </div>
+
+        <!-- Filter Card -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <form id="allExpensesFilterForm" method="GET" action="{{ route('admin.standard-expenses') }}" class="row g-3 align-items-end">
+                    <input type="hidden" name="tab" value="expenses">
+                    <input type="hidden" name="status" id="allExpenseStatusInput" value="{{ $statusFilter ?? 'all' }}">
+
+                    <!-- Search Field -->
+                    <div class="col-md-3 col-sm-6">
+                        <label class="form-label small mb-1">Search</label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="fas fa-search"></i></span>
+                            <input type="text" class="form-control" name="search" value="{{ $search }}" placeholder="Search expense, vendor...">
+                        </div>
+                    </div>
+
+                    <!-- Company Filter -->
+                    <div class="col-md-2 col-sm-6">
+                        <label class="form-label small mb-1">Company</label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="fas fa-building"></i></span>
+                            <select class="form-select" name="company_id" onchange="this.form.submit()">
+                                <option value="all" {{ ($companyFilter == 'all' || !$companyFilter) ? 'selected' : '' }}>All Companies</option>
+                                @foreach ($companies as $company)
+                                    <option value="{{ $company->id }}" {{ $companyFilter == $company->id ? 'selected' : '' }}>
+                                        {{ $company->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Type Filter (Standard vs Non-Standard) -->
+                    <div class="col-md-2 col-sm-6">
+                        <label class="form-label small mb-1">Expense Type</label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="fas fa-filter"></i></span>
+                            <select class="form-select" name="type" onchange="this.form.submit()">
+                                <option value="all" {{ ($typeFilter == 'all' || !$typeFilter) ? 'selected' : '' }}>All Types</option>
+                                <option value="standard" {{ $typeFilter == 'standard' ? 'selected' : '' }}>Standard Expenses</option>
+                                <option value="non-standard" {{ $typeFilter == 'non-standard' ? 'selected' : '' }}>Non-Standard Expenses</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Category Filter -->
+                    <div class="col-md-2 col-sm-6">
+                        <label class="form-label small mb-1">Category</label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="fas fa-folder"></i></span>
+                            <select class="form-select" name="category_type" onchange="this.form.submit()">
+                                <option value="all" {{ ($categoryFilter == 'all' || !$categoryFilter) ? 'selected' : '' }}>All Categories</option>
+                                @foreach ($categories as $cat)
+                                    <option value="{{ $cat->id }}" {{ $categoryFilter == $cat->id ? 'selected' : '' }}>
+                                        {{ $cat->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Date Range Filter -->
+                    <div class="col-md-2 col-sm-6">
+                        <label class="form-label small mb-1">Date Range</label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                            <select class="form-select" name="date_range" id="allExpDateRange" onchange="handleAllExpDateRangeChange(this.value)">
+                                <option value="all" {{ ($dateRange == 'all' || !$dateRange) ? 'selected' : '' }}>All Dates</option>
+                                <option value="today" {{ $dateRange == 'today' ? 'selected' : '' }}>Today</option>
+                                <option value="week" {{ $dateRange == 'week' ? 'selected' : '' }}>This Week</option>
+                                <option value="month" {{ $dateRange == 'month' ? 'selected' : '' }}>This Month</option>
+                                <option value="quarter" {{ $dateRange == 'quarter' ? 'selected' : '' }}>This Quarter</option>
+                                <option value="year" {{ $dateRange == 'year' ? 'selected' : '' }}>This Year</option>
+                                <option value="custom" {{ $dateRange == 'custom' ? 'selected' : '' }}>Custom Range</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Per Page -->
+                    <div class="col-md-1 col-sm-6">
+                        <label class="form-label small mb-1">Per Page</label>
+                        <div class="input-group input-group-sm">
+                            <select class="form-select" name="per_page" onchange="this.form.submit()">
+                                <option value="10" {{ ($perPage == 10 || !$perPage) ? 'selected' : '' }}>10</option>
+                                <option value="25" {{ $perPage == 25 ? 'selected' : '' }}>25</option>
+                                <option value="50" {{ $perPage == 50 ? 'selected' : '' }}>50</option>
+                                <option value="100" {{ $perPage == 100 ? 'selected' : '' }}>100</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Custom Date Fields -->
+                    <div class="col-12 {{ $dateRange == 'custom' ? '' : 'd-none' }}" id="allExpCustomDateContainer">
+                        <div class="row g-2 pt-2 border-top">
+                            <div class="col-md-3">
+                                <label class="form-label small mb-1">Start Date</label>
+                                <input type="date" class="form-control form-control-sm" name="start_date" value="{{ $startDate }}">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small mb-1">End Date</label>
+                                <input type="date" class="form-control form-control-sm" name="end_date" value="{{ $endDate }}">
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button type="submit" class="btn btn-sm btn-primary w-100">Apply Date</button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- All Expenses Table -->
+        <div class="card shadow-sm border-0 mb-4" style="border-radius: 12px; overflow: hidden;">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-0 fw-bold" style="color: #0f172a; font-size: 1.05rem;">
+                        <i class="fas fa-layer-group text-primary me-2"></i>Expenses (All Standard & Non-Standard)
+                    </h5>
+                    <p class="text-muted small mb-0 mt-1">Unified view of all corporate expenditures</p>
+                </div>
+                <div class="text-muted small">
+                    Showing <strong>{{ $allExpenses->count() }}</strong> of <strong>{{ $allExpenses->total() }}</strong> records
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" style="font-size: 13.5px;">
+                        <thead class="table-light text-uppercase text-secondary" style="font-size: 11px; letter-spacing: 0.5px;">
+                            <tr>
+                                <th class="ps-4">Due Date</th>
+                                <th>Expense Name & Ref</th>
+                                <th>Type</th>
+                                <th>Company</th>
+                                <th>Category</th>
+                                <th class="text-end">Amount</th>
+                                <th class="text-end">Paid</th>
+                                <th class="text-end">Balance</th>
+                                <th>Mode</th>
+                                <th class="text-center">Status</th>
+                                <th class="text-end pe-4">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($allExpenses as $exp)
+                            <tr>
+                                <td class="ps-4 text-nowrap">
+                                    <div class="fw-semibold text-dark">{{ $exp->due_date ? \Carbon\Carbon::parse($exp->due_date)->format('d M Y') : 'N/A' }}</div>
+                                    @if($exp->payment_date)
+                                    <div class="text-muted text-xs">Paid: {{ \Carbon\Carbon::parse($exp->payment_date)->format('d M Y') }}</div>
+                                    @endif
+                                </td>
+                                <td>
+                                    <div class="fw-bold text-dark">{{ $exp->expense_name ?: $exp->name }}</div>
+                                    <div class="text-muted text-xs">Ref: {{ $exp->expense_number ?? 'EXP-'.$exp->id }}</div>
+                                </td>
+                                <td>
+                                    @if($exp->source === 'standard')
+                                        <span class="badge rounded-pill px-2.5 py-1 text-xs fw-semibold" style="background-color: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe;">
+                                            <i class="fas fa-calendar-alt me-1"></i>Standard
+                                        </span>
+                                    @else
+                                        <span class="badge rounded-pill px-2.5 py-1 text-xs fw-semibold" style="background-color: #f3e8ff; color: #6b21a8; border: 1px solid #e9d5ff;">
+                                            <i class="fas fa-receipt me-1"></i>Non-Standard
+                                        </span>
+                                    @endif
+                                </td>
+                                <td class="text-dark">{{ $exp->company->name ?? 'All Companies' }}</td>
+                                <td>
+                                    <span class="badge bg-light text-dark border px-2 py-1">
+                                        {{ $exp->categoryRelation->name ?? $exp->category_name ?? 'General' }}
+                                    </span>
+                                </td>
+                                <td class="text-end fw-bold text-dark text-nowrap">
+                                    ₹{{ number_format($exp->schedule_amount ?: ($exp->planned_amount ?: $exp->actual_amount), 2) }}
+                                </td>
+                                <td class="text-end text-success fw-semibold text-nowrap">
+                                    ₹{{ number_format($exp->paid_amount ?: 0, 2) }}
+                                </td>
+                                <td class="text-end {{ ($exp->balance_amount > 0) ? 'text-danger fw-bold' : 'text-muted' }} text-nowrap">
+                                    ₹{{ number_format($exp->balance_amount ?: 0, 2) }}
+                                </td>
+                                <td>
+                                    <span class="badge bg-light text-secondary border text-capitalize">
+                                        {{ str_replace('_', ' ', $exp->payment_mode ?? 'cash') }}
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    @php
+                                        $s = strtolower($exp->status ?? 'pending');
+                                        $badgeBg = '#64748b';
+                                        if (in_array($s, ['paid', 'settle', 'settled'])) {
+                                            $badgeBg = '#10b981';
+                                        } elseif ($s === 'upcoming') {
+                                            $badgeBg = '#3b82f6';
+                                        } elseif ($s === 'pending' || $s === 'due') {
+                                            $badgeBg = '#f59e0b';
+                                        }
+                                    @endphp
+                                    <span class="badge text-white px-2.5 py-1 rounded-pill text-xs text-capitalize" style="background-color: {{ $badgeBg }};">
+                                        {{ $s }}
+                                    </span>
+                                </td>
+                                <td class="text-end pe-4 text-nowrap">
+                                    <div class="btn-group btn-group-sm">
+                                        @if(!in_array($exp->status, ['paid', 'settle', 'settled']))
+                                        <button type="button" class="btn btn-outline-success btn-sm" onclick="markAllExpenseAsPaid({{ $exp->id }}, '{{ addslashes($exp->expense_name ?: $exp->name) }}', {{ $exp->balance_amount > 0 ? $exp->balance_amount : ($exp->schedule_amount ?: $exp->planned_amount) }}, '{{ $exp->source }}')" title="Mark as Paid">
+                                            <i class="fas fa-check"></i>
+                                        </button>
+                                        @endif
+                                        @if($exp->source !== 'standard')
+                                        <form action="{{ route('admin.standard-expenses.non-standard.destroy', $exp->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this non-standard expense record?');">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn btn-outline-danger btn-sm" title="Delete">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </form>
+                                        @endif
+                                    </div>
+                                </td>
+                            </tr>
+                            @empty
+                            <tr>
+                                <td colspan="11" class="text-center py-5 text-muted">
+                                    <i class="fas fa-inbox fa-3x mb-3 text-secondary opacity-50"></i>
+                                    <p class="mb-0">No corporate expenses found matching the selected filters.</p>
+                                </td>
+                            </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+
+                @if($allExpenses->hasPages())
+                <div class="p-3 border-top d-flex justify-content-between align-items-center">
+                    <div class="text-muted small">
+                        Showing {{ $allExpenses->firstItem() }} to {{ $allExpenses->lastItem() }} of {{ $allExpenses->total() }} entries
+                    </div>
+                    <div>
+                        {{ $allExpenses->links() }}
+                    </div>
+                </div>
+                @endif
+            </div>
+        </div>
+    </div>
+    @elseif(($mainTab ?? '') === 'standard')
     <!-- Tab Navigation for Standard Expenses (Add Form vs List) -->
     <div class="tabs-container" style="margin-bottom: 20px;">
         <div class="tabs-header">
@@ -2761,6 +3051,55 @@
             if (settleContainer) settleContainer.style.display = 'none';
             if (settleNotesInput) settleNotesInput.required = false;
         }
+    }
+
+    function setAllExpensesStatusFilter(status) {
+        const input = document.getElementById('allExpenseStatusInput');
+        if (input) input.value = status;
+        const form = document.getElementById('allExpensesFilterForm');
+        if (form) form.submit();
+    }
+
+    function handleAllExpDateRangeChange(val) {
+        const container = document.getElementById('allExpCustomDateContainer');
+        if (container) {
+            if (val === 'custom') {
+                container.classList.remove('d-none');
+            } else {
+                container.classList.add('d-none');
+                document.getElementById('allExpensesFilterForm')?.submit();
+            }
+        }
+    }
+
+    function markAllExpenseAsPaid(expenseId, expenseName, amount, source) {
+        if (!confirm(`Mark "${expenseName}" as paid (Amount: ₹${parseFloat(amount || 0).toLocaleString()})?`)) {
+            return;
+        }
+        
+        let url = `{{ url('admin/standard-expenses/non-standard') }}/${expenseId}/mark-paid`;
+        if (source === 'standard') {
+            url = `{{ url('admin/standard-expenses') }}/${expenseId}/mark-paid`;
+        }
+
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = url;
+
+        const csrfToken = document.createElement('input');
+        csrfToken.type = 'hidden';
+        csrfToken.name = '_token';
+        csrfToken.value = '{{ csrf_token() }}';
+        form.appendChild(csrfToken);
+
+        const paidInput = document.createElement('input');
+        paidInput.type = 'hidden';
+        paidInput.name = 'paid_amount';
+        paidInput.value = amount;
+        form.appendChild(paidInput);
+
+        document.body.appendChild(form);
+        form.submit();
     }
 </script>
 <style>

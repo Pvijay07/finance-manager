@@ -127,29 +127,320 @@
             </div>
         </div>
 
-        <!-- 2 Primary Tabs: Standard Income vs Non-Standard Income -->
-        <div class="d-flex align-items-center gap-2 mb-4 border-bottom pb-3">
-            <a href="{{ route('admin.invoices', ['tab' => 'standard']) }}"
-               class="btn py-2 px-4 d-inline-flex align-items-center gap-2 {{ $mainTab === 'standard' ? 'btn-primary shadow-sm text-white' : 'btn-light border text-muted' }}"
-               style="border-radius: 10px; font-weight: 600; font-size: 0.95rem; text-decoration: none; {{ $mainTab === 'standard' ? 'background-color: #4f46e5; border-color: #4f46e5;' : '' }}">
-                <i class="fas fa-file-invoice-dollar"></i>
+        <!-- 3 Primary Tabs: Incomes (All), Standard Income, and Non-Standard Income -->
+        <div class="d-flex align-items-center gap-2 mb-4 border-bottom pb-3 flex-wrap">
+            <a href="{{ route('admin.invoices', ['tab' => 'incomes']) }}"
+               class="btn py-2 px-4 d-inline-flex align-items-center gap-2 {{ ($mainTab ?? 'incomes') === 'incomes' ? 'btn-primary shadow-sm text-white' : 'btn-light border text-muted' }}"
+               style="border-radius: 10px; font-weight: 600; font-size: 0.95rem; text-decoration: none; {{ ($mainTab ?? 'incomes') === 'incomes' ? 'background-color: #4f46e5; border-color: #4f46e5;' : '' }}">
+                <i class="fas fa-layer-group"></i>
                 <span>Incomes</span>
-                <span class="badge {{ $mainTab === 'standard' ? 'bg-white text-dark' : 'bg-secondary text-white' }} ms-1">
+                <span class="badge {{ ($mainTab ?? 'incomes') === 'incomes' ? 'bg-white text-dark' : 'bg-secondary text-white' }} ms-1">
+                    {{ $allIncomeStatusCounts['all'] ?? 0 }}
+                </span>
+            </a>
+            <a href="{{ route('admin.invoices', ['tab' => 'standard']) }}"
+               class="btn py-2 px-4 d-inline-flex align-items-center gap-2 {{ ($mainTab ?? '') === 'standard' ? 'btn-primary shadow-sm text-white' : 'btn-light border text-muted' }}"
+               style="border-radius: 10px; font-weight: 600; font-size: 0.95rem; text-decoration: none; {{ ($mainTab ?? '') === 'standard' ? 'background-color: #4f46e5; border-color: #4f46e5;' : '' }}">
+                <i class="fas fa-file-invoice-dollar"></i>
+                <span>Standard Income</span>
+                <span class="badge {{ ($mainTab ?? '') === 'standard' ? 'bg-white text-dark' : 'bg-secondary text-white' }} ms-1">
                     {{ $pendingProformasCount + $invoices->total() }}
                 </span>
             </a>
             <a href="{{ route('admin.invoices', ['tab' => 'non-standard']) }}"
-               class="btn py-2 px-4 d-inline-flex align-items-center gap-2 {{ $mainTab === 'non-standard' ? 'btn-primary shadow-sm text-white' : 'btn-light border text-muted' }}"
-               style="border-radius: 10px; font-weight: 600; font-size: 0.95rem; text-decoration: none; {{ $mainTab === 'non-standard' ? 'background-color: #4f46e5; border-color: #4f46e5;' : '' }}">
+               class="btn py-2 px-4 d-inline-flex align-items-center gap-2 {{ ($mainTab ?? '') === 'non-standard' ? 'btn-primary shadow-sm text-white' : 'btn-light border text-muted' }}"
+               style="border-radius: 10px; font-weight: 600; font-size: 0.95rem; text-decoration: none; {{ ($mainTab ?? '') === 'non-standard' ? 'background-color: #4f46e5; border-color: #4f46e5;' : '' }}">
                 <i class="fas fa-hand-holding-usd"></i>
                 <span>Non-Standard Income</span>
-                <span class="badge {{ $mainTab === 'non-standard' ? 'bg-white text-dark' : 'bg-secondary text-white' }} ms-1">
+                <span class="badge {{ ($mainTab ?? '') === 'non-standard' ? 'bg-white text-dark' : 'bg-secondary text-white' }} ms-1">
                     {{ $nsIncomeStatusCounts['all'] ?? 0 }}
                 </span>
             </a>
         </div>
 
-        @if($mainTab === 'standard')
+        @if(($mainTab ?? 'incomes') === 'incomes')
+        <!-- All Incomes Section (Show all Standard and Non-Standard Incomes in one place) -->
+        <div id="all-incomes-section">
+            <!-- Status Tabs -->
+            <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+                <button type="button" 
+                    class="btn btn-sm py-2 px-3 {{ ($status ?? 'all') == 'all' ? 'active shadow-sm text-white' : 'btn-light border text-muted' }}"
+                    onclick="setAllIncomeStatusFilter('all')"
+                    style="border-radius: 8px; font-weight: 600; font-size: 0.85rem; {{ ($status ?? 'all') == 'all' ? 'background-color: #4f46e5; border-color: #4f46e5;' : 'background-color: #ffffff;' }}">
+                    <i class="fas fa-list-ul me-1"></i> All Incomes
+                    <span class="badge ms-1 {{ ($status ?? 'all') == 'all' ? 'bg-white text-dark' : 'bg-secondary text-white' }}">{{ $allIncomeStatusCounts['all'] ?? 0 }}</span>
+                </button>
+                <button type="button" 
+                    class="btn btn-sm py-2 px-3 {{ ($status ?? '') == 'paid' ? 'active shadow-sm text-white' : 'btn-light border text-muted' }}"
+                    onclick="setAllIncomeStatusFilter('paid')"
+                    style="border-radius: 8px; font-weight: 600; font-size: 0.85rem; {{ ($status ?? '') == 'paid' ? 'background-color: #10b981; border-color: #10b981;' : 'background-color: #ffffff;' }}">
+                    <i class="fas fa-check-circle me-1"></i> Paid / Received
+                    <span class="badge ms-1 {{ ($status ?? '') == 'paid' ? 'bg-white text-success' : 'bg-success text-white' }}">{{ $allIncomeStatusCounts['paid'] ?? 0 }}</span>
+                </button>
+                <button type="button" 
+                    class="btn btn-sm py-2 px-3 {{ ($status ?? '') == 'pending' ? 'active shadow-sm text-white' : 'btn-light border text-muted' }}"
+                    onclick="setAllIncomeStatusFilter('pending')"
+                    style="border-radius: 8px; font-weight: 600; font-size: 0.85rem; {{ ($status ?? '') == 'pending' ? 'background-color: #f59e0b; border-color: #f59e0b;' : 'background-color: #ffffff;' }}">
+                    <i class="fas fa-clock me-1"></i> Pending
+                    <span class="badge ms-1 {{ ($status ?? '') == 'pending' ? 'bg-white text-dark' : 'bg-warning text-dark' }}">{{ $allIncomeStatusCounts['pending'] ?? 0 }}</span>
+                </button>
+                <button type="button" 
+                    class="btn btn-sm py-2 px-3 {{ ($status ?? '') == 'upcoming' ? 'active shadow-sm text-white' : 'btn-light border text-muted' }}"
+                    onclick="setAllIncomeStatusFilter('upcoming')"
+                    style="border-radius: 8px; font-weight: 600; font-size: 0.85rem; {{ ($status ?? '') == 'upcoming' ? 'background-color: #3b82f6; border-color: #3b82f6;' : 'background-color: #ffffff;' }}">
+                    <i class="fas fa-calendar-check me-1"></i> Upcoming
+                    <span class="badge ms-1 {{ ($status ?? '') == 'upcoming' ? 'bg-white text-primary' : 'bg-info text-white' }}">{{ $allIncomeStatusCounts['upcoming'] ?? 0 }}</span>
+                </button>
+            </div>
+
+            <!-- Filter Card -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <form id="allIncomeFilterForm" method="GET" action="{{ route('admin.invoices') }}" class="row g-3 align-items-end">
+                        <input type="hidden" name="tab" value="incomes">
+                        <input type="hidden" name="status" id="allIncomeStatusInput" value="{{ $status ?? 'all' }}">
+
+                        <!-- Search -->
+                        <div class="col-md-3 col-sm-6">
+                            <label class="form-label small mb-1">Search</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                <input type="text" class="form-control" name="search" value="{{ $search ?? '' }}" placeholder="Search invoice, client...">
+                            </div>
+                        </div>
+
+                        <!-- Company -->
+                        <div class="col-md-2 col-sm-6">
+                            <label class="form-label small mb-1">Company</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text"><i class="fas fa-building"></i></span>
+                                <select class="form-select" name="company" onchange="this.form.submit()">
+                                    <option value="all" {{ (($companyFilter ?? '') == 'all' || !($companyFilter ?? '')) ? 'selected' : '' }}>All Companies</option>
+                                    @foreach ($companies as $comp)
+                                        <option value="{{ $comp->id }}" {{ ($companyFilter ?? '') == $comp->id ? 'selected' : '' }}>{{ $comp->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Income Type Filter -->
+                        <div class="col-md-2 col-sm-6">
+                            <label class="form-label small mb-1">Income Type</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text"><i class="fas fa-filter"></i></span>
+                                <select class="form-select" name="type" onchange="this.form.submit()">
+                                    <option value="all" {{ (($typeFilter ?? 'all') == 'all') ? 'selected' : '' }}>All Types</option>
+                                    <option value="standard" {{ (($typeFilter ?? '') == 'standard') ? 'selected' : '' }}>Standard Invoices</option>
+                                    <option value="non-standard" {{ (($typeFilter ?? '') == 'non-standard') ? 'selected' : '' }}>Non-Standard Income</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Date Range -->
+                        <div class="col-md-2 col-sm-6">
+                            <label class="form-label small mb-1">Date Range</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                                <select class="form-select" name="date_range" id="allIncomeDateRange" onchange="handleAllIncomeDateRangeChange(this.value)">
+                                    <option value="all" {{ ($dateRange == 'all' || !$dateRange) ? 'selected' : '' }}>All Dates</option>
+                                    <option value="today" {{ $dateRange == 'today' ? 'selected' : '' }}>Today</option>
+                                    <option value="week" {{ $dateRange == 'week' ? 'selected' : '' }}>This Week</option>
+                                    <option value="month" {{ $dateRange == 'month' ? 'selected' : '' }}>This Month</option>
+                                    <option value="quarter" {{ $dateRange == 'quarter' ? 'selected' : '' }}>This Quarter</option>
+                                    <option value="year" {{ $dateRange == 'year' ? 'selected' : '' }}>This Year</option>
+                                    <option value="custom" {{ $dateRange == 'custom' ? 'selected' : '' }}>Custom Range</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Per Page -->
+                        <div class="col-md-1 col-sm-6">
+                            <label class="form-label small mb-1">Per Page</label>
+                            <div class="input-group input-group-sm">
+                                <select class="form-select" name="per_page" onchange="this.form.submit()">
+                                    <option value="10" {{ ($perPage == 10 || !$perPage) ? 'selected' : '' }}>10</option>
+                                    <option value="25" {{ $perPage == 25 ? 'selected' : '' }}>25</option>
+                                    <option value="50" {{ $perPage == 50 ? 'selected' : '' }}>50</option>
+                                    <option value="100" {{ $perPage == 100 ? 'selected' : '' }}>100</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="col-md-2 col-sm-12">
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary btn-sm flex-fill" style="background-color: #4f46e5; border-color: #4f46e5;">
+                                    <i class="fas fa-search me-1"></i> Filter
+                                </button>
+                                <a href="{{ route('admin.invoices', ['tab' => 'incomes']) }}" class="btn btn-outline-secondary btn-sm flex-fill">
+                                    <i class="fas fa-redo me-1"></i> Reset
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Custom Date Range Row -->
+                        <div class="col-12 mt-2" id="allIncomeCustomDateRow" style="display: {{ $dateRange == 'custom' ? 'block' : 'none' }};">
+                            <div class="p-3 bg-light rounded border d-flex align-items-center gap-3 flex-wrap">
+                                <span class="fw-semibold small text-muted"><i class="fas fa-calendar-day me-1"></i> Custom Range:</span>
+                                <div class="d-flex align-items-center gap-2">
+                                    <label class="form-label small mb-0">From:</label>
+                                    <input type="date" class="form-control form-control-sm" name="start_date" value="{{ $startDate ?? '' }}" style="width: auto;">
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <label class="form-label small mb-0">To:</label>
+                                    <input type="date" class="form-control form-control-sm" name="end_date" value="{{ $endDate ?? '' }}" style="width: auto;">
+                                </div>
+                                <button type="submit" class="btn btn-sm btn-primary" style="background-color: #4f46e5; border-color: #4f46e5;">Apply</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Unified Incomes Table -->
+            <div class="card shadow-sm border-0 mb-4" style="border-radius: 12px; overflow: hidden;">
+                <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="mb-0 fw-bold" style="color: #0f172a; font-size: 1.05rem;">
+                            <i class="fas fa-layer-group text-primary me-2"></i>Incomes (All Standard & Non-Standard)
+                        </h5>
+                        <p class="text-muted small mb-0 mt-1">Unified view of all corporate receivables and revenues</p>
+                    </div>
+                    <div class="text-muted small">
+                        Showing <strong>{{ $allIncomes->count() }}</strong> of <strong>{{ $allIncomes->total() }}</strong> records
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0" style="font-size: 13.5px;">
+                            <thead class="table-light text-uppercase text-secondary" style="font-size: 11px; letter-spacing: 0.5px;">
+                                <tr>
+                                    <th class="ps-4">Date</th>
+                                    <th>Ref / Invoice #</th>
+                                    <th>Type</th>
+                                    <th>Company</th>
+                                    <th>Client / Party</th>
+                                    <th class="text-end">Total Amount</th>
+                                    <th class="text-end">Received</th>
+                                    <th class="text-end">Balance</th>
+                                    <th>Mode</th>
+                                    <th class="text-center">Status</th>
+                                    <th class="text-end pe-4">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse ($allIncomes as $incItem)
+                                <tr>
+                                    <td class="ps-4 text-nowrap">
+                                        <div class="fw-semibold text-dark">
+                                            {{ $incItem->date ? \Carbon\Carbon::parse($incItem->date)->format('d M Y') : '—' }}
+                                        </div>
+                                        @if($incItem->due_date)
+                                        <div class="text-muted text-xs">Due: {{ \Carbon\Carbon::parse($incItem->due_date)->format('d M Y') }}</div>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        <div class="fw-bold text-dark">{{ $incItem->reference_no }}</div>
+                                    </td>
+                                    <td>
+                                        @if($incItem->source === 'standard')
+                                            <span class="badge rounded-pill px-2.5 py-1 text-xs fw-semibold" style="background-color: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe;">
+                                                <i class="fas fa-file-invoice me-1"></i>{{ $incItem->type_badge }}
+                                            </span>
+                                        @else
+                                            <span class="badge rounded-pill px-2.5 py-1 text-xs fw-semibold" style="background-color: #f3e8ff; color: #6b21a8; border: 1px solid #e9d5ff;">
+                                                <i class="fas fa-hand-holding-usd me-1"></i>Non-Standard
+                                            </span>
+                                        @endif
+                                    </td>
+                                    <td class="text-dark">{{ $incItem->company_name }}</td>
+                                    <td>
+                                        <div class="fw-semibold text-dark">{{ $incItem->party_name }}</div>
+                                    </td>
+                                    <td class="text-end fw-bold text-dark text-nowrap">
+                                        ₹{{ number_format($incItem->total_amount, 2) }}
+                                    </td>
+                                    <td class="text-end text-success fw-semibold text-nowrap">
+                                        ₹{{ number_format($incItem->received_amount, 2) }}
+                                    </td>
+                                    <td class="text-end {{ ($incItem->balance_amount > 0) ? 'text-danger fw-bold' : 'text-muted' }} text-nowrap">
+                                        ₹{{ number_format($incItem->balance_amount, 2) }}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-light text-secondary border">
+                                            {{ $incItem->payment_mode }}
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        @php
+                                            $st = strtolower($incItem->status ?? 'pending');
+                                            $stBadge = '#64748b';
+                                            if (in_array($st, ['paid', 'received', 'settle', 'settled'])) {
+                                                $stBadge = '#10b981';
+                                            } elseif ($st === 'upcoming') {
+                                                $stBadge = '#3b82f6';
+                                            } elseif ($st === 'pending' || $st === 'due' || $st === 'unpaid') {
+                                                $stBadge = '#f59e0b';
+                                            } elseif ($st === 'overdue') {
+                                                $stBadge = '#ef4444';
+                                            }
+                                        @endphp
+                                        <span class="badge text-white px-2.5 py-1 rounded-pill text-xs text-capitalize" style="background-color: {{ $stBadge }};">
+                                            {{ in_array($st, ['paid', 'received']) ? 'Received' : $st }}
+                                        </span>
+                                    </td>
+                                    <td class="text-end pe-4 text-nowrap">
+                                        <div class="btn-group btn-group-sm">
+                                            @if($incItem->source === 'standard')
+                                                <a href="{{ route('admin.invoices.view', $incItem->id) }}" class="btn btn-outline-primary btn-sm" title="View Details">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                            @else
+                                                @if(!in_array($incItem->status, ['paid', 'received', 'settle', 'settled']))
+                                                <form action="{{ route('admin.invoices.non-standard.mark-received', $incItem->id) }}" method="POST" class="d-inline">
+                                                    @csrf
+                                                    <button type="submit" class="btn btn-outline-success btn-sm" title="Mark Received" onclick="return confirm('Mark this income as received?')">
+                                                        <i class="fas fa-check"></i>
+                                                    </button>
+                                                </form>
+                                                @endif
+                                                <form action="{{ route('admin.invoices.non-standard.destroy', $incItem->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this non-standard income record?');">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="btn btn-outline-danger btn-sm" title="Delete">
+                                                        <i class="fas fa-trash-alt"></i>
+                                                    </button>
+                                                </form>
+                                            @endif
+                                        </div>
+                                    </td>
+                                </tr>
+                                @empty
+                                <tr>
+                                    <td colspan="11" class="text-center py-5 text-muted">
+                                        <i class="fas fa-inbox fa-3x mb-3 text-secondary opacity-50"></i>
+                                        <p class="mb-0">No corporate income records found matching the selected filters.</p>
+                                    </td>
+                                </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+
+                    @if ($allIncomes->hasPages())
+                    <div class="p-3 border-top d-flex justify-content-between align-items-center">
+                        <div class="text-muted small">
+                            Showing {{ $allIncomes->firstItem() }} to {{ $allIncomes->lastItem() }} of {{ $allIncomes->total() }} entries
+                        </div>
+                        <div>
+                            {{ $allIncomes->links('pagination::bootstrap-4') }}
+                        </div>
+                    </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+        @elseif(($mainTab ?? '') === 'standard')
 
         <!-- Statistics Cards -->
         <!-- <div class="row mb-4">
@@ -1306,6 +1597,24 @@ function handleNsIncomeDateRangeChange(value) {
     } else {
         if (customRow) customRow.style.display = 'none';
         const form = document.getElementById('nsIncomeFilterForm');
+        if (form) form.submit();
+    }
+}
+
+function setAllIncomeStatusFilter(status) {
+    const statusInput = document.getElementById('allIncomeStatusInput');
+    if (statusInput) statusInput.value = status;
+    const form = document.getElementById('allIncomeFilterForm');
+    if (form) form.submit();
+}
+
+function handleAllIncomeDateRangeChange(value) {
+    const customRow = document.getElementById('allIncomeCustomDateRow');
+    if (value === 'custom') {
+        if (customRow) customRow.style.display = 'block';
+    } else {
+        if (customRow) customRow.style.display = 'none';
+        const form = document.getElementById('allIncomeFilterForm');
         if (form) form.submit();
     }
 }

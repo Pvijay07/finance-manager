@@ -168,6 +168,8 @@ class InvoiceManagementController extends Controller
 
     $companyFilter = $company;
 
+    $typeFilter = $request->input('type', 'all');
+
     // Query Non-Standard Income
     $nsIncomeQuery = Income::with(['company'])
       ->where(function($q) {
@@ -215,8 +217,127 @@ class InvoiceManagementController extends Controller
 
     $nonStandardIncomes = $nsIncomeQuery->orderBy('income_date', 'desc')->paginate($perPage, ['*'], 'ns_page')->withQueryString();
 
-    $requestedTab = $request->input('tab', 'standard');
-    $mainTab = in_array($requestedTab, ['non-standard', 'non_standard']) ? 'non-standard' : 'standard';
+    // 3. Unified All Incomes Query (Shows all Standard and Non-Standard Incomes in one place)
+    $allInvQuery = Invoice::with(['company', 'tdsTax']);
+    if ($search) {
+      $allInvQuery->where(function ($q) use ($search) {
+        $q->where('invoice_number', 'like', "%{$search}%")
+          ->orWhere('client_details->name', 'like', "%{$search}%")
+          ->orWhere('client_details->email', 'like', "%{$search}%");
+      });
+    }
+    if ($company && $company !== 'all') {
+      $allInvQuery->where('company_id', $company);
+    }
+    if ($filterStartDate && $filterEndDate) {
+      $allInvQuery->whereBetween('due_date', [$filterStartDate, $filterEndDate]);
+    } elseif ($filterStartDate) {
+      $allInvQuery->where('due_date', '>=', $filterStartDate);
+    } elseif ($filterEndDate) {
+      $allInvQuery->where('due_date', '<=', $filterEndDate);
+    }
+
+    $allInvCountQuery = clone $allInvQuery;
+    $invStatusCounts = [
+      'all'      => (clone $allInvCountQuery)->whereNotIn('status', ['replaced', 'cancelled'])->count(),
+      'pending'  => (clone $allInvCountQuery)->where('status', 'pending')->count(),
+      'upcoming' => (clone $allInvCountQuery)->where('status', 'upcoming')->count(),
+      'paid'     => (clone $allInvCountQuery)->where('status', 'paid')->count(),
+    ];
+
+    $allIncomeStatusCounts = [
+      'all'      => $invStatusCounts['all'] + $nsIncomeStatusCounts['all'],
+      'pending'  => $invStatusCounts['pending'] + $nsIncomeStatusCounts['pending'],
+      'upcoming' => $invStatusCounts['upcoming'] + $nsIncomeStatusCounts['upcoming'],
+      'paid'     => $invStatusCounts['paid'] + $nsIncomeStatusCounts['paid'],
+    ];
+
+    if ($status && $status !== 'all') {
+      $allInvQuery->where('status', $status);
+    } else {
+      $allInvQuery->whereNotIn('status', ['replaced', 'cancelled']);
+    }
+
+    // Build unified collection
+    $unifiedItems = collect();
+
+    if ($typeFilter !== 'non-standard') {
+      foreach ($allInvQuery->orderBy('due_date', 'desc')->get() as $inv) {
+        $clientName = 'N/A';
+        if (is_array($inv->client_details)) {
+          $clientName = $inv->client_details['name'] ?? $inv->client_details['company_name'] ?? 'N/A';
+        } elseif (is_string($inv->client_details)) {
+          $decoded = json_decode($inv->client_details, true);
+          $clientName = $decoded['name'] ?? $decoded['company_name'] ?? 'N/A';
+        }
+        $unifiedItems->push((object)[
+          'id'              => $inv->id,
+          'source'          => 'standard',
+          'type_badge'      => ($inv->type === 'proforma' ? 'Proforma' : 'Standard Invoice'),
+          'reference_no'    => $inv->invoice_number,
+          'party_name'      => $clientName,
+          'company_name'    => $inv->company->name ?? 'All Companies',
+          'company_id'      => $inv->company_id,
+          'date'            => $inv->issue_date ?? $inv->created_at,
+          'due_date'        => $inv->due_date,
+          'total_amount'    => (float)$inv->total_amount,
+          'received_amount' => (float)($inv->received_amount ?? ($inv->status === 'paid' ? $inv->total_amount : 0)),
+          'balance_amount'  => (float)($inv->balance_amount ?? max(0, $inv->total_amount - ($inv->received_amount ?? 0))),
+          'payment_mode'    => 'Bank / Online',
+          'status'          => $inv->status,
+          'raw'             => $inv,
+        ]);
+      }
+    }
+
+    if ($typeFilter !== 'standard') {
+      $allNsClone = clone $nsIncomeQuery;
+      foreach ($allNsClone->get() as $inc) {
+        $unifiedItems->push((object)[
+          'id'              => $inc->id,
+          'source'          => 'non-standard',
+          'type_badge'      => 'Non-Standard Income',
+          'reference_no'    => $inc->invoice_number ?? ('INC-' . str_pad($inc->id, 5, '0', STR_PAD_LEFT)),
+          'party_name'      => $inc->party_name ?? 'N/A',
+          'company_name'    => $inc->company->name ?? 'All Companies',
+          'company_id'      => $inc->company_id,
+          'date'            => $inc->income_date ?? $inc->created_at,
+          'due_date'        => $inc->due_date,
+          'total_amount'    => (float)($inc->schedule_amount ?: ($inc->planned_amount ?: $inc->amount)),
+          'received_amount' => (float)($inc->received_amount ?: 0),
+          'balance_amount'  => (float)($inc->balance_amount ?: 0),
+          'payment_mode'    => ucfirst($inc->payment_mode ?? 'Cash'),
+          'status'          => in_array($inc->status, ['received', 'paid']) ? 'paid' : $inc->status,
+          'raw'             => $inc,
+        ]);
+      }
+    }
+
+    $sortedUnified = $unifiedItems->sortByDesc(function ($item) {
+      return $item->due_date ? Carbon::parse($item->due_date)->timestamp : (
+        $item->date ? Carbon::parse($item->date)->timestamp : 0
+      );
+    })->values();
+
+    $page = \Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPage('all_inc_page');
+    $allIncomes = new \Illuminate\Pagination\LengthAwarePaginator(
+      $sortedUnified->forPage($page, $perPage)->values(),
+      $sortedUnified->count(),
+      $perPage,
+      $page,
+      ['path' => \Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPath(), 'pageName' => 'all_inc_page', 'query' => $request->query()]
+    );
+
+    $requestedTab = $request->input('tab', 'incomes');
+    if ($requestedTab === 'all') {
+      $mainTab = 'incomes';
+    } elseif (in_array($requestedTab, ['non-standard', 'non_standard'])) {
+      $mainTab = 'non-standard';
+    } elseif ($requestedTab === 'standard') {
+      $mainTab = 'standard';
+    } else {
+      $mainTab = 'incomes';
+    }
 
     return view('Admin.invoices', compact(
       'invoices',
@@ -228,11 +349,14 @@ class InvoiceManagementController extends Controller
       'company',
       'companyFilter',
       'status',
+      'typeFilter',
       'dateRange',
       'startDate',
       'endDate',
       'perPage',
       'statusCounts',
+      'allIncomes',
+      'allIncomeStatusCounts',
       'nonStandardIncomes',
       'nsIncomeStatusCounts',
       'mainTab',
