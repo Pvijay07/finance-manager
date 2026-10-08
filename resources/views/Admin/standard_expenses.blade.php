@@ -5,29 +5,29 @@
     <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
         <div>
             @if(($mainTab ?? '') === 'standard')
-                <h1 style="font-weight: 800; color: #0f172a; font-size: 1.85rem; letter-spacing: -0.5px; margin: 0;">Standard Expenses</h1>
-                <p class="text-muted small mb-0 mt-1">Manage and configure corporate recurring standard expenditure templates.</p>
+            <h1 style="font-weight: 800; color: #0f172a; font-size: 1.85rem; letter-spacing: -0.5px; margin: 0;">Standard Expenses</h1>
+            <p class="text-muted small mb-0 mt-1">Manage and configure corporate recurring standard expenditure templates.</p>
             @elseif(($mainTab ?? '') === 'non-standard')
-                <h1 style="font-weight: 800; color: #0f172a; font-size: 1.85rem; letter-spacing: -0.5px; margin: 0;">Non-Standard Expenses</h1>
-                <p class="text-muted small mb-0 mt-1">Create and track non-standard expenditures, receipts, and payment settlements.</p>
+            <h1 style="font-weight: 800; color: #0f172a; font-size: 1.85rem; letter-spacing: -0.5px; margin: 0;">Non-Standard Expenses</h1>
+            <p class="text-muted small mb-0 mt-1">Create and track non-standard expenditures, receipts, and payment settlements.</p>
             @else
-                <h1 style="font-weight: 800; color: #0f172a; font-size: 1.85rem; letter-spacing: -0.5px; margin: 0;">Expenses</h1>
-                <p class="text-muted small mb-0 mt-1">Unified view of all corporate standard and non-standard expenditures.</p>
+            <h1 style="font-weight: 800; color: #0f172a; font-size: 1.85rem; letter-spacing: -0.5px; margin: 0;">Expenses</h1>
+            <p class="text-muted small mb-0 mt-1">Unified view of all corporate standard and non-standard expenditures.</p>
             @endif
         </div>
         <div class="d-flex gap-2">
             @if(($mainTab ?? '') === 'standard')
-                <button type="button" class="btn btn-sm btn-primary" onclick="switchTab('form-tab')" style="border-radius: 8px; font-weight: 600; padding: 8px 16px; background-color: #4f46e5; border-color: #4f46e5;">
-                    <i class="fas fa-plus-circle me-1"></i> Add Standard Expense
-                </button>
+            <button type="button" class="btn btn-sm btn-primary" onclick="switchTab('form-tab')" style="border-radius: 8px; font-weight: 600; padding: 8px 16px; background-color: #4f46e5; border-color: #4f46e5;">
+                <i class="fas fa-plus-circle me-1"></i> Add Standard Expense
+            </button>
             @elseif(($mainTab ?? '') === 'non-standard')
-                <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addNonStandardModal" style="border-radius: 8px; font-weight: 600; padding: 8px 16px; background-color: #4f46e5; border-color: #4f46e5;">
-                    <i class="fas fa-receipt me-1"></i> Add Non-Standard Expense
-                </button>
+            <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addNonStandardModal" style="border-radius: 8px; font-weight: 600; padding: 8px 16px; background-color: #4f46e5; border-color: #4f46e5;">
+                <i class="fas fa-receipt me-1"></i> Add Non-Standard Expense
+            </button>
             @else
-                <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addNonStandardModal" style="border-radius: 8px; font-weight: 600; padding: 8px 16px; background-color: #4f46e5; border-color: #4f46e5;">
-                    <i class="fas fa-receipt me-1"></i> Add Non-Standard Expense
-                </button>
+            <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addNonStandardModal" style="border-radius: 8px; font-weight: 600; padding: 8px 16px; background-color: #4f46e5; border-color: #4f46e5;">
+                <i class="fas fa-receipt me-1"></i> Add Non-Standard Expense
+            </button>
             @endif
         </div>
     </div>
@@ -91,9 +91,9 @@
                             <select class="form-select" name="company_id" onchange="this.form.submit()">
                                 <option value="all" {{ ($companyFilter == 'all' || !$companyFilter) ? 'selected' : '' }}>All Companies</option>
                                 @foreach ($companies as $company)
-                                    <option value="{{ $company->id }}" {{ $companyFilter == $company->id ? 'selected' : '' }}>
-                                        {{ $company->name }}
-                                    </option>
+                                <option value="{{ $company->id }}" {{ $companyFilter == $company->id ? 'selected' : '' }}>
+                                    {{ $company->name }}
+                                </option>
                                 @endforeach
                             </select>
                         </div>
@@ -122,9 +122,9 @@
                             <select class="form-select" name="category_type" onchange="this.form.submit()">
                                 <option value="all" {{ ($categoryFilter == 'all' || !$categoryFilter) ? 'selected' : '' }}>All Categories</option>
                                 @foreach ($categories as $cat)
-                                    <option value="{{ $cat->id }}" {{ $categoryFilter == $cat->id ? 'selected' : '' }}>
-                                        {{ $cat->name }}
-                                    </option>
+                                <option value="{{ $cat->id }}" {{ $categoryFilter == $cat->id ? 'selected' : '' }}>
+                                    {{ $cat->name }}
+                                </option>
                                 @endforeach
                             </select>
                         </div>
@@ -226,26 +226,26 @@
                                 </td>
                                 <td>
                                     @if($exp->source === 'standard')
-                                        @php
-                                            $catType = $exp->categoryRelation->category_type ?? $exp->sub_type ?? '';
-                                        @endphp
-                                        @if($catType === 'standard_fixed' || $catType === 'fixed')
-                                            <span class="badge rounded-pill px-2.5 py-1 text-xs fw-semibold" style="background-color: #dcfce7; color: #15803d; border: 1px solid #bbf7d0;">
-                                                <i class="fas fa-lock me-1"></i>Standard Fixed
-                                            </span>
-                                        @elseif($catType === 'standard_editable' || $catType === 'editable')
-                                            <span class="badge rounded-pill px-2.5 py-1 text-xs fw-semibold" style="background-color: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe;">
-                                                <i class="fas fa-pen-to-square me-1"></i>Standard Editable
-                                            </span>
-                                        @else
-                                            <span class="badge rounded-pill px-2.5 py-1 text-xs fw-semibold" style="background-color: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe;">
-                                                <i class="fas fa-calendar-alt me-1"></i>Standard
-                                            </span>
-                                        @endif
+                                    @php
+                                    $catType = $exp->categoryRelation->category_type ?? $exp->sub_type ?? '';
+                                    @endphp
+                                    @if($catType === 'standard_fixed' || $catType === 'fixed')
+                                    <span class="badge rounded-pill px-2.5 py-1 text-xs fw-semibold" style="background-color: #dcfce7; color: #15803d; border: 1px solid #bbf7d0;">
+                                        <i class="fas fa-lock me-1"></i>Standard Fixed
+                                    </span>
+                                    @elseif($catType === 'standard_editable' || $catType === 'editable')
+                                    <span class="badge rounded-pill px-2.5 py-1 text-xs fw-semibold" style="background-color: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe;">
+                                        <i class="fas fa-pen-to-square me-1"></i>Standard Editable
+                                    </span>
                                     @else
-                                        <span class="badge rounded-pill px-2.5 py-1 text-xs fw-semibold" style="background-color: #f3e8ff; color: #6b21a8; border: 1px solid #e9d5ff;">
-                                            <i class="fas fa-receipt me-1"></i>Non-Standard
-                                        </span>
+                                    <span class="badge rounded-pill px-2.5 py-1 text-xs fw-semibold" style="background-color: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe;">
+                                        <i class="fas fa-calendar-alt me-1"></i>Standard
+                                    </span>
+                                    @endif
+                                    @else
+                                    <span class="badge rounded-pill px-2.5 py-1 text-xs fw-semibold" style="background-color: #f3e8ff; color: #6b21a8; border: 1px solid #e9d5ff;">
+                                        <i class="fas fa-receipt me-1"></i>Non-Standard
+                                    </span>
                                     @endif
                                 </td>
                                 <td class="text-dark">{{ $exp->company->name ?? 'All Companies' }}</td>
@@ -270,15 +270,15 @@
                                 </td>
                                 <td class="text-center">
                                     @php
-                                        $s = strtolower($exp->status ?? 'pending');
-                                        $badgeBg = '#64748b';
-                                        if (in_array($s, ['paid', 'settle', 'settled'])) {
-                                            $badgeBg = '#10b981';
-                                        } elseif ($s === 'upcoming') {
-                                            $badgeBg = '#3b82f6';
-                                        } elseif ($s === 'pending' || $s === 'due') {
-                                            $badgeBg = '#f59e0b';
-                                        }
+                                    $s = strtolower($exp->status ?? 'pending');
+                                    $badgeBg = '#64748b';
+                                    if (in_array($s, ['paid', 'settle', 'settled'])) {
+                                    $badgeBg = '#10b981';
+                                    } elseif ($s === 'upcoming') {
+                                    $badgeBg = '#3b82f6';
+                                    } elseif ($s === 'pending' || $s === 'due') {
+                                    $badgeBg = '#f59e0b';
+                                    }
                                     @endphp
                                     <span class="badge text-white px-2.5 py-1 rounded-pill text-xs text-capitalize" style="background-color: {{ $badgeBg }};">
                                         {{ $s }}
@@ -1292,7 +1292,7 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label small fw-semibold">Paid Amount (₹)</label>
-                            <input type="number" step="0.01" min="0" class="form-control form-control-sm" id="admin_ns_paid_amount" name="paid_amount" value="0.00" oninput="calculateAdminNsExpenseBalance()">
+                            <input type="number" step="0.01" min="0" class="form-control form-control-sm" id="admin_ns_paid_amount" name="paid_amount" value="0.00" oninput="calculateAdminNsExpenseBalance(true)">
                         </div>
                         <div class="col-md-4">
                             <label class="form-label small fw-semibold">Balance (₹)</label>
@@ -2943,7 +2943,7 @@
     }
 
     // Non-Standard Expense calculations (Manager equivalent)
-    function calculateAdminNsExpenseTax() {
+    function calculateAdminNsExpenseTax(isPaidAmountTrigger = false) {
         const baseAmount = parseFloat(document.getElementById('admin_ns_actual_amount')?.value) || 0;
         const applyGst = document.getElementById('admin_ns_apply_gst')?.checked;
         const gstPercentage = applyGst ? (parseFloat(document.getElementById('admin_ns_gst_percentage')?.value) || 0) : 0;
@@ -2971,35 +2971,38 @@
         const netPayableDisplay = document.getElementById('admin_ns_net_payable_display');
         if (netPayableDisplay) netPayableDisplay.value = netPayable.toFixed(2);
 
+        const statusVal = document.getElementById('admin_ns_status')?.value;
         const paidAmountInput = document.getElementById('admin_ns_paid_amount');
-        if (paidAmountInput) {
-            const currentPaid = parseFloat(paidAmountInput.value) || 0;
-            if (currentPaid === 0 || Math.abs(currentPaid - netPayable) < 0.01) {
+        if (paidAmountInput && !isPaidAmountTrigger) {
+            if (statusVal === 'paid') {
                 paidAmountInput.value = netPayable.toFixed(2);
             }
         }
 
-        calculateAdminNsExpenseBalance();
+        calculateAdminNsExpenseBalance(isPaidAmountTrigger);
     }
 
-    function calculateAdminNsExpenseBalance() {
+    function calculateAdminNsExpenseBalance(isPaidAmountTrigger = false) {
         const netPayable = parseFloat(document.getElementById('admin_ns_net_payable_display')?.value) || 0;
-        const paidAmount = parseFloat(document.getElementById('admin_ns_paid_amount')?.value) || 0;
+        const paidAmountInput = document.getElementById('admin_ns_paid_amount');
+        const paidAmount = parseFloat(paidAmountInput?.value) || 0;
         const balance = Math.max(0, netPayable - paidAmount);
 
         const balanceField = document.getElementById('admin_ns_balance_amount');
         if (balanceField) balanceField.value = balance.toFixed(2);
 
         const statusSelect = document.getElementById('admin_ns_status');
-        if (statusSelect) {
+        if (statusSelect && isPaidAmountTrigger) {
             if (balance <= 0.01 && paidAmount > 0) {
                 statusSelect.value = 'paid';
             } else if (paidAmount > 0 && balance > 0) {
                 if (statusSelect.value !== 'settle') {
                     statusSelect.value = 'due';
                 }
+            } else if (paidAmount === 0 && statusSelect.value === 'paid') {
+                statusSelect.value = 'due';
             }
-            handleAdminNsExpenseStatusChange(statusSelect.value);
+            handleAdminNsExpenseStatusChange(statusSelect.value, false);
         }
     }
 
@@ -3025,7 +3028,22 @@
         }
     }
 
-    function handleAdminNsExpenseStatusChange(status) {
+    function handleAdminNsExpenseStatusChange(status, updatePaidAmount = true) {
+        const netPayable = parseFloat(document.getElementById('admin_ns_net_payable_display')?.value) || 0;
+        const paidAmountInput = document.getElementById('admin_ns_paid_amount');
+
+        if (updatePaidAmount) {
+            if (status === 'paid') {
+                if (paidAmountInput) paidAmountInput.value = netPayable.toFixed(2);
+                calculateAdminNsExpenseBalance(false);
+            } else if (status === 'due' || status === 'upcoming' || status === 'pending') {
+                if (paidAmountInput && Math.abs(parseFloat(paidAmountInput.value) - netPayable) < 0.01) {
+                    paidAmountInput.value = '0.00';
+                }
+                calculateAdminNsExpenseBalance(false);
+            }
+        }
+
         const dueContainer = document.getElementById('admin_ns_due_date_container');
         const settleContainer = document.getElementById('admin_ns_settle_notes_container');
         const dueDateInput = document.getElementById('admin_ns_due_date');
@@ -3072,7 +3090,7 @@
         if (!confirm(`Mark "${expenseName}" as paid (Amount: ₹${parseFloat(amount || 0).toLocaleString()})?`)) {
             return;
         }
-        
+
         let url = `{{ url('admin/standard-expenses/non-standard') }}/${expenseId}/mark-paid`;
         if (source === 'standard') {
             url = `{{ url('admin/standard-expenses') }}/${expenseId}/mark-paid`;
@@ -3097,6 +3115,19 @@
         document.body.appendChild(form);
         form.submit();
     }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const nsModal = document.getElementById('addNonStandardModal');
+        if (nsModal) {
+            nsModal.addEventListener('show.bs.modal', function() {
+                const form = document.getElementById('adminAddNsExpenseForm');
+                if (form) form.reset();
+                const paidInput = document.getElementById('admin_ns_paid_amount');
+                if (paidInput) paidInput.value = '0.00';
+                calculateAdminNsExpenseTax(false);
+            });
+        }
+    });
 </script>
 <style>
     /* Additional styles for better alignment */
