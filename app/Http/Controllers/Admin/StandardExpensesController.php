@@ -321,7 +321,7 @@ class StandardExpensesController extends Controller
     $nonStandardExpenses = $nonStandardQuery->latest('due_date')->paginate($perPage, ['*'], 'ns_page')->withQueryString();
 
     $companies = Company::where('status', 'active')->get();
-    $categories = Category::where('status', 'active')->get();
+    $categories = Category::where('is_active', true)->get();
     $requestedTab = $request->input('tab', 'expenses');
     if ($requestedTab === 'all') {
       $mainTab = 'expenses';
