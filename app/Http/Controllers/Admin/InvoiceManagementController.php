@@ -498,6 +498,8 @@ class InvoiceManagementController extends Controller
       'totalOverdueCount'  => $totalOverdueCount,
     ];
 
+    $managers = User::where('role', 'manager')->orderBy('name')->get();
+
     return view('Admin.invoices', compact(
       'invoices',
       'companies',
@@ -521,7 +523,8 @@ class InvoiceManagementController extends Controller
       'mainTab',
       'requestedTab',
       'cardStats',
-      'dateRangeTitle'
+      'dateRangeTitle',
+      'managers'
     ));
   }
 
@@ -549,6 +552,8 @@ class InvoiceManagementController extends Controller
       'notes'           => 'nullable|string',
       'tds_status'      => 'nullable|in:received,not_received,paid',
       'tds_receipt'     => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:5120',
+      'assigned_managers'   => 'nullable|array',
+      'assigned_managers.*' => 'nullable|integer',
     ]);
 
     try {
@@ -607,7 +612,8 @@ class InvoiceManagementController extends Controller
         'income_type'     => 'non-standard',
         'source'          => 'manual',
         'currency'        => 'INR',
-        'created_by'      => auth()->id()
+        'created_by'      => auth()->id(),
+        'assigned_managers' => !empty($request->assigned_managers) ? array_values(array_filter(array_map('intval', (array)$request->assigned_managers))) : null
       ]);
 
       // Handle GST Tax
@@ -709,7 +715,8 @@ class InvoiceManagementController extends Controller
           'tds_percentage'  => $tdsTax ? floatval($tdsTax->tax_percentage) : 10,
           'tds_amount'      => $tdsTax ? floatval($tdsTax->tax_amount) : 0,
           'tds_status'      => $tdsTax ? $tdsTax->payment_status : 'not_received',
-          'tds_proof_path'  => $tdsTax ? $tdsTax->tds_proof_path : null
+          'tds_proof_path'  => $tdsTax ? $tdsTax->tds_proof_path : null,
+          'assigned_managers' => $income->assigned_managers ?: []
         ]
       ]);
     } catch (\Exception $e) {
@@ -736,12 +743,14 @@ class InvoiceManagementController extends Controller
       'received_amount' => 'nullable|numeric|min:0',
       'received_date'   => 'nullable|date',
       'due_date'        => 'nullable|date',
-      'status'          => 'required|in:due,settle,paid,received,pending',
+      'status'          => 'nullable|in:due,settle,paid,received,pending',
       'settle_notes'    => 'nullable|string',
       'mail_status'     => 'nullable|in:0,1',
       'notes'           => 'nullable|string',
       'tds_status'      => 'nullable|in:received,not_received,paid',
       'tds_receipt'     => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:5120',
+      'assigned_managers'   => 'nullable|array',
+      'assigned_managers.*' => 'nullable|integer',
     ]);
 
     try {
@@ -761,21 +770,22 @@ class InvoiceManagementController extends Controller
 
       $plannedAmountTotal = $actualTotalBase + $gstAmountTotal;
       $payableAmountTotal = $plannedAmountTotal - $tdsAmountTotal;
-      $receivedAmount = floatval($request->received_amount ?? 0);
+
+      // Preserve existing received amount if not submitted by admin
+      $receivedAmount = $request->has('received_amount') && $request->received_amount !== null
+        ? floatval($request->received_amount)
+        : floatval($income->received_amount ?? ($income->actual_amount && in_array($income->status, ['paid', 'received', 'settle']) ? $income->actual_amount : 0));
 
       $balanceAmount = max(0, $payableAmountTotal - $receivedAmount);
 
-      $status = $request->status;
+      // Preserve existing status if not submitted by admin
+      $status = $request->filled('status') ? $request->status : ($income->status ?: 'pending');
       if (in_array($status, ['paid', 'received']) || ($balanceAmount <= 0.01 && $receivedAmount > 0)) {
         $status = 'received';
-      } elseif ($status === 'settle') {
-        $status = 'settle';
-      } else {
-        $status = 'pending';
       }
 
-      $receivedDate = $request->received_date ?: ($income->paid_date ?: now()->format('Y-m-d'));
-      $dueDate = $request->due_date ?: ($income->due_date ?: $receivedDate);
+      $receivedDate = $request->filled('received_date') ? $request->received_date : ($income->paid_date ?: ($income->income_date ?: now()->format('Y-m-d')));
+      $dueDate = $request->filled('due_date') ? $request->due_date : ($income->due_date ?: $receivedDate);
 
       $income->update([
         'company_id'      => $request->company_id,
@@ -790,11 +800,12 @@ class InvoiceManagementController extends Controller
         'due_date'        => $dueDate,
         'status'          => $status,
         'income_date'     => $receivedDate,
-        'paid_date'       => in_array($status, ['received', 'settle']) ? $receivedDate : null,
-        'mail_status'     => $request->mail_status ?? 0,
-        'notes'           => $request->notes,
-        'settle_notes'    => $request->settle_notes,
+        'paid_date'       => in_array($status, ['received', 'settle']) ? ($income->paid_date ?: $receivedDate) : $income->paid_date,
+        'mail_status'     => $request->has('mail_status') ? ($request->mail_status ? 1 : 0) : $income->mail_status,
+        'notes'           => $request->notes ?: $income->notes,
+        'settle_notes'    => $request->filled('settle_notes') ? $request->settle_notes : $income->settle_notes,
         'client_details'  => json_encode(['mobile_number' => $request->mobile_number ?? null]),
+        'assigned_managers' => !empty($request->assigned_managers) ? array_values(array_filter(array_map('intval', (array)$request->assigned_managers))) : null
       ]);
 
       // Handle GST Tax sync
@@ -804,11 +815,12 @@ class InvoiceManagementController extends Controller
         ->first();
 
       if ($applyGst && $gstAmountTotal > 0) {
+        $gstPaymentStatus = $gstTax ? $gstTax->payment_status : (in_array($status, ['settle', 'received']) ? 'received' : 'not_received');
         if ($gstTax) {
           $gstTax->update([
             'tax_percentage' => $gstPercentage,
             'tax_amount'     => $gstAmountTotal,
-            'payment_status' => in_array($status, ['settle', 'received']) ? 'received' : 'not_received',
+            'payment_status' => $gstPaymentStatus,
             'taxable_amount' => $actualTotalBase
           ]);
         } else {
@@ -818,7 +830,7 @@ class InvoiceManagementController extends Controller
             'tax_type'       => 'gst',
             'tax_percentage' => $gstPercentage,
             'tax_amount'     => $gstAmountTotal,
-            'payment_status' => in_array($status, ['settle', 'received']) ? 'received' : 'not_received',
+            'payment_status' => $gstPaymentStatus,
             'direction'      => 'income',
             'taxable_amount' => $actualTotalBase
           ]);

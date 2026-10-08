@@ -46,16 +46,18 @@ class Expense extends Model
         'original_amount',
         'schedule_amount',
         'balance_amount',
-        'expense_number'
+        'expense_number',
+        'assigned_managers'
     ];
 
     protected $casts = [
-        'due_date'       => 'date',
-        'paid_date'      => 'date',
-        'planned_amount' => 'decimal:2',
-        'actual_amount'  => 'decimal:2',
-        'balance_amount' => 'decimal:2',
-        'original_amount' => 'decimal:2'
+        'due_date'          => 'date',
+        'paid_date'         => 'date',
+        'planned_amount'    => 'decimal:2',
+        'actual_amount'     => 'decimal:2',
+        'balance_amount'    => 'decimal:2',
+        'original_amount'   => 'decimal:2',
+        'assigned_managers' => 'array'
     ];
 
     // Relationships
@@ -109,6 +111,33 @@ class Expense extends Model
     public function scopeDueBetween($query, $startDate, $endDate)
     {
         return $query->whereBetween('due_date', [$startDate, $endDate]);
+    }
+
+    public function scopeVisibleToUser($query, $user = null)
+    {
+        $user = $user ?: auth()->user();
+        if (!$user) {
+            return $query;
+        }
+        if (method_exists($user, 'isAdmin') && $user->isAdmin()) {
+            return $query;
+        }
+        if (method_exists($user, 'isCA') && $user->isCA()) {
+            return $query;
+        }
+        if (in_array(strtolower($user->role ?? ''), ['admin', 'superadmin', 'ca'])) {
+            return $query;
+        }
+
+        return $query->where(function ($q) use ($user) {
+            $q->whereNull('assigned_managers')
+              ->orWhere('assigned_managers', '[]')
+              ->orWhere('assigned_managers', '')
+              ->orWhere('created_by', $user->id)
+              ->orWhereJsonContains('assigned_managers', (int)$user->id)
+              ->orWhereJsonContains('assigned_managers', (string)$user->id)
+              ->orWhereRaw("FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(COALESCE(assigned_managers, ''), '[', ''), ']', ''), '\"', ''))", [$user->id]);
+        });
     }
 
     // Methods

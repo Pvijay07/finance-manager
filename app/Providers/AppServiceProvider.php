@@ -69,6 +69,19 @@ class AppServiceProvider extends ServiceProvider
                     }
                 }
             }
+
+            // Ensure assigned_managers columns exist
+            if (\Illuminate\Support\Facades\Schema::hasTable('expenses') && !\Illuminate\Support\Facades\Schema::hasColumn('expenses', 'assigned_managers')) {
+                \Illuminate\Support\Facades\Schema::table('expenses', function (\Illuminate\Database\Schema\Blueprint $table) {
+                    $table->json('assigned_managers')->nullable();
+                });
+            }
+
+            if (\Illuminate\Support\Facades\Schema::hasTable('incomes') && !\Illuminate\Support\Facades\Schema::hasColumn('incomes', 'assigned_managers')) {
+                \Illuminate\Support\Facades\Schema::table('incomes', function (\Illuminate\Database\Schema\Blueprint $table) {
+                    $table->json('assigned_managers')->nullable();
+                });
+            }
         } catch (\Throwable $e) {
             // DB might not be ready or configured yet
         }

@@ -47,7 +47,8 @@ class Income extends Model
     'currency',
     'month_year',
     'due_date',
-    'original_amount'
+    'original_amount',
+    'assigned_managers'
   ];
 
   protected $casts = [
@@ -55,6 +56,7 @@ class Income extends Model
     'income_date' => 'date',
     'due_date' => 'date',
     'original_amount' => 'decimal:2',
+    'assigned_managers' => 'array',
   ];
   protected $appends = ['client_name', 'display_frequency', 'display_due_day'];
   public function company()
@@ -201,5 +203,31 @@ class Income extends Model
           }
       }
       return $rootId;
+  }
+
+  public function scopeVisibleToUser($query, $user = null)
+  {
+      $user = $user ?: auth()->user();
+      if (!$user) {
+          return $query;
+      }
+      if (method_exists($user, 'isAdmin') && $user->isAdmin()) {
+          return $query;
+      }
+      if (method_exists($user, 'isCA') && $user->isCA()) {
+          return $query;
+      }
+      if (in_array(strtolower($user->role ?? ''), ['admin', 'superadmin', 'ca'])) {
+          return $query;
+      }
+
+      return $query->where(function ($q) use ($user) {
+          $q->whereNull('assigned_managers')
+            ->orWhere('assigned_managers', '')
+            ->orWhere('assigned_managers', '[]')
+            ->orWhere('created_by', $user->id)
+            ->orWhereJsonContains('assigned_managers', (int)$user->id)
+            ->orWhereJsonContains('assigned_managers', (string)$user->id);
+      });
   }
 }

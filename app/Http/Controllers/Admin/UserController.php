@@ -23,7 +23,17 @@ class UserController extends Controller
     // Get all available permissions
     $availablePermissions = Permission::all()->groupBy('module');
 
-    return view('Admin.users', compact('users', 'companies', 'roles', 'rolePermissions', 'availablePermissions'));
+    // Compute User Management Statistics for Report Cards
+    $userStats = [
+        'total' => User::count(),
+        'active' => User::where('status', 'active')->count(),
+        'inactive' => User::where('status', 'inactive')->count(),
+        'managers' => User::where('role', 'manager')->count(),
+        'admins_ca' => User::whereIn('role', ['admin', 'ca'])->count(),
+        'users' => User::where('role', 'user')->count(),
+    ];
+
+    return view('Admin.users', compact('users', 'companies', 'roles', 'rolePermissions', 'availablePermissions', 'userStats'));
   }
 
   public function store(Request $request)

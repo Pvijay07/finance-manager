@@ -32,6 +32,7 @@ class IncomeController extends Controller
     $currency = $request->get('currency', 'all');
 
     $query = Income::with(['company', 'parent', 'children', 'invoice'])
+      ->visibleToUser($user)
       ->orderBy('created_at', 'desc');
 
     // Filter by user's managed companies
@@ -135,7 +136,7 @@ class IncomeController extends Controller
 
     // Create a helper function for statistics queries
     $statsQuery = function ($conditions = []) use ($user, $statsStartDate, $statsEndDate, $companyId, $currency) {
-      $query = Income::whereHas('company', function ($q) use ($user) {
+      $query = Income::visibleToUser($user)->whereHas('company', function ($q) use ($user) {
         if (!$user->isAdmin() && !$user->isCA()) {
           $q->forManager($user);
         }
@@ -179,7 +180,7 @@ class IncomeController extends Controller
       'overdueItems' => $statsQuery([['status', 'overdue']])->count(),
 
       // All-time overdue (not filtered by date range) - FIXED
-      'allTimeOverdue' => Income::whereHas('company', function ($q) use ($user, $companyId) {
+      'allTimeOverdue' => Income::visibleToUser($user)->whereHas('company', function ($q) use ($user, $companyId) {
         if (!$user->isAdmin() && !$user->isCA()) {
           $q->forManager($user);
         }
@@ -194,7 +195,7 @@ class IncomeController extends Controller
           });
         })
         ->sum('amount') ?? 0,
-      'allTimeOverdueItems' => Income::whereHas('company', function ($q) use ($user, $companyId) {
+      'allTimeOverdueItems' => Income::visibleToUser($user)->whereHas('company', function ($q) use ($user, $companyId) {
         if (!$user->isAdmin() && !$user->isCA()) {
           $q->forManager($user);
         }

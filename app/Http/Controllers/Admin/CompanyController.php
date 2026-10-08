@@ -44,7 +44,14 @@ public function index(Request $request)
     $companies = $query->paginate(10);
     $managers  = User::whereIn('role', ['manager', 'user'])->get();
     
-    return view('Admin.company', compact('companies', 'managers'));
+    $companyStats = [
+        'total' => Company::count(),
+        'active' => Company::where('status', 'active')->count(),
+        'inactive' => Company::where('status', 'inactive')->count(),
+        'assigned_managers' => User::where('role', 'manager')->count(),
+    ];
+    
+    return view('Admin.company', compact('companies', 'managers', 'companyStats'));
 }
   public function store(Request $request)
   {

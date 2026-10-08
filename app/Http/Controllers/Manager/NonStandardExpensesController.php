@@ -21,6 +21,7 @@ class NonStandardExpensesController extends Controller
     // Query non-standard expenses
     $query = Expense::where('source', '!=', 'standard')
       ->with('company')
+      ->visibleToUser(auth()->user())
       ->orderBy('due_date', 'desc');
 
     // Apply filters
@@ -41,6 +42,7 @@ class NonStandardExpensesController extends Controller
     // Get data for filters
     $companies = Company::where('status', 'active')->get();
     $categories = Expense::where('source', '!=', 'standard')
+      ->visibleToUser(auth()->user())
       ->select('category')
       ->distinct()
       ->pluck('category');

@@ -1237,6 +1237,46 @@
                         </div>
                     </div>
 
+                    <!-- Assign Managers -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-12">
+                            <label class="form-label d-flex justify-content-between align-items-center">
+                                <span>Assign Manager(s)</span>
+                                <small class="text-muted" id="add_ns_manager_count">All managers (default)</small>
+                            </label>
+                            <div class="dropdown">
+                                <button class="btn btn-outline-secondary w-100 text-start d-flex justify-content-between align-items-center dropdown-toggle bg-white" type="button" id="add_ns_manager_dropdown_btn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" style="border: 1px solid #ced4da; border-radius: 6px; padding: 7px 12px;">
+                                    <span class="text-truncate" id="add_ns_manager_btn_text"><i class="fas fa-user-tie me-2 text-muted"></i>Select manager(s)...</span>
+                                </button>
+                                <div class="dropdown-menu w-100 p-2 shadow-sm" aria-labelledby="add_ns_manager_dropdown_btn" style="max-height: 260px; overflow-y: auto;">
+                                    <input type="text" class="form-control form-control-sm mb-2" placeholder="Search managers..." onkeyup="filterNsManagerDropdown(this)">
+                                    <div class="d-flex justify-content-between px-1 mb-2 border-bottom pb-1">
+                                        <a href="javascript:void(0)" class="text-decoration-none small text-primary fw-semibold" onclick="toggleSelectAllNsManagers(this, true, 'add')">Select All</a>
+                                        <a href="javascript:void(0)" class="text-decoration-none small text-muted fw-semibold" onclick="toggleSelectAllNsManagers(this, false, 'add')">Clear All</a>
+                                    </div>
+                                    <div class="manager-options-container">
+                                        @if(isset($managers) && $managers->isNotEmpty())
+                                            @foreach ($managers as $manager)
+                                                <div class="form-check py-1 px-3 manager-option-item" data-name="{{ strtolower($manager->name) }}" data-email="{{ strtolower($manager->email ?? '') }}">
+                                                    <input class="form-check-input ns-manager-checkbox" type="checkbox" name="assigned_managers[]" value="{{ $manager->id }}" id="add_ns_mgr_{{ $manager->id }}" onchange="updateNsManagerDropdownText('add')">
+                                                    <label class="form-check-label w-100 cursor-pointer" for="add_ns_mgr_{{ $manager->id }}">
+                                                        <div class="fw-medium text-dark">{{ $manager->name }}</div>
+                                                        @if(!empty($manager->email))
+                                                            <div class="text-muted small" style="font-size: 0.75rem;">{{ $manager->email }}</div>
+                                                        @endif
+                                                    </label>
+                                                </div>
+                                            @endforeach
+                                        @else
+                                            <div class="text-muted small px-3 py-1">No managers found</div>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                            <small class="text-muted" style="font-size: 0.75rem;">Selected manager(s) will be the only managers who can view this expense. Leave unselected to allow all managers of the company.</small>
+                        </div>
+                    </div>
+
                     <!-- Category & Amount -->
                     <div class="row g-3 mb-4">
                         <div class="col-md-6">
@@ -1505,6 +1545,46 @@
                         </div>
                     </div>
 
+                    <!-- Assign Managers -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-12">
+                            <label class="form-label d-flex justify-content-between align-items-center">
+                                <span>Assign Manager(s)</span>
+                                <small class="text-muted" id="edit_ns_manager_count">All managers (default)</small>
+                            </label>
+                            <div class="dropdown">
+                                <button class="btn btn-outline-secondary w-100 text-start d-flex justify-content-between align-items-center dropdown-toggle bg-white" type="button" id="edit_ns_manager_dropdown_btn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" style="border: 1px solid #ced4da; border-radius: 6px; padding: 7px 12px;">
+                                    <span class="text-truncate" id="edit_ns_manager_btn_text"><i class="fas fa-user-tie me-2 text-muted"></i>Select manager(s)...</span>
+                                </button>
+                                <div class="dropdown-menu w-100 p-2 shadow-sm" aria-labelledby="edit_ns_manager_dropdown_btn" style="max-height: 260px; overflow-y: auto;">
+                                    <input type="text" class="form-control form-control-sm mb-2" placeholder="Search managers..." onkeyup="filterNsManagerDropdown(this)">
+                                    <div class="d-flex justify-content-between px-1 mb-2 border-bottom pb-1">
+                                        <a href="javascript:void(0)" class="text-decoration-none small text-primary fw-semibold" onclick="toggleSelectAllNsManagers(this, true, 'edit')">Select All</a>
+                                        <a href="javascript:void(0)" class="text-decoration-none small text-muted fw-semibold" onclick="toggleSelectAllNsManagers(this, false, 'edit')">Clear All</a>
+                                    </div>
+                                    <div class="manager-options-container">
+                                        @if(isset($managers) && $managers->isNotEmpty())
+                                            @foreach ($managers as $manager)
+                                                <div class="form-check py-1 px-3 manager-option-item" data-name="{{ strtolower($manager->name) }}" data-email="{{ strtolower($manager->email ?? '') }}">
+                                                    <input class="form-check-input ns-manager-checkbox" type="checkbox" name="assigned_managers[]" value="{{ $manager->id }}" id="edit_ns_mgr_{{ $manager->id }}" onchange="updateNsManagerDropdownText('edit')">
+                                                    <label class="form-check-label w-100 cursor-pointer" for="edit_ns_mgr_{{ $manager->id }}">
+                                                        <div class="fw-medium text-dark">{{ $manager->name }}</div>
+                                                        @if(!empty($manager->email))
+                                                            <div class="text-muted small" style="font-size: 0.75rem;">{{ $manager->email }}</div>
+                                                        @endif
+                                                    </label>
+                                                </div>
+                                            @endforeach
+                                        @else
+                                            <div class="text-muted small px-3 py-1">No managers found</div>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                            <small class="text-muted" style="font-size: 0.75rem;">Selected manager(s) will be the only managers who can view this expense. Leave unselected to allow all managers of the company.</small>
+                        </div>
+                    </div>
+
                     <!-- Category & Amount -->
                     <div class="row g-3 mb-4">
                         <div class="col-md-6">
@@ -1576,105 +1656,9 @@
                         </div>
                     </div>
 
-                    <!-- TDS Details -->
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold text-uppercase small text-muted">TDS Status</label>
-                            <select class="form-select" id="edit_ns_tds_status" name="tds_status">
-                                <option value="received">Paid</option>
-                                <option value="not_received">Not Paid</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold text-uppercase small text-muted">TDS Certificate/Receipt</label>
-                            <input type="file" id="edit_ns_tds_receipt" name="tds_receipt" class="form-control"
-                                accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
-                        </div>
-                    </div>
-
                     <input type="hidden" class="form-control" id="edit_ns_grand_total" name="grand_total" value="0.00">
                     <input type="hidden" class="form-control" id="edit_ns_schedule_amount" name="planned_amount" value="0.00">
 
-                    <div class="section-divider"></div>
-
-                    <!-- Paid, Mode, Date, Receipt -->
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-3">
-                            <label class="form-label">Paid Amount (₹)</label>
-                            <input type="number" class="form-control" id="edit_ns_paid_amount" name="paid_amount" step="0.01"
-                                value="0.00">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label">Payment Mode</label>
-                            <select class="form-select" name="payment_mode" id="edit_ns_payment_mode"
-                                onchange="toggleEditNsPaymentModeDetails()">
-                                <option value="cash">Cash</option>
-                                <option value="bank_transfer">Bank Transfer</option>
-                                <option value="cheque">Cheque</option>
-                                <option value="upi">UPI</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label">Payment Date</label>
-                            <input type="date" class="form-control" name="payment_date" id="edit_ns_payment_date" max="{{ date('Y-m-d') }}">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label">Add Receipts</label>
-                            <input type="file" name="receipts[]" class="form-control" id="edit_ns_receipts"
-                                multiple accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
-                        </div>
-                    </div>
-
-                    <!-- Payment Mode Details Row -->
-                    <div class="row g-3 mb-3" id="edit_ns_payment_mode_details" style="display: none;">
-                        <div class="col-md-6" id="edit_ns_bank_details" style="display: none;">
-                            <label class="form-label">Select Bank</label>
-                            <select class="form-select" name="bank_name" id="edit_ns_bank_name">
-                                <option value="">Select Bank</option>
-                                <option value="SBI">State Bank of India</option>
-                                <option value="HDFC">HDFC Bank</option>
-                                <option value="ICICI">ICICI Bank</option>
-                                <option value="Axis">Axis Bank</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6" id="edit_ns_upi_details" style="display: none;">
-                            <label class="form-label">UPI Type</label>
-                            <select class="form-select" name="upi_type" id="edit_ns_upi_type">
-                                <option value="GPay">Google Pay</option>
-                                <option value="PhonePe">PhonePe</option>
-                                <option value="Paytm">Paytm</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6" id="edit_ns_upi_number_details" style="display: none;">
-                            <label class="form-label">UPI Phone Number</label>
-                            <input type="text" class="form-control" id="edit_ns_upi_number" name="upi_number" placeholder="Enter phone number" maxlength="10" pattern="[0-9]{10}">
-                        </div>
-                    </div>
-
-                    <!-- Balance, Status, Settle Notes, Due Date -->
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-3">
-                            <label class="form-label">Balance</label>
-                            <input type="number" class="form-control bg-light" id="edit_ns_balance_amount" name="balance_amount"
-                                step="0.01" readonly value="0.00">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label">Status <span class="text-danger">*</span></label>
-                            <select class="form-select" name="status" required id="edit_ns_status" onchange="toggleEditNsStatusDetails()">
-                                <option value="upcoming">Upcoming</option>
-                                <option value="pending">Pending</option>
-                                <option value="settle">Settle</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3" id="edit_ns_settle_notes_container" style="display:none;">
-                            <label class="form-label" for="edit_ns_settle_notes">Settle Notes <span class="text-danger">*</span></label>
-                            <textarea class="form-control" id="edit_ns_settle_notes" name="settle_notes" rows="1" placeholder="Enter notes..."></textarea>
-                        </div>
-                        <div class="col-md-3" id="edit_ns_due_date_container">
-                            <label class="form-label">Due Date</label>
-                            <input type="date" class="form-control" name="due_date" id="edit_ns_due_date">
-                        </div>
-                    </div>
                     <div class="section-divider"></div>
 
                     <!-- Party/Vendor & Mobile -->
@@ -1694,9 +1678,6 @@
                         <label class="form-label" for="edit_ns_notes">Notes</label>
                         <textarea class="form-control" id="edit_ns_notes" name="notes" rows="2" placeholder="Optional notes..."></textarea>
                     </div>
-
-                    <!-- Existing Receipts -->
-                    <div class="mb-2" id="edit_ns_existing_receipts"></div>
                 </div>
 
                 <div class="modal-footer">
@@ -3669,13 +3650,6 @@
 
         const scheduleEl = document.getElementById('edit_ns_schedule_amount');
         if (scheduleEl) scheduleEl.value = netPayable.toFixed(2);
-
-        const paidAmountInput = document.getElementById('edit_ns_paid_amount');
-        const paidAmount = parseFloat(paidAmountInput?.value) || 0;
-
-        const balance = Math.max(0, netPayable - paidAmount);
-        const balanceField = document.getElementById('edit_ns_balance_amount');
-        if (balanceField) balanceField.value = balance.toFixed(2);
     }
 
     async function editNonStandardExpense(id) {
@@ -3705,38 +3679,19 @@
             document.getElementById('edit_ns_apply_tds').checked = !!exp.has_tds;
             document.getElementById('edit_ns_tds_percentage').value = exp.tds_percentage || 10;
             document.getElementById('edit_ns_tds_amount').value = (exp.tds_amount || 0).toFixed(2);
-            document.getElementById('edit_ns_tds_status').value = exp.tds_status || 'not_received';
 
-            document.getElementById('edit_ns_paid_amount').value = exp.paid_amount || 0;
-            document.getElementById('edit_ns_payment_mode').value = exp.payment_mode || 'cash';
-            document.getElementById('edit_ns_payment_date').value = exp.payment_date || '';
-            document.getElementById('edit_ns_due_date').value = exp.due_date || '';
-            document.getElementById('edit_ns_status').value = (exp.status === 'upcoming' || exp.status === 'due') ? 'upcoming' : ((exp.status === 'settle') ? 'settle' : 'pending');
-            document.getElementById('edit_ns_party_name').value = exp.party_name || '';
-            document.getElementById('edit_ns_mobile_number').value = exp.mobile_number || '';
-            document.getElementById('edit_ns_notes').value = exp.notes || '';
-            document.getElementById('edit_ns_settle_notes').value = exp.settle_notes || '';
+            if (document.getElementById('edit_ns_party_name')) document.getElementById('edit_ns_party_name').value = exp.party_name || '';
+            if (document.getElementById('edit_ns_mobile_number')) document.getElementById('edit_ns_mobile_number').value = exp.mobile_number || '';
+            if (document.getElementById('edit_ns_notes')) document.getElementById('edit_ns_notes').value = exp.notes || '';
 
-            if (exp.bank_name) document.getElementById('edit_ns_bank_name').value = exp.bank_name;
-            if (exp.upi_type) document.getElementById('edit_ns_upi_type').value = exp.upi_type;
-            if (exp.upi_number) document.getElementById('edit_ns_upi_number').value = exp.upi_number;
+            // Populate assigned managers
+            const assignedManagers = (exp.assigned_managers || []).map(id => String(id));
+            document.querySelectorAll('#editNonStandardModal .ns-manager-checkbox').forEach(cb => {
+                cb.checked = assignedManagers.includes(String(cb.value));
+            });
+            updateNsManagerDropdownText('edit');
 
-            toggleEditNsPaymentModeDetails();
-            toggleEditNsStatusDetails();
             calculateEditNsTax();
-
-            const receiptsContainer = document.getElementById('edit_ns_existing_receipts');
-            if (receiptsContainer) {
-                receiptsContainer.innerHTML = '';
-                if (exp.receipts && exp.receipts.length > 0) {
-                    let html = '<label class="form-label small text-muted fw-bold">Existing Receipts:</label><div class="d-flex flex-wrap gap-2">';
-                    exp.receipts.forEach(r => {
-                        html += `<a href="${window.APP_URL}/${r.file_path}" target="_blank" class="badge bg-light text-dark border p-2 text-decoration-none"><i class="fas fa-file me-1 text-primary"></i>${r.file_name}</a>`;
-                    });
-                    html += '</div>';
-                    receiptsContainer.innerHTML = html;
-                }
-            }
 
             const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('editNonStandardModal'));
             modal.show();
@@ -3745,6 +3700,62 @@
             alert('Failed to load expense details');
         }
     }
+
+    function filterNsManagerDropdown(input) {
+        const query = (input.value || '').toLowerCase().trim();
+        const container = input.closest('.dropdown-menu').querySelector('.manager-options-container');
+        if (!container) return;
+        container.querySelectorAll('.manager-option-item').forEach(item => {
+            const name = item.getAttribute('data-name') || '';
+            const email = item.getAttribute('data-email') || '';
+            if (!query || name.includes(query) || email.includes(query)) {
+                item.style.display = 'block';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+
+    function toggleSelectAllNsManagers(link, selectAll, mode) {
+        const modalId = mode === 'edit' ? 'editNonStandardModal' : 'addNonStandardModal';
+        const modal = document.getElementById(modalId);
+        if (!modal) return;
+        const visibleCheckboxes = modal.querySelectorAll('.manager-option-item:not([style*="display: none"]) .ns-manager-checkbox');
+        visibleCheckboxes.forEach(cb => cb.checked = selectAll);
+        updateNsManagerDropdownText(mode);
+    }
+
+    function updateNsManagerDropdownText(mode) {
+        const modalId = mode === 'edit' ? 'editNonStandardModal' : 'addNonStandardModal';
+        const prefix = mode === 'edit' ? 'edit_ns_' : 'add_ns_';
+        const modal = document.getElementById(modalId);
+        if (!modal) return;
+        const checked = modal.querySelectorAll('.ns-manager-checkbox:checked');
+        const count = checked.length;
+        const btnText = document.getElementById(prefix + 'manager_btn_text');
+        const countBadge = document.getElementById(prefix + 'manager_count');
+
+        if (count === 0) {
+            if (btnText) btnText.innerHTML = '<i class="fas fa-user-tie me-2 text-muted"></i>Select manager(s)...';
+            if (countBadge) countBadge.textContent = 'All managers (default)';
+        } else if (count === 1) {
+            const name = checked[0].closest('.form-check')?.querySelector('.fw-medium')?.textContent?.trim() || '1 Manager';
+            if (btnText) btnText.innerHTML = `<i class="fas fa-user-tie me-2 text-primary"></i>${name}`;
+            if (countBadge) countBadge.textContent = '1 manager selected';
+        } else {
+            if (btnText) btnText.innerHTML = `<i class="fas fa-user-tie me-2 text-primary"></i>${count} managers selected`;
+            if (countBadge) countBadge.textContent = `${count} managers selected`;
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('addNonStandardModal')?.addEventListener('show.bs.modal', function () {
+            document.querySelectorAll('#addNonStandardModal .ns-manager-checkbox').forEach(cb => {
+                cb.checked = false;
+            });
+            updateNsManagerDropdownText('add');
+        });
+    });
 </script>
 <style>
     .tax-section {

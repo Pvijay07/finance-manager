@@ -1385,6 +1385,42 @@
                             <label for="clientName" class="form-label">Client Name / Description *</label>
                             <input type="text" class="form-control" id="clientName" name="client_name" required>
                         </div>
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label d-flex justify-content-between align-items-center">
+                                <span>Assign Manager(s)</span>
+                                <small class="text-muted" id="add_ns_inc_manager_count">All managers (default)</small>
+                            </label>
+                            <div class="dropdown">
+                                <button class="btn btn-outline-secondary w-100 text-start d-flex justify-content-between align-items-center dropdown-toggle bg-white" type="button" id="add_ns_inc_manager_dropdown_btn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" style="border: 1px solid #ced4da; border-radius: 6px; padding: 7px 12px;">
+                                    <span class="text-truncate" id="add_ns_inc_manager_btn_text"><i class="fas fa-user-tie me-2 text-muted"></i>Select manager(s)...</span>
+                                </button>
+                                <div class="dropdown-menu w-100 p-2 shadow-sm" aria-labelledby="add_ns_inc_manager_dropdown_btn" style="max-height: 260px; overflow-y: auto;">
+                                    <input type="text" class="form-control form-control-sm mb-2" placeholder="Search managers..." onkeyup="filterNsIncManagerDropdown(this)">
+                                    <div class="d-flex justify-content-between px-1 mb-2 border-bottom pb-1">
+                                        <a href="javascript:void(0)" class="text-decoration-none small text-primary fw-semibold" onclick="toggleSelectAllNsIncManagers(this, true, 'add')">Select All</a>
+                                        <a href="javascript:void(0)" class="text-decoration-none small text-muted fw-semibold" onclick="toggleSelectAllNsIncManagers(this, false, 'add')">Clear All</a>
+                                    </div>
+                                    <div class="manager-options-container">
+                                        @if(isset($managers) && $managers->isNotEmpty())
+                                            @foreach ($managers as $manager)
+                                                <div class="form-check py-1 px-3 manager-option-item" data-name="{{ strtolower($manager->name) }}" data-email="{{ strtolower($manager->email ?? '') }}">
+                                                    <input class="form-check-input ns-inc-manager-checkbox" type="checkbox" name="assigned_managers[]" value="{{ $manager->id }}" id="add_ns_inc_mgr_{{ $manager->id }}" onchange="updateNsIncManagerDropdownText('add')">
+                                                    <label class="form-check-label w-100 cursor-pointer" for="add_ns_inc_mgr_{{ $manager->id }}">
+                                                        <div class="fw-medium text-dark">{{ $manager->name }}</div>
+                                                        @if(!empty($manager->email))
+                                                            <div class="text-muted small" style="font-size: 0.75rem;">{{ $manager->email }}</div>
+                                                        @endif
+                                                    </label>
+                                                </div>
+                                            @endforeach
+                                        @else
+                                            <div class="text-muted small px-3 py-1">No managers found</div>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                            <small class="text-muted" style="font-size: 0.75rem;">Selected manager(s) will be the only managers who can view this income. Leave unselected to allow all managers of the company.</small>
+                        </div>
                         <div class="col-md-3 mb-3">
                             <label for="actualAmount" class="form-label">Base Amount *</label>
                             <input type="number" step="0.01" class="form-control" id="actualAmount" name="amount"
@@ -1563,6 +1599,42 @@
                             <label for="edit_ns_inc_clientName" class="form-label">Client Name / Description <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" id="edit_ns_inc_clientName" name="client_name" required>
                         </div>
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label d-flex justify-content-between align-items-center">
+                                <span>Assign Manager(s)</span>
+                                <small class="text-muted" id="edit_ns_inc_manager_count">All managers (default)</small>
+                            </label>
+                            <div class="dropdown">
+                                <button class="btn btn-outline-secondary w-100 text-start d-flex justify-content-between align-items-center dropdown-toggle bg-white" type="button" id="edit_ns_inc_manager_dropdown_btn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" style="border: 1px solid #ced4da; border-radius: 6px; padding: 7px 12px;">
+                                    <span class="text-truncate" id="edit_ns_inc_manager_btn_text"><i class="fas fa-user-tie me-2 text-muted"></i>Select manager(s)...</span>
+                                </button>
+                                <div class="dropdown-menu w-100 p-2 shadow-sm" aria-labelledby="edit_ns_inc_manager_dropdown_btn" style="max-height: 260px; overflow-y: auto;">
+                                    <input type="text" class="form-control form-control-sm mb-2" placeholder="Search managers..." onkeyup="filterNsIncManagerDropdown(this)">
+                                    <div class="d-flex justify-content-between px-1 mb-2 border-bottom pb-1">
+                                        <a href="javascript:void(0)" class="text-decoration-none small text-primary fw-semibold" onclick="toggleSelectAllNsIncManagers(this, true, 'edit')">Select All</a>
+                                        <a href="javascript:void(0)" class="text-decoration-none small text-muted fw-semibold" onclick="toggleSelectAllNsIncManagers(this, false, 'edit')">Clear All</a>
+                                    </div>
+                                    <div class="manager-options-container">
+                                        @if(isset($managers) && $managers->isNotEmpty())
+                                            @foreach ($managers as $manager)
+                                                <div class="form-check py-1 px-3 manager-option-item" data-name="{{ strtolower($manager->name) }}" data-email="{{ strtolower($manager->email ?? '') }}">
+                                                    <input class="form-check-input ns-inc-manager-checkbox" type="checkbox" name="assigned_managers[]" value="{{ $manager->id }}" id="edit_ns_inc_mgr_{{ $manager->id }}" onchange="updateNsIncManagerDropdownText('edit')">
+                                                    <label class="form-check-label w-100 cursor-pointer" for="edit_ns_inc_mgr_{{ $manager->id }}">
+                                                        <div class="fw-medium text-dark">{{ $manager->name }}</div>
+                                                        @if(!empty($manager->email))
+                                                            <div class="text-muted small" style="font-size: 0.75rem;">{{ $manager->email }}</div>
+                                                        @endif
+                                                    </label>
+                                                </div>
+                                            @endforeach
+                                        @else
+                                            <div class="text-muted small px-3 py-1">No managers found</div>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                            <small class="text-muted" style="font-size: 0.75rem;">Selected manager(s) will be the only managers who can view this income. Leave unselected to allow all managers of the company.</small>
+                        </div>
                         <div class="col-md-6 mb-3">
                             <label for="edit_ns_inc_actualAmount" class="form-label">Base Amount (₹) <span class="text-danger">*</span></label>
                             <input type="number" step="0.01" class="form-control" id="edit_ns_inc_actualAmount" name="amount"
@@ -1626,60 +1698,7 @@
                                             readonly value="0.00">
                                     </div>
                                 </div>
-
-                                <div class="row g-3">
-                                    <div class="col-md-6">
-                                        <label class="form-label small text-muted fw-bold">TDS Status</label>
-                                        <select class="form-select" id="edit_ns_inc_addTdsStatus" name="tds_status">
-                                            <option value="received">Received</option>
-                                            <option value="not_received">Not Received</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label small text-muted fw-bold">TDS Certificate/Receipt</label>
-                                        <input type="file" id="edit_ns_inc_addTdsReceipt" name="tds_receipt"
-                                            class="form-control" accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
-                                    </div>
-                                </div>
                             </div>
-                        </div>
-
-                        <!-- Amount Received Section -->
-                        <div class="row mb-3">
-                            <div class="col-md-4">
-                                <label class="form-label">Received Amount (₹)</label>
-                                <input type="number" class="form-control" id="edit_ns_inc_received_amount"
-                                    name="received_amount" step="0.01" value="0.00">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Received Date</label>
-                                <input type="date" class="form-control" id="edit_ns_inc_received_date" name="received_date"
-                                    max="{{ date ( 'Y-m-d' ) }}">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Balance (₹)</label>
-                                <input type="number" class="form-control bg-light" id="edit_ns_inc_balance_amount" name="balance_amount"
-                                    step="0.01" readonly value="0.00">
-                            </div>
-                        </div>
-
-                        <div class="col-md-4 mb-3">
-                            <label for="edit_ns_inc_status" class="form-label">Status <span class="text-danger">*</span></label>
-                            <select class="form-select" id="edit_ns_inc_status" name="status" required
-                                onchange="handleEditNsIncStatusChange()">
-                                <option value="due">Due</option>
-                                <option value="pending">Pending</option>
-                                <option value="settle">Settle</option>
-                            </select>
-                        </div>
-                        <div class="col-md-4 mb-3" id="edit_ns_inc_settleNotesContainer" style="display:none;">
-                            <label for="edit_ns_inc_settleNotes" class="form-label">Settle Notes <span class="text-danger">*</span></label>
-                            <textarea class="form-control" id="edit_ns_inc_settleNotes" name="settle_notes" rows="1"
-                                placeholder="Enter notes for settled status..."></textarea>
-                        </div>
-                        <div class="col-md-4 mb-3" id="edit_ns_inc_dueDateContainer">
-                            <label for="edit_ns_inc_dueDate" class="form-label">Due Date</label>
-                            <input type="date" class="form-control" id="edit_ns_inc_dueDate" name="due_date">
                         </div>
 
                         <div class="col-12 mb-3">
@@ -1868,6 +1887,8 @@ document.addEventListener('DOMContentLoaded', function() {
         nsIncomeModal.addEventListener('show.bs.modal', function() {
             const form = document.getElementById('incomeForm');
             if (form) form.reset();
+            document.querySelectorAll('#addNonStandardIncomeModal .ns-inc-manager-checkbox').forEach(cb => cb.checked = false);
+            updateNsIncManagerDropdownText('add');
             handleStatusChange(document.getElementById('status'), 'dueDateContainer', 'dueDate');
             calculateIncomeTax();
         });
@@ -1936,53 +1957,38 @@ function calculateEditIncomeTax(event) {
     const tdsCheckbox = document.getElementById('edit_ns_inc_applyTds');
     const gstPercentageInput = document.getElementById('edit_ns_inc_gst_percentage');
     const tdsPercentageInput = document.getElementById('edit_ns_inc_tds_percentage');
-    const receivedAmountInput = document.getElementById('edit_ns_inc_received_amount');
 
     if (!actualAmountInput || !gstCheckbox || !tdsCheckbox) return;
-
-    const isReceivedAmount = event && event.target && (event.target.id === 'edit_ns_inc_received_amount');
 
     const actualAmount = parseFloat(actualAmountInput.value) || 0;
     const applyGst = gstCheckbox.checked;
     const applyTds = tdsCheckbox.checked;
     const gstPercentage = parseFloat(gstPercentageInput?.value) || 0;
     const tdsPercentage = parseFloat(tdsPercentageInput?.value) || 0;
-    const receivedAmount = parseFloat(receivedAmountInput?.value) || 0;
 
     let gstAmount = 0;
     let tdsAmount = 0;
     let amountAfterGst = actualAmount;
     let grandTotal = actualAmount;
 
-    if (!isReceivedAmount) {
-        if (applyGst && gstPercentage > 0) {
-            gstAmount = (actualAmount * gstPercentage) / 100;
-            amountAfterGst = actualAmount + gstAmount;
-            grandTotal = amountAfterGst;
-        }
-
-        if (applyTds && tdsPercentage > 0) {
-            const baseForTds = applyGst ? amountAfterGst : actualAmount;
-            tdsAmount = (baseForTds * tdsPercentage) / 100;
-        }
-
-        const gstAmountEl = document.getElementById('edit_ns_inc_gst_amount');
-        const tdsAmountEl = document.getElementById('edit_ns_inc_tds_amount');
-        const grandTotalEl = document.getElementById('edit_ns_inc_grand_total');
-
-        if (gstAmountEl) gstAmountEl.value = gstAmount.toFixed(2);
-        if (tdsAmountEl) tdsAmountEl.value = tdsAmount.toFixed(2);
-        if (grandTotalEl) grandTotalEl.value = grandTotal.toFixed(2);
-    } else {
-        gstAmount = parseFloat(document.getElementById('edit_ns_inc_gst_amount')?.value) || 0;
-        tdsAmount = parseFloat(document.getElementById('edit_ns_inc_tds_amount')?.value) || 0;
-        grandTotal = parseFloat(document.getElementById('edit_ns_inc_grand_total')?.value) || (actualAmount + gstAmount);
+    if (applyGst && gstPercentage > 0) {
+        gstAmount = (actualAmount * gstPercentage) / 100;
+        amountAfterGst = actualAmount + gstAmount;
+        grandTotal = amountAfterGst;
     }
 
-    const netPayable = grandTotal - tdsAmount;
-    const balance = Math.max(0, netPayable - receivedAmount);
-    const balanceEl = document.getElementById('edit_ns_inc_balance_amount');
-    if (balanceEl) balanceEl.value = balance.toFixed(2);
+    if (applyTds && tdsPercentage > 0) {
+        const baseForTds = applyGst ? amountAfterGst : actualAmount;
+        tdsAmount = (baseForTds * tdsPercentage) / 100;
+    }
+
+    const gstAmountEl = document.getElementById('edit_ns_inc_gst_amount');
+    const tdsAmountEl = document.getElementById('edit_ns_inc_tds_amount');
+    const grandTotalEl = document.getElementById('edit_ns_inc_grand_total');
+
+    if (gstAmountEl) gstAmountEl.value = gstAmount.toFixed(2);
+    if (tdsAmountEl) tdsAmountEl.value = tdsAmount.toFixed(2);
+    if (grandTotalEl) grandTotalEl.value = grandTotal.toFixed(2);
 
     if (gstPercentageInput) gstPercentageInput.disabled = !applyGst;
     if (tdsPercentageInput) tdsPercentageInput.disabled = !applyTds;
@@ -2015,17 +2021,21 @@ async function openEditNonStandardIncomeModal(id) {
         document.getElementById('edit_ns_inc_applyTds').checked = !!inc.has_tds;
         document.getElementById('edit_ns_inc_tds_percentage').value = inc.tds_percentage || 10;
         document.getElementById('edit_ns_inc_tds_amount').value = (inc.tds_amount || 0).toFixed(2);
-        document.getElementById('edit_ns_inc_addTdsStatus').value = inc.tds_status || 'not_received';
 
-        document.getElementById('edit_ns_inc_received_amount').value = inc.received_amount || 0;
-        document.getElementById('edit_ns_inc_received_date').value = inc.received_date || '';
-        document.getElementById('edit_ns_inc_dueDate').value = inc.due_date || '';
-        document.getElementById('edit_ns_inc_status').value = (inc.status === 'due' || inc.status === 'pending' || inc.status === 'settle') ? inc.status : 'due';
-        document.getElementById('edit_ns_inc_mailStatus').checked = (inc.mail_status == 1);
-        document.getElementById('edit_ns_inc_notes').value = inc.notes || '';
-        document.getElementById('edit_ns_inc_settleNotes').value = inc.settle_notes || '';
+        if (document.getElementById('edit_ns_inc_mailStatus')) {
+            document.getElementById('edit_ns_inc_mailStatus').checked = (inc.mail_status == 1);
+        }
+        if (document.getElementById('edit_ns_inc_notes')) {
+            document.getElementById('edit_ns_inc_notes').value = inc.notes || '';
+        }
 
-        handleEditNsIncStatusChange();
+        // Populate assigned managers
+        const assignedManagers = (inc.assigned_managers || []).map(id => String(id));
+        document.querySelectorAll('#editNonStandardIncomeModal .ns-inc-manager-checkbox').forEach(cb => {
+            cb.checked = assignedManagers.includes(String(cb.value));
+        });
+        updateNsIncManagerDropdownText('edit');
+
         calculateEditIncomeTax();
 
         const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('editNonStandardIncomeModal'));
@@ -2033,6 +2043,53 @@ async function openEditNonStandardIncomeModal(id) {
     } catch (err) {
         console.error('Error in openEditNonStandardIncomeModal:', err);
         alert('Failed to load income details');
+    }
+}
+
+function filterNsIncManagerDropdown(input) {
+    const query = (input.value || '').toLowerCase().trim();
+    const container = input.closest('.dropdown-menu').querySelector('.manager-options-container');
+    if (!container) return;
+    container.querySelectorAll('.manager-option-item').forEach(item => {
+        const name = item.getAttribute('data-name') || '';
+        const email = item.getAttribute('data-email') || '';
+        if (!query || name.includes(query) || email.includes(query)) {
+            item.style.display = 'block';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+}
+
+function toggleSelectAllNsIncManagers(link, selectAll, mode) {
+    const modalId = mode === 'edit' ? 'editNonStandardIncomeModal' : 'addNonStandardIncomeModal';
+    const modal = document.getElementById(modalId);
+    if (!modal) return;
+    const visibleCheckboxes = modal.querySelectorAll('.manager-option-item:not([style*="display: none"]) .ns-inc-manager-checkbox');
+    visibleCheckboxes.forEach(cb => cb.checked = selectAll);
+    updateNsIncManagerDropdownText(mode);
+}
+
+function updateNsIncManagerDropdownText(mode) {
+    const modalId = mode === 'edit' ? 'editNonStandardIncomeModal' : 'addNonStandardIncomeModal';
+    const prefix = mode === 'edit' ? 'edit_ns_inc_' : 'add_ns_inc_';
+    const modal = document.getElementById(modalId);
+    if (!modal) return;
+    const checked = modal.querySelectorAll('.ns-inc-manager-checkbox:checked');
+    const count = checked.length;
+    const btnText = document.getElementById(prefix + 'manager_btn_text');
+    const countBadge = document.getElementById(prefix + 'manager_count');
+
+    if (count === 0) {
+        if (btnText) btnText.innerHTML = '<i class="fas fa-user-tie me-2 text-muted"></i>Select manager(s)...';
+        if (countBadge) countBadge.textContent = 'All managers (default)';
+    } else if (count === 1) {
+        const name = checked[0].closest('.form-check')?.querySelector('.fw-medium')?.textContent?.trim() || '1 Manager';
+        if (btnText) btnText.innerHTML = `<i class="fas fa-user-tie me-2 text-primary"></i>${name}`;
+        if (countBadge) countBadge.textContent = '1 manager selected';
+    } else {
+        if (btnText) btnText.innerHTML = `<i class="fas fa-user-tie me-2 text-primary"></i>${count} managers selected`;
+        if (countBadge) countBadge.textContent = `${count} managers selected`;
     }
 }
 </script>

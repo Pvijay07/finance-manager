@@ -28,7 +28,8 @@ class ExpensesController extends Controller
     $activeTab = $request->get('tab', 'standard');
 
     // Build base query
-    $query = Expense::with(['company', 'categoryRelation', 'receipts', 'parent', 'children']);
+    $query = Expense::with(['company', 'categoryRelation', 'receipts', 'parent', 'children'])
+      ->visibleToUser($user);
     // Apply company filter - only show expenses from companies where user is manager
     $query->whereHas('company', function ($q) use ($user) {
       if (!$user->isAdmin() && !$user->isCA()) {
@@ -112,7 +113,8 @@ class ExpensesController extends Controller
     $allExpenses = $query->orderBy('created_at', 'desc')->paginate($perPage)->withQueryString();
 
     // Calculate summary statistics - Need a separate query for accurate totals
-    $statsQuery = Expense::with(['company', 'categoryRelation', 'receipts']);
+    $statsQuery = Expense::with(['company', 'categoryRelation', 'receipts'])
+      ->visibleToUser($user);
 
     // Apply the same filters to stats query, including user's companies
     $statsQuery->whereHas('company', function ($q) use ($user) {
@@ -161,7 +163,8 @@ class ExpensesController extends Controller
     $overdueCount = $overdueExpenses->count();
 
     // Total overdue (all time) - only for user's companies
-    $totalOverdueQuery = Expense::where('status', 'overdue');
+    $totalOverdueQuery = Expense::where('status', 'overdue')
+      ->visibleToUser($user);
     $totalOverdueQuery->whereHas('company', function ($q) use ($user) {
       if (!$user->isAdmin() && !$user->isCA()) {
         $q->forManager($user);
@@ -185,7 +188,8 @@ class ExpensesController extends Controller
     // Next 7 days expenses - only for user's companies
     $next7DaysStart = Carbon::now();
     $next7DaysEnd = Carbon::now()->addDays(7);
-    $next7DaysQuery = Expense::whereBetween('due_date', [$next7DaysStart, $next7DaysEnd]);
+    $next7DaysQuery = Expense::whereBetween('due_date', [$next7DaysStart, $next7DaysEnd])
+      ->visibleToUser($user);
 
     $next7DaysQuery->whereHas('company', function ($q) use ($user) {
       if (!$user->isAdmin() && !$user->isCA()) {

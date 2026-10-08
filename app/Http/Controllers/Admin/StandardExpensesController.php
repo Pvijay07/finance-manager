@@ -34,13 +34,11 @@ class StandardExpensesController extends Controller
       $allExpensesQuery->where('source', 'standard');
     } elseif ($typeFilter === 'standard_fixed' || $typeFilter === 'fixed') {
       $allExpensesQuery->where('source', 'standard')->whereHas('categoryRelation', function ($sq) {
-        $sq->where('category_type', 'standard_fixed')
-          ->orWhere('sub_type', 'fixed');
+        $sq->whereIn('category_type', ['standard_fixed', 'fixed']);
       });
     } elseif ($typeFilter === 'standard_editable' || $typeFilter === 'editable') {
       $allExpensesQuery->where('source', 'standard')->whereHas('categoryRelation', function ($sq) {
-        $sq->where('category_type', 'standard_editable')
-          ->orWhere('sub_type', 'editable');
+        $sq->whereIn('category_type', ['standard_editable', 'editable']);
       });
     } elseif ($typeFilter === 'non-standard') {
       $allExpensesQuery->where('source', '!=', 'standard');
@@ -459,7 +457,8 @@ class StandardExpensesController extends Controller
       'mainTab'             => $mainTab,
       'requestedTab'        => $requestedTab,
       'cardStats'           => $cardStats,
-      'dateRangeTitle'      => $dateRangeTitle
+      'dateRangeTitle'      => $dateRangeTitle,
+      'managers'            => \App\Models\User::where('role', 'manager')->orderBy('name')->get()
     ]);
   }
 
@@ -494,6 +493,8 @@ class StandardExpensesController extends Controller
       'tds_status'      => 'nullable|in:received,not_received,paid',
       'receipts.*'      => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:5120',
       'tds_receipt'     => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:5120',
+      'assigned_managers'   => 'nullable|array',
+      'assigned_managers.*' => 'nullable|integer',
     ]);
 
     try {
@@ -568,6 +569,7 @@ class StandardExpensesController extends Controller
         'source'          => 'manual',
         'created_by'      => auth()->id(),
         'expense_number'  => Expense::generateNewExpenseNumber(),
+        'assigned_managers' => !empty($request->assigned_managers) ? array_values(array_filter(array_map('intval', (array)$request->assigned_managers))) : null,
       ]);
 
       // Handle GST Tax if applied
@@ -710,6 +712,7 @@ class StandardExpensesController extends Controller
           'tds_amount'          => $tdsTax ? floatval($tdsTax->tax_amount) : 0,
           'tds_status'          => $tdsTax ? $tdsTax->payment_status : 'not_received',
           'tds_proof_path'      => $tdsTax ? $tdsTax->tds_proof_path : null,
+          'assigned_managers'   => $expense->assigned_managers ?: [],
           'receipts'            => $expense->receipts->map(function ($r) {
             return [
               'id'        => $r->id,
@@ -753,10 +756,12 @@ class StandardExpensesController extends Controller
       'settle_notes'    => 'nullable|string',
       'payment_date'    => 'nullable|date',
       'due_date'        => 'nullable|date',
-      'status'          => 'required|in:upcoming,pending,paid,settle,due,convert_to_tds',
+      'status'          => 'nullable|in:upcoming,pending,paid,settle,due,convert_to_tds',
       'tds_status'      => 'nullable|in:received,not_received,paid',
       'receipts.*'      => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:5120',
       'tds_receipt'     => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:5120',
+      'assigned_managers'   => 'nullable|array',
+      'assigned_managers.*' => 'nullable|integer',
     ]);
 
     try {
@@ -795,42 +800,50 @@ class StandardExpensesController extends Controller
 
       $grandTotal = $actualTotalBase + $gstAmount;
       $netPayableAmount = $grandTotal - $tdsAmount;
-      $paidAmount = floatval($request->paid_amount ?? 0);
 
-      $status = $request->status;
+      // Preserve existing payment status and paid amount if not passed by admin
+      $status = $request->filled('status') ? $request->status : ($expense->status ?: 'upcoming');
       if ($status === 'due') {
         $status = 'upcoming';
       }
+
+      $paidAmount = $request->has('paid_amount') && $request->paid_amount !== null
+        ? floatval($request->paid_amount)
+        : floatval($expense->paid_amount ?? ($expense->actual_amount && in_array($status, ['paid', 'settle']) ? $expense->actual_amount : 0));
+
       if ($paidAmount == 0 && in_array($status, ['paid'])) {
         $paidAmount = $netPayableAmount;
       }
 
       $balanceAmount = max(0, $netPayableAmount - $paidAmount);
       $dueDate = $request->due_date ?: ($expense->due_date ?: now()->format('Y-m-d'));
+      $paymentDate = $request->payment_date ?: $expense->payment_date;
+      $paidDate = in_array($status, ['paid', 'settle']) ? ($request->payment_date ?: ($expense->paid_date ?: now()->format('Y-m-d'))) : $expense->paid_date;
 
       $expense->update([
         'company_id'      => $request->company_id,
         'expense_name'    => $request->expense_name,
         'name'            => $request->expense_name,
         'category_id'     => $request->category_id ?: null,
-        'actual_amount'   => in_array($status, ['paid', 'settle']) ? ($paidAmount ?: $netPayableAmount) : ($paidAmount > 0 ? $paidAmount : null),
+        'actual_amount'   => in_array($status, ['paid', 'settle']) ? ($paidAmount ?: $netPayableAmount) : ($paidAmount > 0 ? $paidAmount : $expense->actual_amount),
         'planned_amount'  => $grandTotal,
         'original_amount' => $actualTotalBase,
         'schedule_amount' => $netPayableAmount,
         'balance_amount'  => $balanceAmount,
         'due_date'        => $dueDate,
-        'payment_date'    => $request->payment_date,
-        'paid_date'       => in_array($status, ['paid', 'settle']) ? ($request->payment_date ?: ($expense->paid_date ?: now()->format('Y-m-d'))) : null,
+        'payment_date'    => $paymentDate,
+        'paid_date'       => $paidDate,
         'status'          => $status,
-        'payment_mode'    => $request->payment_mode ?? 'cash',
-        'bank_name'       => $request->bank_name,
-        'upi_type'        => $request->upi_type,
-        'upi_number'      => $request->upi_number,
-        'party_name'      => $request->party_name,
-        'mobile_number'   => $request->mobile_number,
+        'payment_mode'    => $request->payment_mode ?: ($expense->payment_mode ?: 'cash'),
+        'bank_name'       => $request->filled('bank_name') ? $request->bank_name : $expense->bank_name,
+        'upi_type'        => $request->filled('upi_type') ? $request->upi_type : $expense->upi_type,
+        'upi_number'      => $request->filled('upi_number') ? $request->upi_number : $expense->upi_number,
+        'party_name'      => $request->party_name ?: $expense->party_name,
+        'mobile_number'   => $request->mobile_number ?: $expense->mobile_number,
         'notes'           => $request->notes ?: ($request->purpose_comment ?: $expense->notes),
-        'settle_notes'    => $request->settle_notes,
-        'month_year'      => Carbon::parse($dueDate)->format('Y-m')
+        'settle_notes'    => $request->filled('settle_notes') ? $request->settle_notes : $expense->settle_notes,
+        'month_year'      => Carbon::parse($dueDate)->format('Y-m'),
+        'assigned_managers' => !empty($request->assigned_managers) ? array_values(array_filter(array_map('intval', (array)$request->assigned_managers))) : null
       ]);
 
       // GST tax sync
@@ -840,11 +853,12 @@ class StandardExpensesController extends Controller
         ->first();
 
       if ($applyGst && $gstAmount > 0) {
+        $gstPaymentStatus = $gstTax ? $gstTax->payment_status : (in_array($status, ['paid', 'settle']) ? 'received' : 'not_received');
         if ($gstTax) {
           $gstTax->update([
             'tax_percentage' => $gstPercentage,
             'tax_amount'     => $gstAmount,
-            'payment_status' => in_array($status, ['paid', 'settle']) ? 'received' : 'not_received',
+            'payment_status' => $gstPaymentStatus,
             'taxable_amount' => $actualTotalBase
           ]);
         } else {
