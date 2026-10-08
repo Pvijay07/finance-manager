@@ -32,6 +32,18 @@ class StandardExpensesController extends Controller
 
     if ($typeFilter === 'standard') {
       $allExpensesQuery->where('source', 'standard');
+    } elseif ($typeFilter === 'standard_fixed' || $typeFilter === 'fixed') {
+      $allExpensesQuery->where('source', 'standard')->where(function ($q) {
+        $q->whereHas('categoryRelation', function ($sq) {
+          $sq->where('category_type', 'standard_fixed');
+        })->orWhere('sub_type', 'fixed');
+      });
+    } elseif ($typeFilter === 'standard_editable' || $typeFilter === 'editable') {
+      $allExpensesQuery->where('source', 'standard')->where(function ($q) {
+        $q->whereHas('categoryRelation', function ($sq) {
+          $sq->where('category_type', 'standard_editable');
+        })->orWhere('sub_type', 'editable');
+      });
     } elseif ($typeFilter === 'non-standard') {
       $allExpensesQuery->where(function ($q) {
         $q->where('source', '!=', 'standard')

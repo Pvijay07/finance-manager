@@ -273,7 +273,7 @@ class InvoiceManagementController extends Controller
         $unifiedItems->push((object)[
           'id'              => $inv->id,
           'source'          => 'standard',
-          'type_badge'      => ($inv->type === 'proforma' ? 'Proforma' : 'Standard Invoice'),
+          'type_badge'      => 'Standard',
           'reference_no'    => $inv->invoice_number,
           'party_name'      => $clientName,
           'company_name'    => $inv->company->name ?? 'All Companies',
@@ -296,7 +296,7 @@ class InvoiceManagementController extends Controller
         $unifiedItems->push((object)[
           'id'              => $inc->id,
           'source'          => 'non-standard',
-          'type_badge'      => 'Non-Standard Income',
+          'type_badge'      => 'Non-Standard',
           'reference_no'    => $inc->invoice_number ?? ('INC-' . str_pad($inc->id, 5, '0', STR_PAD_LEFT)),
           'party_name'      => $inc->party_name ?? 'N/A',
           'company_name'    => $inc->company->name ?? 'All Companies',

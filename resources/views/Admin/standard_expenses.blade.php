@@ -106,7 +106,9 @@
                             <span class="input-group-text"><i class="fas fa-filter"></i></span>
                             <select class="form-select" name="type" onchange="this.form.submit()">
                                 <option value="all" {{ ($typeFilter == 'all' || !$typeFilter) ? 'selected' : '' }}>All Types</option>
-                                <option value="standard" {{ $typeFilter == 'standard' ? 'selected' : '' }}>Standard Expenses</option>
+                                <option value="standard" {{ $typeFilter == 'standard' ? 'selected' : '' }}>Standard (All)</option>
+                                <option value="standard_fixed" {{ ($typeFilter == 'standard_fixed' || $typeFilter == 'fixed') ? 'selected' : '' }}>Standard Fixed</option>
+                                <option value="standard_editable" {{ ($typeFilter == 'standard_editable' || $typeFilter == 'editable') ? 'selected' : '' }}>Standard Editable</option>
                                 <option value="non-standard" {{ $typeFilter == 'non-standard' ? 'selected' : '' }}>Non-Standard Expenses</option>
                             </select>
                         </div>
@@ -224,9 +226,22 @@
                                 </td>
                                 <td>
                                     @if($exp->source === 'standard')
-                                        <span class="badge rounded-pill px-2.5 py-1 text-xs fw-semibold" style="background-color: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe;">
-                                            <i class="fas fa-calendar-alt me-1"></i>Standard
-                                        </span>
+                                        @php
+                                            $catType = $exp->categoryRelation->category_type ?? $exp->sub_type ?? '';
+                                        @endphp
+                                        @if($catType === 'standard_fixed' || $catType === 'fixed')
+                                            <span class="badge rounded-pill px-2.5 py-1 text-xs fw-semibold" style="background-color: #dcfce7; color: #15803d; border: 1px solid #bbf7d0;">
+                                                <i class="fas fa-lock me-1"></i>Standard Fixed
+                                            </span>
+                                        @elseif($catType === 'standard_editable' || $catType === 'editable')
+                                            <span class="badge rounded-pill px-2.5 py-1 text-xs fw-semibold" style="background-color: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe;">
+                                                <i class="fas fa-pen-to-square me-1"></i>Standard Editable
+                                            </span>
+                                        @else
+                                            <span class="badge rounded-pill px-2.5 py-1 text-xs fw-semibold" style="background-color: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe;">
+                                                <i class="fas fa-calendar-alt me-1"></i>Standard
+                                            </span>
+                                        @endif
                                     @else
                                         <span class="badge rounded-pill px-2.5 py-1 text-xs fw-semibold" style="background-color: #f3e8ff; color: #6b21a8; border: 1px solid #e9d5ff;">
                                             <i class="fas fa-receipt me-1"></i>Non-Standard
