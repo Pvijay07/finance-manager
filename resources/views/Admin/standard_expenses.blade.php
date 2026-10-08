@@ -2832,8 +2832,7 @@
         }
 
         // Reset form action to create
-        form.action = '{{route('
-        admin.standard - expenses.store ')}}';
+        form.action = '{{ route('admin.standard-expenses.store') }}';
 
         // Remove method spoofing if exists
         const methodInput = form.querySelector('input[name="_method"]');

@@ -106,11 +106,20 @@
 <section id="invoices-page" class="page">
     <div class="container-fluid">
         @php
-        $requestedTab = request()->get('tab');
-        $mainTab = in_array($requestedTab, ['non-standard', 'non_standard']) ? 'non-standard' : 'standard';
-        $activeTab = $requestedTab;
-        if (!$activeTab || $activeTab === 'standard') {
-            $activeTab = request()->hasAny(['search', 'company', 'status', 'date_range', 'start_date', 'end_date', 'page', 'per_page']) ? 'proformas' : 'create';
+        $requestedTab = request()->get('tab', $mainTab ?? 'incomes');
+        if (in_array($requestedTab, ['non-standard', 'non_standard'])) {
+            $mainTab = 'non-standard';
+        } elseif ($requestedTab === 'standard' || in_array($requestedTab, ['proformas', 'create'])) {
+            $mainTab = 'standard';
+        } else {
+            $mainTab = 'incomes';
+        }
+
+        $activeTab = request()->get('subtab');
+        if (!$activeTab) {
+            $activeTab = in_array($requestedTab, ['create', 'proformas']) 
+                ? $requestedTab 
+                : (request()->hasAny(['search', 'company', 'status', 'date_range', 'start_date', 'end_date', 'page', 'per_page']) ? 'proformas' : 'create');
         }
         $settings = $settings ?? session('settings') ?? [];
         @endphp
