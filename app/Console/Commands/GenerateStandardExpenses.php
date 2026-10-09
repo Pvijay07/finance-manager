@@ -102,7 +102,7 @@ class GenerateStandardExpenses extends Command
             'company_id'        => $template->company_id,
             'category_id'       => $template->category_id,
             'parent_id'         => $template->id,
-            'source'            => 'auto_generated',
+            'source'            => 'standard',
             'expense_name'      => $template->expense_name,
             'party_name'        => $template->party_name,
             'planned_amount'    => $template->planned_amount,
