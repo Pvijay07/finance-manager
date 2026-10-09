@@ -1310,6 +1310,8 @@
                                     <td style="padding: 12px 16px; text-align: center;">
                                         @if(in_array($nsIncome->status, ['paid', 'received', 'settle', 'settled']))
                                             <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">Received</span>
+                                        @elseif($nsIncome->status === 'upcoming')
+                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">Upcoming</span>
                                         @elseif($nsIncome->status === 'pending')
                                             <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1">Pending</span>
                                         @else
@@ -1439,41 +1441,43 @@
                         <!-- Tax Section -->
                         <div class="col-12 mb-3" id="taxSection">
                             <!-- GST Section -->
-                            <div class="d-flex justify-content-between mb-2">
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="checkbox" name="apply_gst" id="applyGst"
-                                        value="1" checked>
-                                    <label class="form-check-label" for="applyGst">Apply GST</label>
-                                </div>
-                            </div>
-                            <div class="row mb-3">
-                                <div class="col-md-6">
-                                    <label class="form-label">GST %</label>
-                                    <div class="input-group">
-                                        <input type="number" class="form-control" id="gst_percentage"
-                                            name="gst_percentage" value="18" min="0" max="100" step="0.01">
-                                        <span class="input-group-text">%</span>
+                            <div class="tax-section mb-3">
+                                <div class="d-flex align-items-center mb-2 pb-1 border-bottom border-light">
+                                    <div class="form-check d-flex align-items-center mb-0">
+                                        <input class="form-check-input me-2 mt-0 cursor-pointer" type="checkbox" name="apply_gst" id="applyGst"
+                                            value="1" checked>
+                                        <label class="form-check-label fw-bold text-uppercase small text-dark mb-0 cursor-pointer" for="applyGst">Apply GST</label>
                                     </div>
                                 </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">GST Amount</label>
-                                    <input type="number" class="form-control" id="gst_amount" name="gst_amount"
-                                        readonly>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label small text-muted fw-bold">GST %</label>
+                                        <div class="input-group">
+                                            <input type="number" class="form-control" id="gst_percentage"
+                                                name="gst_percentage" value="18" min="0" max="100" step="0.01">
+                                            <span class="input-group-text">%</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small text-muted fw-bold">GST Amount</label>
+                                        <input type="number" class="form-control" id="gst_amount" name="gst_amount"
+                                            readonly>
+                                    </div>
                                 </div>
                             </div>
 
                             <!-- TDS Section -->
-                            <div id="addTdsSectionWrapper">
-                                <div class="d-flex justify-content-between mb-2">
-                                    <div class="form-check form-check-inline">
-                                        <input class="form-check-input" type="checkbox" name="apply_tds"
+                            <div class="tax-section mb-3" id="addTdsSectionWrapper">
+                                <div class="d-flex align-items-center mb-2 pb-1 border-bottom border-light">
+                                    <div class="form-check d-flex align-items-center mb-0">
+                                        <input class="form-check-input me-2 mt-0 cursor-pointer" type="checkbox" name="apply_tds"
                                             id="applyTds" value="1" checked>
-                                        <label class="form-check-label" for="applyTds">Apply TDS</label>
+                                        <label class="form-check-label fw-bold text-uppercase small text-dark mb-0 cursor-pointer" for="applyTds">Apply TDS</label>
                                     </div>
                                 </div>
-                                <div class="row mb-3">
+                                <div class="row g-3 mb-3">
                                     <div class="col-md-6">
-                                        <label class="form-label">TDS %</label>
+                                        <label class="form-label small text-muted fw-bold">TDS %</label>
                                         <div class="input-group">
                                             <input type="number" class="form-control" id="tds_percentage"
                                                 name="tds_percentage" value="10" min="0" max="100" step="0.01">
@@ -1481,15 +1485,15 @@
                                         </div>
                                     </div>
                                     <div class="col-md-6">
-                                        <label class="form-label">TDS Amount</label>
+                                        <label class="form-label small text-muted fw-bold">TDS Amount</label>
                                         <input type="number" class="form-control" id="tds_amount" name="tds_amount"
                                             readonly>
                                     </div>
                                 </div>
 
-                                <div class="row mb-3">
+                                <div class="row g-3">
                                     <div class="col-md-5">
-                                        <label class="form-label">TDS Status</label>
+                                        <label class="form-label small text-muted fw-bold">TDS Status</label>
                                         <select class="form-select" id="addTdsStatus" name="tds_status">
                                             <option value="" selected disabled>Select Status</option>
                                             <option value="received">Received</option>
@@ -1497,7 +1501,7 @@
                                         </select>
                                     </div>
                                     <div class="col-md-7">
-                                        <label class="form-label">Receipt</label>
+                                        <label class="form-label small text-muted fw-bold">Receipt</label>
                                         <input type="file" id="addTdsReceipt" name="tds_receipt"
                                             class="form-control" accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
                                     </div>
@@ -1650,11 +1654,11 @@
                         <div class="col-12 mb-3">
                             <!-- GST Section -->
                             <div class="tax-section mb-3">
-                                <div class="d-flex justify-content-between mb-2">
-                                    <div class="form-check form-check-inline">
-                                        <input class="form-check-input" type="checkbox" name="apply_gst" id="edit_ns_inc_applyGst"
+                                <div class="d-flex align-items-center mb-2 pb-1 border-bottom border-light">
+                                    <div class="form-check d-flex align-items-center mb-0">
+                                        <input class="form-check-input me-2 mt-0 cursor-pointer" type="checkbox" name="apply_gst" id="edit_ns_inc_applyGst"
                                             value="1">
-                                        <label class="form-check-label fw-bold text-uppercase small text-muted" for="edit_ns_inc_applyGst">GST</label>
+                                        <label class="form-check-label fw-bold text-uppercase small text-dark mb-0 cursor-pointer" for="edit_ns_inc_applyGst">Apply GST</label>
                                     </div>
                                 </div>
                                 <div class="row g-3">
@@ -1676,11 +1680,11 @@
 
                             <!-- TDS Section -->
                             <div class="tax-section mb-3">
-                                <div class="d-flex justify-content-between mb-2">
-                                    <div class="form-check form-check-inline">
-                                        <input class="form-check-input" type="checkbox" name="apply_tds"
+                                <div class="d-flex align-items-center mb-2 pb-1 border-bottom border-light">
+                                    <div class="form-check d-flex align-items-center mb-0">
+                                        <input class="form-check-input me-2 mt-0 cursor-pointer" type="checkbox" name="apply_tds"
                                             id="edit_ns_inc_applyTds" value="1">
-                                        <label class="form-check-label fw-bold text-uppercase small text-muted" for="edit_ns_inc_applyTds">TDS</label>
+                                        <label class="form-check-label fw-bold text-uppercase small text-dark mb-0 cursor-pointer" for="edit_ns_inc_applyTds">Apply TDS</label>
                                     </div>
                                 </div>
                                 <div class="row g-3 mb-3">
@@ -1702,9 +1706,9 @@
                         </div>
 
                         <div class="col-12 mb-3">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="edit_ns_inc_mailStatus" name="mail_status" value="1">
-                                <label class="form-check-label" for="edit_ns_inc_mailStatus">Send Email Confirmation</label>
+                            <div class="form-check d-flex align-items-center">
+                                <input class="form-check-input me-2 mt-0 cursor-pointer" type="checkbox" id="edit_ns_inc_mailStatus" name="mail_status" value="1">
+                                <label class="form-check-label mb-0 cursor-pointer" for="edit_ns_inc_mailStatus">Send Email Confirmation</label>
                             </div>
                         </div>
 
@@ -4929,6 +4933,18 @@ function updateNsIncManagerDropdownText(mode) {
         border-radius: 10px;
         padding: 16px;
         margin-bottom: 16px;
+    }
+
+    .cursor-pointer {
+        cursor: pointer;
+    }
+
+    .form-check-input {
+        cursor: pointer;
+    }
+
+    .form-check-label {
+        cursor: pointer;
     }
 
     .section-divider {

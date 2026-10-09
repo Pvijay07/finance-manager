@@ -546,7 +546,7 @@ class InvoiceManagementController extends Controller
       'balance_amount'  => 'nullable|numeric|min:0',
       'received_date'   => 'nullable|date',
       'due_date'        => 'nullable|date',
-      'status'          => 'required|in:due,settle,paid,received,pending',
+      'status'          => 'required|in:due,settle,paid,received,pending,upcoming',
       'settle_notes'    => 'nullable|string',
       'mail_status'     => 'nullable|in:0,1',
       'notes'           => 'nullable|string',
@@ -578,18 +578,21 @@ class InvoiceManagementController extends Controller
       }
 
       $balanceAmount = max(0, $payableAmountTotal - $receivedAmount);
+      $receivedDate = $request->received_date ?: now()->format('Y-m-d');
+      $dueDate = $request->due_date ?: $receivedDate;
 
       $status = $request->status;
       if (in_array($status, ['paid', 'received']) || ($balanceAmount <= 0.01 && $receivedAmount > 0)) {
         $status = 'received';
       } elseif ($status === 'settle') {
         $status = 'settle';
+      } elseif ($status === 'due' || $status === 'upcoming') {
+        $status = 'upcoming';
+      } elseif ($dueDate && \Carbon\Carbon::parse($dueDate)->gte(now()->startOfDay())) {
+        $status = 'upcoming';
       } else {
         $status = 'pending';
       }
-
-      $receivedDate = $request->received_date ?: now()->format('Y-m-d');
-      $dueDate = $request->due_date ?: $receivedDate;
 
       $income = Income::create([
         'company_id'      => $request->company_id,
@@ -743,7 +746,7 @@ class InvoiceManagementController extends Controller
       'received_amount' => 'nullable|numeric|min:0',
       'received_date'   => 'nullable|date',
       'due_date'        => 'nullable|date',
-      'status'          => 'nullable|in:due,settle,paid,received,pending',
+      'status'          => 'nullable|in:due,settle,paid,received,pending,upcoming',
       'settle_notes'    => 'nullable|string',
       'mail_status'     => 'nullable|in:0,1',
       'notes'           => 'nullable|string',
@@ -777,15 +780,20 @@ class InvoiceManagementController extends Controller
         : floatval($income->received_amount ?? ($income->actual_amount && in_array($income->status, ['paid', 'received', 'settle']) ? $income->actual_amount : 0));
 
       $balanceAmount = max(0, $payableAmountTotal - $receivedAmount);
-
-      // Preserve existing status if not submitted by admin
-      $status = $request->filled('status') ? $request->status : ($income->status ?: 'pending');
-      if (in_array($status, ['paid', 'received']) || ($balanceAmount <= 0.01 && $receivedAmount > 0)) {
-        $status = 'received';
-      }
-
       $receivedDate = $request->filled('received_date') ? $request->received_date : ($income->paid_date ?: ($income->income_date ?: now()->format('Y-m-d')));
       $dueDate = $request->filled('due_date') ? $request->due_date : ($income->due_date ?: $receivedDate);
+
+      // Preserve existing status if not submitted by admin
+      $status = $request->filled('status') ? $request->status : ($income->status ?: 'upcoming');
+      if (in_array($status, ['paid', 'received']) || ($balanceAmount <= 0.01 && $receivedAmount > 0)) {
+        $status = 'received';
+      } elseif ($status === 'settle') {
+        $status = 'settle';
+      } elseif ($status === 'due' || $status === 'upcoming') {
+        $status = 'upcoming';
+      } elseif ($dueDate && \Carbon\Carbon::parse($dueDate)->gte(now()->startOfDay())) {
+        $status = 'upcoming';
+      }
 
       $income->update([
         'company_id'      => $request->company_id,

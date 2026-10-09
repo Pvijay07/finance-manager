@@ -53,7 +53,7 @@ class StandardExpensesController extends Controller
         $expenseTypes = ExpenseType::where('status', 'active')->get();
         $latestLog = ExpenseGenerationLog::latest('run_date')->first();
         
-        return view('Manager.expenses.standard', compact(
+        return view('Manager.standard_expenses', compact(
             'expenses', 
             'companies', 
             'categories',

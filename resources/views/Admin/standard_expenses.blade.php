@@ -37,7 +37,7 @@
     <div id="all-expenses-section">
         <!-- Summary Cards -->
         @if(isset($cardStats))
-            @include('Admin.partials.summary_cards', ['cardType' => 'expense'])
+        @include('Admin.partials.summary_cards', ['cardType' => 'expense'])
         @endif
 
         <!-- Status Tabs for All Expenses -->
@@ -612,7 +612,7 @@
     <div id="table-tab" class="tab-content">
         <!-- Summary Cards -->
         @if(isset($cardStats))
-            @include('Admin.partials.summary_cards', ['cardType' => 'expense'])
+        @include('Admin.partials.summary_cards', ['cardType' => 'expense'])
         @endif
 
         <!-- Status Tabs -->
@@ -956,7 +956,7 @@
     <div id="non-standard-section">
         <!-- Summary Cards -->
         @if(isset($cardStats))
-            @include('Admin.partials.summary_cards', ['cardType' => 'expense'])
+        @include('Admin.partials.summary_cards', ['cardType' => 'expense'])
         @endif
 
         <!-- Status Tabs -->
@@ -1226,7 +1226,7 @@
                             <select class="form-select" id="add_ns_company_id" name="company_id" required onchange="loadCompanyManagersForNsExpense(this.value, 'add')">
                                 <option value="" selected disabled>Select Company</option>
                                 @foreach ($companies as $company)
-                                    <option value="{{ $company->id }}">{{ $company->name }}</option>
+                                <option value="{{ $company->id }}">{{ $company->name }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -1256,19 +1256,19 @@
                                     </div>
                                     <div class="manager-options-container">
                                         @if(isset($managers) && $managers->isNotEmpty())
-                                            @foreach ($managers as $manager)
-                                                <div class="form-check py-1 px-3 manager-option-item" data-name="{{ strtolower($manager->name) }}" data-email="{{ strtolower($manager->email ?? '') }}">
-                                                    <input class="form-check-input ns-manager-checkbox" type="checkbox" name="assigned_managers[]" value="{{ $manager->id }}" id="add_ns_mgr_{{ $manager->id }}" onchange="updateNsManagerDropdownText('add')">
-                                                    <label class="form-check-label w-100 cursor-pointer" for="add_ns_mgr_{{ $manager->id }}">
-                                                        <div class="fw-medium text-dark">{{ $manager->name }}</div>
-                                                        @if(!empty($manager->email))
-                                                            <div class="text-muted small" style="font-size: 0.75rem;">{{ $manager->email }}</div>
-                                                        @endif
-                                                    </label>
-                                                </div>
-                                            @endforeach
+                                        @foreach ($managers as $manager)
+                                        <div class="form-check py-1 px-3 manager-option-item" data-name="{{ strtolower($manager->name) }}" data-email="{{ strtolower($manager->email ?? '') }}">
+                                            <input class="form-check-input ns-manager-checkbox" type="checkbox" name="assigned_managers[]" value="{{ $manager->id }}" id="add_ns_mgr_{{ $manager->id }}" onchange="updateNsManagerDropdownText('add')">
+                                            <label class="form-check-label w-100 cursor-pointer" for="add_ns_mgr_{{ $manager->id }}">
+                                                <div class="fw-medium text-dark">{{ $manager->name }}</div>
+                                                @if(!empty($manager->email))
+                                                <div class="text-muted small" style="font-size: 0.75rem;">{{ $manager->email }}</div>
+                                                @endif
+                                            </label>
+                                        </div>
+                                        @endforeach
                                         @else
-                                            <div class="text-muted small px-3 py-1">No managers found</div>
+                                        <div class="text-muted small px-3 py-1">No managers found</div>
                                         @endif
                                     </div>
                                 </div>
@@ -1284,7 +1284,7 @@
                             <select class="form-select" name="category_id" required>
                                 <option value="" selected disabled>Select Category</option>
                                 @foreach ($categories as $category)
-                                    <option value="{{ $category->id }}">{{ $category->name }}</option>
+                                <option value="{{ $category->id }}">{{ $category->name }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -1298,24 +1298,24 @@
 
                     <!-- GST Section -->
                     <div class="tax-section mb-3">
-                        <div class="row g-3 align-items-end">
-                            <div class="col-auto">
-                                <div class="form-check" style="margin-top: 32px;">
-                                    <input class="form-check-input" type="checkbox" id="apply_gst" name="apply_gst"
-                                        value="1" checked>
-                                    <label class="form-check-label fw-bold text-uppercase small text-muted" for="apply_gst">GST</label>
-                                </div>
+                        <div class="d-flex align-items-center mb-2 pb-1 border-bottom border-light">
+                            <div class="form-check d-flex align-items-center mb-0">
+                                <input class="form-check-input me-2 mt-0 cursor-pointer" type="checkbox" id="apply_gst" name="apply_gst"
+                                    value="1" checked>
+                                <label class="form-check-label fw-bold text-uppercase small text-dark mb-0 cursor-pointer" for="apply_gst">Apply GST</label>
                             </div>
-                            <div class="col">
-                                <label class="form-label fw-bold text-uppercase small text-muted">GST %</label>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted fw-bold">GST %</label>
                                 <div class="input-group">
                                     <input type="number" class="form-control" id="gst_percentage" name="gst_percentage"
                                         value="18" min="0" max="100" step="0.01">
                                     <span class="input-group-text">%</span>
                                 </div>
                             </div>
-                            <div class="col">
-                                <label class="form-label fw-bold text-uppercase small text-muted">GST Amount</label>
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted fw-bold">GST Amount</label>
                                 <input type="number" class="form-control" id="gst_amount" name="gst_amount" value="0.00"
                                     readonly>
                             </div>
@@ -1324,24 +1324,24 @@
 
                     <!-- TDS Section -->
                     <div class="tax-section mb-3">
-                        <div class="row g-3 align-items-end">
-                            <div class="col-auto">
-                                <div class="form-check" style="margin-top: 32px;">
-                                    <input class="form-check-input" type="checkbox" id="apply_tds" name="apply_tds"
-                                        value="1" checked>
-                                    <label class="form-check-label fw-bold text-uppercase small text-muted" for="apply_tds">TDS</label>
-                                </div>
+                        <div class="d-flex align-items-center mb-2 pb-1 border-bottom border-light">
+                            <div class="form-check d-flex align-items-center mb-0">
+                                <input class="form-check-input me-2 mt-0 cursor-pointer" type="checkbox" id="apply_tds" name="apply_tds"
+                                    value="1" checked>
+                                <label class="form-check-label fw-bold text-uppercase small text-dark mb-0 cursor-pointer" for="apply_tds">Apply TDS</label>
                             </div>
-                            <div class="col">
-                                <label class="form-label fw-bold text-uppercase small text-muted">TDS %</label>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted fw-bold">TDS %</label>
                                 <div class="input-group">
                                     <input type="number" class="form-control" id="tds_percentage" name="tds_percentage"
                                         value="10" min="0" max="100" step="0.01">
                                     <span class="input-group-text">%</span>
                                 </div>
                             </div>
-                            <div class="col">
-                                <label class="form-label fw-bold text-uppercase small text-muted">TDS Amount</label>
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted fw-bold">TDS Amount</label>
                                 <input type="number" class="form-control" id="tds_amount" name="tds_amount" value="0.00"
                                     readonly>
                             </div>
@@ -1534,7 +1534,7 @@
                             <select class="form-select" id="edit_ns_company_id" name="company_id" required onchange="loadCompanyManagersForNsExpense(this.value, 'edit')">
                                 <option value="" selected disabled>Select Company</option>
                                 @foreach ($companies as $company)
-                                    <option value="{{ $company->id }}">{{ $company->name }}</option>
+                                <option value="{{ $company->id }}">{{ $company->name }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -1564,19 +1564,19 @@
                                     </div>
                                     <div class="manager-options-container">
                                         @if(isset($managers) && $managers->isNotEmpty())
-                                            @foreach ($managers as $manager)
-                                                <div class="form-check py-1 px-3 manager-option-item" data-name="{{ strtolower($manager->name) }}" data-email="{{ strtolower($manager->email ?? '') }}">
-                                                    <input class="form-check-input ns-manager-checkbox" type="checkbox" name="assigned_managers[]" value="{{ $manager->id }}" id="edit_ns_mgr_{{ $manager->id }}" onchange="updateNsManagerDropdownText('edit')">
-                                                    <label class="form-check-label w-100 cursor-pointer" for="edit_ns_mgr_{{ $manager->id }}">
-                                                        <div class="fw-medium text-dark">{{ $manager->name }}</div>
-                                                        @if(!empty($manager->email))
-                                                            <div class="text-muted small" style="font-size: 0.75rem;">{{ $manager->email }}</div>
-                                                        @endif
-                                                    </label>
-                                                </div>
-                                            @endforeach
+                                        @foreach ($managers as $manager)
+                                        <div class="form-check py-1 px-3 manager-option-item" data-name="{{ strtolower($manager->name) }}" data-email="{{ strtolower($manager->email ?? '') }}">
+                                            <input class="form-check-input ns-manager-checkbox" type="checkbox" name="assigned_managers[]" value="{{ $manager->id }}" id="edit_ns_mgr_{{ $manager->id }}" onchange="updateNsManagerDropdownText('edit')">
+                                            <label class="form-check-label w-100 cursor-pointer" for="edit_ns_mgr_{{ $manager->id }}">
+                                                <div class="fw-medium text-dark">{{ $manager->name }}</div>
+                                                @if(!empty($manager->email))
+                                                <div class="text-muted small" style="font-size: 0.75rem;">{{ $manager->email }}</div>
+                                                @endif
+                                            </label>
+                                        </div>
+                                        @endforeach
                                         @else
-                                            <div class="text-muted small px-3 py-1">No managers found</div>
+                                        <div class="text-muted small px-3 py-1">No managers found</div>
                                         @endif
                                     </div>
                                 </div>
@@ -1592,7 +1592,7 @@
                             <select class="form-select" id="edit_ns_category_id" name="category_id">
                                 <option value="">Select Category</option>
                                 @foreach ($categories as $category)
-                                    <option value="{{ $category->id }}">{{ $category->name }}</option>
+                                <option value="{{ $category->id }}">{{ $category->name }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -1606,24 +1606,24 @@
 
                     <!-- GST Section -->
                     <div class="tax-section mb-3">
-                        <div class="row g-3 align-items-end">
-                            <div class="col-auto">
-                                <div class="form-check" style="margin-top: 32px;">
-                                    <input class="form-check-input" type="checkbox" id="edit_ns_apply_gst" name="apply_gst"
-                                        value="1">
-                                    <label class="form-check-label fw-bold text-uppercase small text-muted" for="edit_ns_apply_gst">GST</label>
-                                </div>
+                        <div class="d-flex align-items-center mb-2 pb-1 border-bottom border-light">
+                            <div class="form-check d-flex align-items-center mb-0">
+                                <input class="form-check-input me-2 mt-0 cursor-pointer" type="checkbox" id="edit_ns_apply_gst" name="apply_gst"
+                                    value="1">
+                                <label class="form-check-label fw-bold text-uppercase small text-dark mb-0 cursor-pointer" for="edit_ns_apply_gst">Apply GST</label>
                             </div>
-                            <div class="col">
-                                <label class="form-label fw-bold text-uppercase small text-muted">GST %</label>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted fw-bold">GST %</label>
                                 <div class="input-group">
                                     <input type="number" class="form-control" id="edit_ns_gst_percentage" name="gst_percentage"
                                         value="18" min="0" max="100" step="0.01">
                                     <span class="input-group-text">%</span>
                                 </div>
                             </div>
-                            <div class="col">
-                                <label class="form-label fw-bold text-uppercase small text-muted">GST Amount</label>
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted fw-bold">GST Amount</label>
                                 <input type="number" class="form-control" id="edit_ns_gst_amount" name="gst_amount" value="0.00"
                                     readonly>
                             </div>
@@ -1632,24 +1632,24 @@
 
                     <!-- TDS Section -->
                     <div class="tax-section mb-3">
-                        <div class="row g-3 align-items-end">
-                            <div class="col-auto">
-                                <div class="form-check" style="margin-top: 32px;">
-                                    <input class="form-check-input" type="checkbox" id="edit_ns_apply_tds" name="apply_tds"
-                                        value="1">
-                                    <label class="form-check-label fw-bold text-uppercase small text-muted" for="edit_ns_apply_tds">TDS</label>
-                                </div>
+                        <div class="d-flex align-items-center mb-2 pb-1 border-bottom border-light">
+                            <div class="form-check d-flex align-items-center mb-0">
+                                <input class="form-check-input me-2 mt-0 cursor-pointer" type="checkbox" id="edit_ns_apply_tds" name="apply_tds"
+                                    value="1">
+                                <label class="form-check-label fw-bold text-uppercase small text-dark mb-0 cursor-pointer" for="edit_ns_apply_tds">Apply TDS</label>
                             </div>
-                            <div class="col">
-                                <label class="form-label fw-bold text-uppercase small text-muted">TDS %</label>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted fw-bold">TDS %</label>
                                 <div class="input-group">
                                     <input type="number" class="form-control" id="edit_ns_tds_percentage" name="tds_percentage"
                                         value="10" min="0" max="100" step="0.01">
                                     <span class="input-group-text">%</span>
                                 </div>
                             </div>
-                            <div class="col">
-                                <label class="form-label fw-bold text-uppercase small text-muted">TDS Amount</label>
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted fw-bold">TDS Amount</label>
                                 <input type="number" class="form-control" id="edit_ns_tds_amount" name="tds_amount" value="0.00"
                                     readonly>
                             </div>
@@ -3141,7 +3141,7 @@
         }
 
         // Reset form action to create
-        form.action = '{{ route('admin.standard-expenses.store') }}';
+        form.action = "{{ route('admin.standard-expenses.store') }}";
 
         // Remove method spoofing if exists
         const methodInput = form.querySelector('input[name="_method"]');
@@ -3655,7 +3655,9 @@
     async function editNonStandardExpense(id) {
         try {
             const response = await fetch(`${window.APP_URL}/admin/standard-expenses/non-standard/${id}`, {
-                headers: { 'Accept': 'application/json' }
+                headers: {
+                    'Accept': 'application/json'
+                }
             });
             const data = await response.json();
             if (!data.success || !data.expense) {
@@ -3814,7 +3816,7 @@
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-        document.getElementById('addNonStandardModal')?.addEventListener('show.bs.modal', function () {
+        document.getElementById('addNonStandardModal')?.addEventListener('show.bs.modal', function() {
             const companySelect = document.getElementById('add_ns_company_id');
             if (companySelect && companySelect.value) {
                 loadCompanyManagersForNsExpense(companySelect.value, 'add');
@@ -3835,10 +3837,23 @@
         margin-bottom: 16px;
     }
 
+    .cursor-pointer {
+        cursor: pointer;
+    }
+
+    .form-check-input {
+        cursor: pointer;
+    }
+
+    .form-check-label {
+        cursor: pointer;
+    }
+
     .section-divider {
         border-top: 2px solid #e2e8f0;
         margin: 24px 0;
     }
+
     /* Additional styles for better alignment */
     .card-body {
         padding: 1.25rem !important;

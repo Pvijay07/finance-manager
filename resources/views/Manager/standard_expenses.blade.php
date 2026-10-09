@@ -1,4 +1,4 @@
-@extends('Admin.layouts.app')
+@extends('Manager.layouts.app')
 @section('content')
     <!-- Standard Expenses Page -->
     <div id="standard-expenses" class="page">

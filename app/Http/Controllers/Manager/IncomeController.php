@@ -530,7 +530,7 @@ class IncomeController extends Controller
         'schedule_amount' => $plannedAmountTotal,
         'balance_amount' => $isSplitPayment ? 0 : max(0, $balanceAmount),
         'due_date' => $data['due_date'] ?? null,
-        'status' => $isSplitPayment ? 'received' : ($data['status'] === 'settle' ? 'settle' : (($balanceAmount <= 0.01 && $receivedAmount > 0) || in_array($data['status'] ?? '', ['paid', 'received']) ? 'received' : 'pending')),
+        'status' => $isSplitPayment ? 'received' : ($data['status'] === 'settle' ? 'settle' : (($balanceAmount <= 0.01 && $receivedAmount > 0) || in_array($data['status'] ?? '', ['paid', 'received']) ? 'received' : (($data['status'] ?? '') === 'due' || ($data['status'] ?? '') === 'upcoming' || (!empty($data['due_date']) && \Carbon\Carbon::parse($data['due_date'])->gte(now()->startOfDay())) ? 'upcoming' : 'pending'))),
         'income_date' => $data['received_date'] ?? now()->format('Y-m-d'),
         'paid_date' => ($isSplitPayment || $data['status'] === 'settle') ? ($request->received_date ?? now()->format('Y-m-d')) : null,
         'mail_status' => $data['mail_status'] ?? 0,
