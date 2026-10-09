@@ -3829,6 +3829,52 @@
     });
 </script>
 <style>
+    #addNonStandardModal .modal-content,
+    #editNonStandardModal .modal-content {
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+    }
+
+    #addNonStandardModal .modal-header,
+    #editNonStandardModal .modal-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 12px 12px 0 0;
+        padding: 20px 24px;
+        border: none;
+    }
+
+    #addNonStandardModal .modal-title,
+    #editNonStandardModal .modal-title {
+        font-weight: 600;
+        font-size: 1.25rem;
+        color: white;
+    }
+
+    #addNonStandardModal .btn-close,
+    #editNonStandardModal .btn-close {
+        filter: brightness(0) invert(1);
+    }
+
+    #addNonStandardModal .modal-body,
+    #editNonStandardModal .modal-body {
+        padding: 24px;
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+
+    #addNonStandardModal .modal-body::-webkit-scrollbar,
+    #editNonStandardModal .modal-body::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    #addNonStandardModal .modal-body::-webkit-scrollbar-thumb,
+    #editNonStandardModal .modal-body::-webkit-scrollbar-thumb {
+        background-color: #cbd5e1;
+        border-radius: 4px;
+    }
+
     .tax-section {
         background: #f8fafc;
         border: 1px solid #e2e8f0;
