@@ -98,33 +98,38 @@ class GenerateStandardExpenses extends Command
         }
 
         $expense = \App\Models\Expense::create([
-            'company_id' => $template->company_id,
-            'category_id' => $template->category_id,
-            'parent_id' => $template->id,
-            'source' => 'auto_generated',
-            'expense_name' => $template->expense_name,
-            'party_name' => $template->party_name,
-            'planned_amount' => $template->planned_amount,
-            'actual_amount' => $template->planned_amount,
-            'balance_amount' => $template->planned_amount,
-            'due_date' => $dueDate,
-            'status' => 'pending',
-            'tax_type' => $template->tax_type,
-            'tax_percentage' => $template->tax_percentage,
-            'tax_amount' => $template->tax_amount,
-            'apply_tax' => $template->apply_tax,
-            'notes' => "Auto-generated standard expense",
-            'is_recurring' => 0,
-            'is_active' => 1,
-            'created_by' => $template->created_by
+            'expense_number'    => \App\Models\Expense::generateNewExpenseNumber(),
+            'company_id'        => $template->company_id,
+            'category_id'       => $template->category_id,
+            'parent_id'         => $template->id,
+            'source'            => 'auto_generated',
+            'expense_name'      => $template->expense_name,
+            'party_name'        => $template->party_name,
+            'planned_amount'    => $template->planned_amount,
+            'actual_amount'     => $template->actual_amount ?? $template->planned_amount,
+            'original_amount'   => $template->original_amount ?? $template->planned_amount,
+            'schedule_amount'   => $template->schedule_amount ?? $template->planned_amount,
+            'balance_amount'    => $template->balance_amount ?? $template->planned_amount,
+            'due_date'          => $dueDate,
+            'due_day'           => $template->due_day,
+            'status'            => ($dueDate && $dueDate->gte(today())) ? 'upcoming' : 'pending',
+            'notes'             => $template->notes ?: "Auto-generated standard expense",
+            'is_recurring'      => 0,
+            'is_active'         => 1,
+            'month_year'        => $dueDate->format('Y-m'),
+            'assigned_managers' => $template->assigned_managers,
+            'created_by'        => $template->created_by,
         ]);
 
-        if ($template->taxes) {
+        if ($template->taxes && $template->taxes->isNotEmpty()) {
             foreach ($template->taxes as $tax) {
                 $expense->taxes()->create([
-                    'tax_type' => $tax->tax_type,
+                    'tax_type'       => $tax->tax_type,
                     'tax_percentage' => $tax->tax_percentage,
-                    'tax_amount' => $tax->tax_amount,
+                    'tax_amount'     => $tax->tax_amount,
+                    'payment_status' => 'not_received',
+                    'direction'      => 'expense',
+                    'taxable_amount' => $tax->taxable_amount ?: ($template->actual_amount ?: $template->planned_amount),
                 ]);
             }
         }
