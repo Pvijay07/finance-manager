@@ -398,7 +398,7 @@
     <!-- Action Center: Immediate Due Obligations & Recent Activity -->
     <div class="row g-4" id="immediate-dues-section">
         <!-- Immediate Payments Table -->
-        <div class="col-12 col-xl-7">
+        <!-- <div class="col-12 col-xl-7">
             <div class="bg-surface-container-lowest p-4 rounded-xl card-shadow border border-outline-variant h-100">
                 <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mb-3 pb-2 border-b border-slate-100">
                     <div>
@@ -472,7 +472,7 @@
                 </div>
                 @endif
             </div>
-        </div>
+        </div> -->
 
         <!-- Recent Transactions Activity -->
         <div class="col-12 col-xl-5">
