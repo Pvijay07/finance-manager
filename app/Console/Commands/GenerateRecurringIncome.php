@@ -19,8 +19,9 @@ class GenerateRecurringIncome extends Command
         $generatedCount = 0;
         $errorCount = 0;
 
-        // Get all standard income templates
+        // Get all active standard income templates (templates only, where parent_id is null)
         $templates = Income::where('source', 'standard')
+            ->whereNull('parent_id')
             ->with(['company', 'category', 'taxes', 'lineItems'])
             ->get();
 
@@ -47,70 +48,93 @@ class GenerateRecurringIncome extends Command
             return false;
         }
 
-        $dueDate = $this->calculateDueDate($template, $today);
+        $targetDueDate = $this->calculateTargetDueDate($template, $today);
 
-        // Standard income might not have reminder_days in the DB, so default to 0
-        $reminderDays = $template->reminder_days ?? 0;
-
-        if ($dueDate->isFuture() || $dueDate->isToday()) {
-            $reminderDate = $dueDate->copy()->subDays($reminderDays);
-
-            return $today->isSameDay($reminderDate);
+        if (!$targetDueDate) {
+            return false;
         }
 
-        return false;
+        // Check if income already exists for this target period (template itself or child)
+        $alreadyExists = Income::where(function ($q) use ($template) {
+            $q->where('id', $template->id)
+              ->orWhere('parent_id', $template->id);
+        })
+        ->whereYear('due_date', $targetDueDate->year)
+        ->whereMonth('due_date', $targetDueDate->month)
+        ->exists();
+
+        if ($alreadyExists) {
+            return false;
+        }
+
+        $reminderDays = (int) ($template->reminder_days ?? 0);
+        $triggerDate = $targetDueDate->copy()->subDays($reminderDays)->startOfDay();
+
+        return $today->startOfDay()->gte($triggerDate);
     }
 
-    private function calculateDueDate(Income $template, Carbon $today)
+    private function calculateTargetDueDate(Income $template, Carbon $today)
     {
-        $currentYear = $today->year;
-        $currentMonth = $today->month;
+        $dueDay = (int) ($template->due_day ?: 1);
 
-        switch ($template->frequency) {
-            case 'monthly':
-                return Carbon::create($currentYear, $currentMonth, $template->due_day);
-            case 'quarterly':
-                $quarter = ceil($currentMonth / 3);
-                $quarterMonth = ($quarter * 3);
-                return Carbon::create($currentYear, $quarterMonth, $template->due_day);
-            case 'yearly':
-                $dueMonth = $template->due_month ?? 1;
-                return Carbon::create($currentYear, $dueMonth, $template->due_day);
-            default:
-                throw new \Exception("Unknown frequency: {$template->frequency}");
+        // Find the latest due date among template and any of its children
+        $latestIncome = Income::where(function ($q) use ($template) {
+            $q->where('id', $template->id)
+              ->orWhere('parent_id', $template->id);
+        })
+        ->whereNotNull('due_date')
+        ->orderBy('due_date', 'desc')
+        ->first();
+
+        if ($latestIncome && $latestIncome->due_date) {
+            $lastDueDate = Carbon::parse($latestIncome->due_date);
+            $nextDate = $lastDueDate->copy();
+
+            switch ($template->frequency) {
+                case 'monthly':
+                    $nextDate->addMonthNoOverflow();
+                    break;
+                case 'quarterly':
+                    $nextDate->addMonthsNoOverflow(3);
+                    break;
+                case 'yearly':
+                    $nextDate->addYearNoOverflow();
+                    break;
+                default:
+                    $nextDate->addMonthNoOverflow();
+                    break;
+            }
+
+            $nextDate->day(min($dueDay, $nextDate->daysInMonth));
+            return $nextDate->startOfDay();
         }
+
+        // Fallback if no prior due date exists
+        $currentMonthTarget = $today->copy()->day(min($dueDay, $today->daysInMonth))->startOfDay();
+        return $currentMonthTarget;
     }
 
     private function generateIncomeFromTemplate(Income $template, Carbon $today)
     {
-        $dueDate = $this->calculateDueDate($template, $today);
+        $dueDate = $this->calculateTargetDueDate($template, $today);
+
+        if (!$dueDate) {
+            return;
+        }
 
         // Check if income already exists for this period
-        $existingIncome = Income::where('parent_id', $template->id)
-            ->whereYear('due_date', $dueDate->year)
-            ->whereMonth('due_date', $dueDate->month)
-            ->first();
+        $existingIncome = Income::where(function ($q) use ($template) {
+            $q->where('id', $template->id)
+              ->orWhere('parent_id', $template->id);
+        })
+        ->whereYear('due_date', $dueDate->year)
+        ->whereMonth('due_date', $dueDate->month)
+        ->first();
 
         if ($existingIncome) {
             $this->warn("Income already exists for template {$template->id} for {$dueDate->format('F Y')}");
             return;
         }
-
-        // Calculate total amount with taxes
-        $gstTotal = 0;
-        $tdsTotal = 0;
-
-        if ($template->taxes) {
-            foreach ($template->taxes as $tax) {
-                if ($tax->tax_type === 'gst') {
-                    $gstTotal = $tax->tax_amount;
-                } elseif ($tax->tax_type === 'tds') {
-                    $tdsTotal = $tax->tax_amount;
-                }
-            }
-        }
-
-        $plannedAmount = $template->planned_amount;
 
         // Create income entry
         $income = Income::create([
@@ -124,9 +148,9 @@ class GenerateRecurringIncome extends Command
             'received_amount' => 0,
             'balance_amount' => $template->planned_amount,
             'tax_type' => $template->tax_type,
-            'due_date' => $dueDate,
+            'due_date' => $dueDate->format('Y-m-d'),
             'paid_date' => null,
-            'status' => 'pending',
+            'status' => ($dueDate->gte(Carbon::today())) ? 'upcoming' : 'pending',
             'notes' => $template->notes,
             'client_details' => $template->client_details,
             'parent_id' => $template->id,
@@ -161,3 +185,4 @@ class GenerateRecurringIncome extends Command
         $this->info("Generated income ID: {$income->id} for template ID: {$template->id} due on: {$dueDate->format('Y-m-d')}");
     }
 }
+

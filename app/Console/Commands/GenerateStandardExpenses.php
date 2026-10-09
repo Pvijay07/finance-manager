@@ -3,7 +3,8 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use App\Services\ExpenseService;
+use App\Models\Expense;
+use Carbon\Carbon;
 
 class GenerateStandardExpenses extends Command
 {
@@ -14,12 +15,13 @@ class GenerateStandardExpenses extends Command
     {
         $this->info('Generating standard expenses...');
 
-        $today = \Carbon\Carbon::today();
+        $today = Carbon::today();
         $generatedCount = 0;
         $errorCount = 0;
 
-        // Get all active standard expenses (templates)
-        $templates = \App\Models\Expense::where('source', 'standard')
+        // Get all active standard expense templates (parent_id is null)
+        $templates = Expense::where('source', 'standard')
+            ->whereNull('parent_id')
             ->where('is_active', true)
             ->with(['taxes'])
             ->get();
@@ -44,61 +46,102 @@ class GenerateStandardExpenses extends Command
         return 0;
     }
 
-    private function shouldGenerateExpense($template, $today)
+    private function shouldGenerateExpense($template, Carbon $today)
     {
         if (empty($template->frequency) || empty($template->due_day)) {
             return false;
         }
 
-        $dueDate = $this->calculateDueDate($template, $today);
+        $targetDueDate = $this->calculateTargetDueDate($template, $today);
 
-        if ($dueDate->isFuture() || $dueDate->isToday()) {
-            $reminderDays = $template->reminder_days ?? 0;
-            $reminderDate = $dueDate->copy()->subDays($reminderDays);
-
-            return $today->isSameDay($reminderDate);
+        if (!$targetDueDate) {
+            return false;
         }
 
-        return false;
-    }
+        // Check if an expense for this target month & year already exists (template itself or child)
+        $alreadyExists = Expense::where(function ($q) use ($template) {
+            $q->where('id', $template->id)
+              ->orWhere('parent_id', $template->id);
+        })
+        ->whereYear('due_date', $targetDueDate->year)
+        ->whereMonth('due_date', $targetDueDate->month)
+        ->exists();
 
-    private function calculateDueDate($template, $today)
-    {
-        $currentYear = $today->year;
-        $currentMonth = $today->month;
-
-        switch ($template->frequency) {
-            case 'monthly':
-                return \Carbon\Carbon::create($currentYear, $currentMonth, $template->due_day);
-            case 'quarterly':
-                $quarter = ceil($currentMonth / 3);
-                $quarterMonth = ($quarter * 3);
-                return \Carbon\Carbon::create($currentYear, $quarterMonth, $template->due_day);
-            case 'yearly':
-                $dueMonth = $template->due_month ?? 1;
-                return \Carbon\Carbon::create($currentYear, $dueMonth, $template->due_day);
-            default:
-                throw new \Exception("Unknown frequency: {$template->frequency}");
+        if ($alreadyExists) {
+            return false;
         }
+
+        $reminderDays = (int) ($template->reminder_days ?? 0);
+        $triggerDate = $targetDueDate->copy()->subDays($reminderDays)->startOfDay();
+
+        return $today->startOfDay()->gte($triggerDate);
     }
 
-    private function generateExpenseFromTemplate($template, $today)
+    private function calculateTargetDueDate($template, Carbon $today)
     {
-        $dueDate = $this->calculateDueDate($template, $today);
+        $dueDay = (int) ($template->due_day ?: 1);
 
-        // Check if already exists for this period
-        $existing = \App\Models\Expense::where('parent_id', $template->id)
-            ->whereYear('due_date', $dueDate->year)
-            ->whereMonth('due_date', $dueDate->month)
-            ->first();
+        // Find the latest due date among the template and its children
+        $latestExpense = Expense::where(function ($q) use ($template) {
+            $q->where('id', $template->id)
+              ->orWhere('parent_id', $template->id);
+        })
+        ->whereNotNull('due_date')
+        ->orderBy('due_date', 'desc')
+        ->first();
+
+        if ($latestExpense && $latestExpense->due_date) {
+            $lastDueDate = Carbon::parse($latestExpense->due_date);
+            $nextDate = $lastDueDate->copy();
+
+            switch ($template->frequency) {
+                case 'monthly':
+                    $nextDate->addMonthNoOverflow();
+                    break;
+                case 'quarterly':
+                    $nextDate->addMonthsNoOverflow(3);
+                    break;
+                case 'yearly':
+                    $nextDate->addYearNoOverflow();
+                    break;
+                default:
+                    $nextDate->addMonthNoOverflow();
+                    break;
+            }
+
+            $nextDate->day(min($dueDay, $nextDate->daysInMonth));
+            return $nextDate->startOfDay();
+        }
+
+        // Fallback if no prior due date exists
+        $currentMonthTarget = $today->copy()->day(min($dueDay, $today->daysInMonth))->startOfDay();
+        return $currentMonthTarget;
+    }
+
+    private function generateExpenseFromTemplate($template, Carbon $today)
+    {
+        $dueDate = $this->calculateTargetDueDate($template, $today);
+
+        if (!$dueDate) {
+            return;
+        }
+
+        // Double check if already exists for this period
+        $existing = Expense::where(function ($q) use ($template) {
+            $q->where('id', $template->id)
+              ->orWhere('parent_id', $template->id);
+        })
+        ->whereYear('due_date', $dueDate->year)
+        ->whereMonth('due_date', $dueDate->month)
+        ->first();
 
         if ($existing) {
             $this->warn("Expense already exists for template {$template->id} for {$dueDate->format('F Y')}");
             return;
         }
 
-        $expense = \App\Models\Expense::create([
-            'expense_number'    => \App\Models\Expense::generateNewExpenseNumber(),
+        $expense = Expense::create([
+            'expense_number'    => Expense::generateNewExpenseNumber(),
             'company_id'        => $template->company_id,
             'category_id'       => $template->category_id,
             'parent_id'         => $template->id,
@@ -110,9 +153,9 @@ class GenerateStandardExpenses extends Command
             'original_amount'   => $template->original_amount ?? $template->planned_amount,
             'schedule_amount'   => $template->schedule_amount ?? $template->planned_amount,
             'balance_amount'    => $template->balance_amount ?? $template->planned_amount,
-            'due_date'          => $dueDate,
+            'due_date'          => $dueDate->format('Y-m-d'),
             'due_day'           => $template->due_day,
-            'status'            => ($dueDate && $dueDate->gte(today())) ? 'upcoming' : 'pending',
+            'status'            => ($dueDate->gte(Carbon::today())) ? 'upcoming' : 'pending',
             'notes'             => $template->notes ?: "Auto-generated standard expense",
             'is_recurring'      => 0,
             'is_active'         => 1,
@@ -137,3 +180,4 @@ class GenerateStandardExpenses extends Command
         $this->info("Generated expense ID: {$expense->id} due on: {$dueDate->format('Y-m-d')}");
     }
 }
+
