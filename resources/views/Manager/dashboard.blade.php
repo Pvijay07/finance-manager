@@ -398,7 +398,7 @@
     <!-- Action Center: Immediate Due Obligations & Recent Activity -->
     <div class="row g-4" id="immediate-dues-section">
         <!-- Immediate Payments Table -->
-        <!-- <div class="col-12 col-xl-7">
+        <div class="col-12 col-xl-7">
             <div class="bg-surface-container-lowest p-4 rounded-xl card-shadow border border-outline-variant h-100">
                 <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mb-3 pb-2 border-b border-slate-100">
                     <div>
@@ -455,7 +455,7 @@
                                     @endif
                                 </td>
                                 <td class="py-2.5 px-3 text-center">
-                                    <a href="{{ $pay['is_standard'] ? route('manager.standard-expenses') : route('non-standard-expenses.index') }}" class="btn btn-xs btn-primary text-[11px] px-2.5 py-1 rounded font-semibold shadow-none" style="background-color: #4f46e5 !important; border-color: #4f46e5 !important;">
+                                    <a href="{{ $pay['is_standard'] ? route('standard-expenses.index') : route('non-standard-expenses.index') }}" class="btn btn-xs btn-primary text-[11px] px-2.5 py-1 rounded font-semibold shadow-none" style="background-color: #4f46e5 !important; border-color: #4f46e5 !important;">
                                         Settle
                                     </a>
                                 </td>
@@ -472,7 +472,7 @@
                 </div>
                 @endif
             </div>
-        </div> -->
+        </div>
 
         <!-- Recent Transactions Activity -->
         <div class="col-12 col-xl-5">
