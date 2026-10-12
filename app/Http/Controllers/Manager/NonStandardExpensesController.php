@@ -20,7 +20,7 @@ class NonStandardExpensesController extends Controller
 
     // Query non-standard expenses
     $query = Expense::where('source', '!=', 'standard')
-      ->with('company')
+      ->with(['company', 'creator', 'paidByUser'])
       ->visibleToUser(auth()->user())
       ->orderBy('due_date', 'desc');
 
@@ -172,7 +172,8 @@ class NonStandardExpensesController extends Controller
       'actual_amount' => $expense->planned_amount,
       'balance_amount' => 0,
       'status' => 'paid',
-      'paid_date' => now()->format('Y-m-d')
+      'paid_date' => now()->format('Y-m-d'),
+      'paid_by' => auth()->id()
     ]);
 
     return response()->json([

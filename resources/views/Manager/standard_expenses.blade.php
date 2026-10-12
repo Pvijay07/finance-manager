@@ -73,6 +73,8 @@
                         <th>Expense Name</th>
                         <th>Company</th>
                         <th>Month</th>
+                        <th>Created By</th>
+                        <th>Paid By</th>
                         <th>Due Date</th>
                         <th>Planned Amount</th>
                         <th>Actual Amount</th>
@@ -88,6 +90,33 @@
                             <td>{{ $expense->name }}</td>
                             <td>{{ $expense->company->name ?? 'N/A' }}</td>
                             <td>{{ date('F Y', strtotime($expense->month_year . '-01')) }}</td>
+                            <td>
+                                @if($expense->creator)
+                                    <div class="fw-semibold text-dark">{{ $expense->creator->name }}</div>
+                                    <span class="badge bg-light text-secondary border text-capitalize" style="font-size: 11px;">
+                                        {{ str_replace('_', ' ', $expense->creator->role ?? 'User') }}
+                                    </span>
+                                @else
+                                    <span class="text-muted">—</span>
+                                @endif
+                            </td>
+                            <td>
+                                @php
+                                    $paidUser = $expense->paidByUser;
+                                    $paidName = $paidUser ? $paidUser->name : $expense->paid_by_name;
+                                    $paidRole = $paidUser ? $paidUser->role : null;
+                                @endphp
+                                @if($paidName && in_array(strtolower($expense->status), ['paid', 'settle', 'settled']))
+                                    <div class="fw-semibold text-dark">{{ $paidName }}</div>
+                                    @if($paidRole)
+                                    <span class="badge bg-light text-secondary border text-capitalize" style="font-size: 11px;">
+                                        {{ str_replace('_', ' ', $paidRole) }}
+                                    </span>
+                                    @endif
+                                @else
+                                    <span class="text-muted">—</span>
+                                @endif
+                            </td>
                             <td>{{ \Carbon\Carbon::parse($expense->due_date)->format('d M Y') }}</td>
                             <td>₹{{ number_format($expense->planned_amount, 2) }}</td>
                             <td>
@@ -135,7 +164,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" style="text-align: center; padding: 40px;">
+                            <td colspan="11" style="text-align: center; padding: 40px;">
                                 <div style="margin-bottom: 20px;">
                                     <i class="fas fa-file-invoice-dollar fa-4x text-muted mb-3" style="opacity: 0.3;"></i>
                                     <h4 style="color: #6c757d;">No Standard Expenses Found</h4>

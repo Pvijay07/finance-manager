@@ -70,9 +70,40 @@
                             <div class="fw-medium text-dark">{{ ucfirst($expense->payment_mode ?? 'N/A') }}</div>
                         </div>
                         <div class="col-sm-6">
+                            <label class="text-muted small fw-bold mb-1">Created By</label>
+                            <div class="fw-medium text-dark">
+                                @if($expense->creator)
+                                    {{ $expense->creator->name }}
+                                    <span class="badge bg-light text-secondary border text-capitalize ms-1" style="font-size: 11px;">
+                                        {{ str_replace('_', ' ', $expense->creator->role ?? 'User') }}
+                                    </span>
+                                @else
+                                    <span class="text-muted">N/A</span>
+                                @endif
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
                             <label class="text-muted small fw-bold mb-1">Created Date</label>
                             <div class="fw-medium text-dark">{{ \Carbon\Carbon::parse($expense->created_at)->format('d M Y') }}</div>
                         </div>
+                        @php
+                            $paidUser = $expense->paidByUser;
+                            $paidName = $paidUser ? $paidUser->name : $expense->paid_by_name;
+                            $paidRole = $paidUser ? $paidUser->role : null;
+                        @endphp
+                        @if($paidName && in_array(strtolower($expense->status), ['paid', 'settle', 'settled']))
+                        <div class="col-sm-6">
+                            <label class="text-muted small fw-bold mb-1">Paid By</label>
+                            <div class="fw-medium text-dark">
+                                {{ $paidName }}
+                                @if($paidRole)
+                                <span class="badge bg-light text-secondary border text-capitalize ms-1" style="font-size: 11px;">
+                                    {{ str_replace('_', ' ', $paidRole) }}
+                                </span>
+                                @endif
+                            </div>
+                        </div>
+                        @endif
                         <div class="col-sm-6">
                             <label class="text-muted small fw-bold mb-1">Due Date</label>
                             <div class="fw-medium text-dark">{{ $expense->due_date ? \Carbon\Carbon::parse($expense->due_date)->format('d M Y') : 'N/A' }}</div>

@@ -495,7 +495,7 @@
                             </div>
                             <div>
                                 <h6 class="text-xs font-bold text-slate-800 mb-0">{{ $tx['title'] }}</h6>
-                                <span class="text-[11px] text-slate-500">{{ $tx['company'] }} • {{ $tx['party'] }} • {{ $tx['date'] }}</span>
+                                <span class="text-[11px] text-slate-500">{{ $tx['company'] }} • {{ $tx['party'] }}@if(!empty($tx['creator'])) • <i class="fas fa-user-circle me-0.5 text-muted"></i>{{ $tx['creator'] }}@endif • {{ $tx['date'] }}</span>
                             </div>
                         </div>
                         <div class="text-end">

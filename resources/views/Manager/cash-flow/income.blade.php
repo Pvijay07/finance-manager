@@ -336,6 +336,8 @@
                                 <th>Receivable Amount</th>
                                 <th>Base Amount</th>
                                 <th>Income Type</th>
+                                <th>Created By</th>
+                                <th>Received By</th>
                                 <th>Status</th>
                                 <th>Created Date</th>
                                 <th>Mail Status</th>
@@ -378,6 +380,33 @@
                                     <span class="badge {{ $income->invoice_id ? 'bg-info' : 'bg-secondary' }}">
                                         {{ $income->invoice_id ? 'Standard' : 'Non-Standard' }}
                                     </span>
+                                </td>
+                                <td>
+                                    @if($income->creator)
+                                        <div class="fw-semibold text-dark">{{ $income->creator->name }}</div>
+                                        <span class="badge bg-light text-secondary border text-capitalize py-0 px-1" style="font-size: 10px;">
+                                            {{ str_replace('_', ' ', $income->creator->role ?? 'User') }}
+                                        </span>
+                                    @else
+                                        <span class="text-muted">—</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    @php
+                                        $paidUser = $income->paidByUser;
+                                        $paidName = $paidUser ? $paidUser->name : $income->paid_by_name;
+                                        $paidRole = $paidUser ? $paidUser->role : null;
+                                    @endphp
+                                    @if($paidName && in_array(strtolower($income->status), ['paid', 'received', 'settle', 'settled']))
+                                        <div class="fw-semibold text-dark">{{ $paidName }}</div>
+                                        @if($paidRole)
+                                        <span class="badge bg-light text-secondary border text-capitalize py-0 px-1" style="font-size: 10px;">
+                                            {{ str_replace('_', ' ', $paidRole) }}
+                                        </span>
+                                        @endif
+                                    @else
+                                        <span class="text-muted">—</span>
+                                    @endif
                                 </td>
                                 <td>
                                     @php
@@ -3448,6 +3477,10 @@
                                         <tr>
                                             <th width="160"><i class="bi bi-hash me-1"></i>Invoice Number</th>
                                             <td><span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2">${escapeHtml(invoice.invoice_number || 'N/A')}</span></td>
+                                        </tr>
+                                        <tr>
+                                            <th><i class="bi bi-person-badge me-1"></i>Created By</th>
+                                            <td>${escapeHtml(invoice.creator?.name || 'N/A')}${invoice.creator?.role ? ` <span class="badge bg-light text-secondary border text-capitalize py-0 px-1" style="font-size: 10px;">${escapeHtml(invoice.creator.role.replace('_', ' '))}</span>` : ''}</td>
                                         </tr>
                                         <tr>
                                             <th><i class="bi bi-building me-1"></i>Company</th>

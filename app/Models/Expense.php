@@ -47,7 +47,8 @@ class Expense extends Model
         'schedule_amount',
         'balance_amount',
         'expense_number',
-        'assigned_managers'
+        'assigned_managers',
+        'paid_by'
     ];
 
     protected $casts = [
@@ -70,6 +71,22 @@ class Expense extends Model
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function paidByUser()
+    {
+        return $this->belongsTo(User::class, 'paid_by');
+    }
+
+    public function getPaidByNameAttribute()
+    {
+        if ($this->paidByUser) {
+            return $this->paidByUser->name;
+        }
+        if (in_array(strtolower($this->status ?? ''), ['paid', 'settle', 'settled', 'completed'])) {
+            return $this->creator?->name;
+        }
+        return null;
     }
 
     public function attachments()

@@ -31,7 +31,7 @@ class IncomeController extends Controller
     $category = $request->get('category', 'all');
     $currency = $request->get('currency', 'all');
 
-    $query = Income::with(['company', 'parent', 'children', 'invoice'])
+    $query = Income::with(['company', 'parent', 'children', 'invoice', 'creator', 'paidByUser'])
       ->visibleToUser($user)
       ->orderBy('created_at', 'desc');
 
@@ -233,7 +233,7 @@ class IncomeController extends Controller
   public function showIncome($id)
   {
       try {
-          $income = Income::with(['company', 'invoice', 'parent.children', 'children', 'taxes'])->find($id);
+          $income = Income::with(['company', 'invoice', 'parent.children', 'children', 'taxes', 'creator', 'paidByUser'])->find($id);
           
           if (!$income) {
               return redirect()->back()->with('error', 'Income not found');
@@ -276,7 +276,7 @@ class IncomeController extends Controller
   public function getIncomeDetails($id)
   {
     try {
-      $income = Income::with(['company', 'invoice', 'parent.children', 'children'])->find($id);
+      $income = Income::with(['company', 'invoice', 'parent.children', 'children', 'creator', 'paidByUser'])->find($id);
       
       if ($income) {
           // Traverse up to find the ultimate root income
@@ -405,6 +405,7 @@ class IncomeController extends Controller
       $income->actual_amount = $currentBaseAmount;
       $income->planned_amount = $currentPlannedAmount;
       $income->status = 'received';
+      $income->paid_by = auth()->id();
       $income->paid_date = $request->payment_date ?? now()->format('Y-m-d');
       $income->is_partial = true;
       $income->balance_amount = 0; // Balance moved to new record
@@ -540,7 +541,8 @@ class IncomeController extends Controller
         'is_partial' => $isSplitPayment,
         'income_type' => 'non-standard',
         'source' => 'manual',
-        'created_by' => auth()->id()
+        'created_by' => auth()->id(),
+        'paid_by' => ($isSplitPayment || in_array($data['status'] ?? '', ['settle', 'paid', 'received']) || ($balanceAmount <= 0.01 && $receivedAmount > 0)) ? auth()->id() : null
       ]);
 
       // Handle taxes (always for the first shard in non-standard income)
@@ -1178,6 +1180,7 @@ class IncomeController extends Controller
         'status' => $isSplitPayment ? 'received' : ($validated['status'] === 'settle' ? 'settle' : (round($balanceAmount, 2) <= 0.01 && $receivedAmount > 0 ? 'received' : (($validated['status'] === 'paid' || $validated['status'] === 'received') ? 'received' : ($validated['status'] ?? 'pending')))),
         'income_date' => $isSplitPayment ? $income->income_date : ($validated['received_date'] ?? $income->income_date),
         'paid_date' => ($isSplitPayment || $receivedAmount > 0) ? ($validated['received_date'] ?? now()->format('Y-m-d')) : $income->paid_date,
+        'paid_by' => ($isSplitPayment || $receivedAmount > 0 || in_array($validated['status'] ?? '', ['settle', 'paid', 'received'])) ? (auth()->id() ?? $income->paid_by) : $income->paid_by,
         'payment_mode' => $validated['payment_mode'] ?? $income->payment_mode,
         'client_details' => json_encode($existingClientDetails),
         'notes' => $validated['notes'] ?? $income->notes,
@@ -1665,15 +1668,13 @@ class IncomeController extends Controller
     }
 
     // Get upcoming incomes
-    $incomeQuery = Income::with('category')->whereBetween('income_date', [$startDate, $endDate])
-      ->with('company')
+    $incomeQuery = Income::with(['category', 'company', 'creator'])->whereBetween('income_date', [$startDate, $endDate])
       ->orderBy('income_date', 'asc');
 
     // Get upcoming expenses
-    $expenseQuery = Expense::with('categoryRelation')
+    $expenseQuery = Expense::with(['categoryRelation', 'company', 'expenseType', 'creator'])
       // ->whereBetween('due_date', [$startDate, $endDate])
       ->where('status', 'upcoming')
-      ->with(['company', 'expenseType'])
       ->orderBy('due_date', 'asc');
 
     // Apply company filter
@@ -1711,6 +1712,7 @@ class IncomeController extends Controller
         'id' => $income->id,
         'date' => $income->income_date,
         'description' => $income->source,
+        'creator' => $income->creator ? $income->creator->name : null,
         'amount' => $income->amount,
         'status' => $income->status,
         'company' => $income->company->name ?? 'N/A',
@@ -1734,6 +1736,7 @@ class IncomeController extends Controller
         'id' => $expense->id,
         'date' => $expense->due_date,
         'description' => $expense->name,
+        'creator' => $expense->creator ? $expense->creator->name : null,
         'amount' => -$expense->planned_amount,
         'status' => $expense->status,
         'company' => $expense->company->name ?? 'N/A',

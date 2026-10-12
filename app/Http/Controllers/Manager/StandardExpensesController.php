@@ -23,7 +23,7 @@ class StandardExpensesController extends Controller
         
         // Query standard expenses
         $query = Expense::where('source', 'standard')
-            ->with(['company', 'expenseType'])
+            ->with(['company', 'expenseType', 'creator', 'paidByUser'])
             ->orderBy('due_date', 'asc');
         
         // Apply filters
@@ -120,7 +120,8 @@ class StandardExpensesController extends Controller
             'actual_amount' => $expense->planned_amount,
             'balance_amount' => 0,
             'status' => 'paid',
-            'paid_date' => now()->format('Y-m-d')
+            'paid_date' => now()->format('Y-m-d'),
+            'paid_by' => auth()->id()
         ]);
         
         return response()->json([
@@ -137,7 +138,8 @@ class StandardExpensesController extends Controller
             'actual_amount' => $expense->planned_amount,
             'balance_amount' => 0,
             'status' => 'paid',
-            'paid_date' => now()->format('Y-m-d')
+            'paid_date' => now()->format('Y-m-d'),
+            'paid_by' => auth()->id()
         ]);
         
         return response()->json([

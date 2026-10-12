@@ -28,7 +28,7 @@ class StandardExpensesController extends Controller
     $endDate        = $request->input('end_date');
 
     // 1. All Expenses Query (Shows all Standard and Non-Standard Expenses in one place)
-    $allExpensesQuery = Expense::with(['company', 'categoryRelation', 'creator']);
+    $allExpensesQuery = Expense::with(['company', 'categoryRelation', 'creator', 'paidByUser']);
 
     if ($typeFilter === 'standard') {
       $allExpensesQuery->where('source', 'standard');
@@ -249,7 +249,7 @@ class StandardExpensesController extends Controller
 
     // 3. Non-Standard Expenses Query
     $nonStandardQuery = Expense::where('source', '!=', 'standard')
-      ->with(['company', 'categoryRelation', 'creator']);
+      ->with(['company', 'categoryRelation', 'creator', 'paidByUser']);
 
     if ($search) {
       $nonStandardQuery->where(function ($q) use ($search) {
@@ -992,6 +992,7 @@ class StandardExpensesController extends Controller
       $expense = Expense::findOrFail($id);
       $expense->update([
         'status'         => 'paid',
+        'paid_by'        => auth()->id(),
         'actual_amount'  => $request->actual_amount ?? $expense->planned_amount,
         'paid_date'      => $request->paid_date ?? now(),
         'balance_amount' => 0
@@ -1009,6 +1010,7 @@ class StandardExpensesController extends Controller
       $paidAmount = $request->actual_amount ?? ($expense->schedule_amount ?: ($expense->planned_amount ?: $expense->actual_amount));
       $expense->update([
         'status'         => 'paid',
+        'paid_by'        => auth()->id(),
         'actual_amount'  => $paidAmount,
         'paid_date'      => $request->paid_date ?? now()->format('Y-m-d'),
         'balance_amount' => 0

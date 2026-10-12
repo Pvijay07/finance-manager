@@ -48,7 +48,8 @@ class Income extends Model
     'month_year',
     'due_date',
     'original_amount',
-    'assigned_managers'
+    'assigned_managers',
+    'paid_by'
   ];
 
   protected $casts = [
@@ -72,6 +73,22 @@ class Income extends Model
   public function creator()
   {
     return $this->belongsTo(User::class, 'created_by');
+  }
+
+  public function paidByUser()
+  {
+    return $this->belongsTo(User::class, 'paid_by');
+  }
+
+  public function getPaidByNameAttribute()
+  {
+    if ($this->paidByUser) {
+      return $this->paidByUser->name;
+    }
+    if (in_array(strtolower($this->status ?? ''), ['paid', 'received', 'settle', 'settled', 'completed'])) {
+      return $this->creator?->name;
+    }
+    return null;
   }
 
   public function scopeThisMonth($query)

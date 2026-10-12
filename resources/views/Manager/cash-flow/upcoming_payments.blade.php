@@ -188,7 +188,14 @@
                                         <span class="badge bg-success text-info">Credit</span>
                                     @endif
                                 </td>
-                                <td>{{ $payment['description'] }}</td>
+                                <td>
+                                    {{ $payment['description'] }}
+                                    @if(!empty($payment['creator']))
+                                        <div class="text-xs text-secondary mt-1">
+                                            <i class="fas fa-user-circle me-1 text-muted"></i>{{ $payment['creator'] }}
+                                        </div>
+                                    @endif
+                                </td>
                                 <td>{{ $payment['party_name'] ?? '-' }}</td>
                                 <td>
                                     <span class="badge bg-secondary">{{ $payment['category'] }}</span>

@@ -67,6 +67,19 @@
                             </div>
                         </div>
                         <div class="col-sm-6">
+                            <label class="text-muted small fw-bold mb-1">Created By</label>
+                            <div class="fw-medium text-dark">
+                                @if($income->creator)
+                                    {{ $income->creator->name }}
+                                    <span class="badge bg-light text-secondary border text-capitalize ms-1" style="font-size: 11px;">
+                                        {{ str_replace('_', ' ', $income->creator->role ?? 'User') }}
+                                    </span>
+                                @else
+                                    <span class="text-muted">N/A</span>
+                                @endif
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
                             <label class="text-muted small fw-bold mb-1">Created Date</label>
                             <div class="fw-medium text-dark">{{ \Carbon\Carbon::parse($income->created_at)->format('d M Y') }}</div>
                         </div>
@@ -78,6 +91,24 @@
                             <label class="text-muted small fw-bold mb-1">Paid Date</label>
                             <div class="fw-medium text-dark">{{ $income->paid_date ? \Carbon\Carbon::parse($income->paid_date)->format('d M Y') : (($income->status === 'received' || $income->status === 'settle') && $income->income_date ? \Carbon\Carbon::parse($income->income_date)->format('d M Y') : 'N/A') }}</div>
                         </div>
+                        @php
+                            $paidUser = $income->paidByUser;
+                            $paidName = $paidUser ? $paidUser->name : $income->paid_by_name;
+                            $paidRole = $paidUser ? $paidUser->role : null;
+                        @endphp
+                        @if($paidName && in_array(strtolower($income->status), ['paid', 'received', 'settle', 'settled']))
+                        <div class="col-sm-6 mt-4">
+                            <label class="text-muted small fw-bold mb-1">Received By</label>
+                            <div class="fw-medium text-dark">
+                                {{ $paidName }}
+                                @if($paidRole)
+                                <span class="badge bg-light text-secondary border text-capitalize ms-1" style="font-size: 11px;">
+                                    {{ str_replace('_', ' ', $paidRole) }}
+                                </span>
+                                @endif
+                            </div>
+                        </div>
+                        @endif
                         @if($income->notes)
                         <div class="col-12">
                             <label class="text-muted small fw-bold mb-1">Notes</label>

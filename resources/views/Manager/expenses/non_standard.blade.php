@@ -131,6 +131,8 @@
                                 <th>Company</th>
                                 <th>Expense Name</th>
                                 <th>Category</th>
+                                <th>Created By</th>
+                                <th>Paid By</th>
                                 <th class="text-end">Amount</th>
                                 <th>Due Date</th>
                                 <th>Status</th>
@@ -144,6 +146,33 @@
                                     <td>{{ $expense->company->name ?? 'N/A' }}</td>
                                     <td>{{ $expense->name }}</td>
                                     <td>{{ ucfirst($expense->category) }}</td>
+                                    <td>
+                                        @if($expense->creator)
+                                            <div class="fw-semibold text-dark">{{ $expense->creator->name }}</div>
+                                            <span class="badge bg-light text-secondary border text-capitalize" style="font-size: 11px;">
+                                                {{ str_replace('_', ' ', $expense->creator->role ?? 'User') }}
+                                            </span>
+                                        @else
+                                            <span class="text-muted">—</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @php
+                                            $paidUser = $expense->paidByUser;
+                                            $paidName = $paidUser ? $paidUser->name : $expense->paid_by_name;
+                                            $paidRole = $paidUser ? $paidUser->role : null;
+                                        @endphp
+                                        @if($paidName && in_array(strtolower($expense->status), ['paid', 'settle', 'settled']))
+                                            <div class="fw-semibold text-dark">{{ $paidName }}</div>
+                                            @if($paidRole)
+                                            <span class="badge bg-light text-secondary border text-capitalize" style="font-size: 11px;">
+                                                {{ str_replace('_', ' ', $paidRole) }}
+                                            </span>
+                                            @endif
+                                        @else
+                                            <span class="text-muted">—</span>
+                                        @endif
+                                    </td>
                                     <td class="text-end">₹ {{ number_format($expense->planned_amount, 2) }}</td>
                                     <td>{{ date('d-m-Y', strtotime($expense->due_date)) }}</td>
                                     <td>
@@ -178,7 +207,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="8" class="text-center py-4">
+                                    <td colspan="10" class="text-center py-4">
                                         <div class="text-muted">
                                             <i class="fas fa-receipt fa-2x mb-2"></i><br>
                                             No non-standard expenses found.

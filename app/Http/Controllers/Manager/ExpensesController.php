@@ -28,7 +28,7 @@ class ExpensesController extends Controller
     $activeTab = $request->get('tab', 'standard');
 
     // Build base query
-    $query = Expense::with(['company', 'categoryRelation', 'receipts', 'parent', 'children'])
+    $query = Expense::with(['company', 'categoryRelation', 'receipts', 'parent', 'children', 'creator', 'paidByUser'])
       ->visibleToUser($user);
     // Apply company filter - only show expenses from companies where user is manager
     $query->whereHas('company', function ($q) use ($user) {
@@ -537,7 +537,7 @@ class ExpensesController extends Controller
     $dateRange = $request->get('date_range', 'month');
 
     // Build base query
-    $query = Expense::with(['company', 'categoryRelation']);
+    $query = Expense::with(['company', 'categoryRelation', 'creator']);
 
     // Get the authenticated user
     $user = auth()->user();
@@ -1136,7 +1136,7 @@ class ExpensesController extends Controller
   public function showExpense($id)
   {
       try {
-          $expense = Expense::with(['company', 'categoryRelation', 'taxes', 'attachments', 'parent.children', 'children'])->find($id);
+          $expense = Expense::with(['company', 'categoryRelation', 'taxes', 'attachments', 'parent.children', 'children', 'creator', 'paidByUser'])->find($id);
           
           if (!$expense) {
               return redirect()->back()->with('error', 'Expense not found');
@@ -1417,7 +1417,8 @@ class ExpensesController extends Controller
           'notes' => $request->notes ?? $expense->notes,
           'due_date' => $expense->due_date,
           'is_split' => true,
-          'paid_date' => $request->paid_date ?? now()->format('Y-m-d')
+          'paid_date' => $request->paid_date ?? now()->format('Y-m-d'),
+          'paid_by' => auth()->id()
         ];
       } else {
         $actualStatus = $request->status;
@@ -1443,6 +1444,7 @@ class ExpensesController extends Controller
         // Handle paid date for regular updates
         if ($actualStatus === 'paid' || $actualStatus === 'settle') {
           $expenseData['paid_date'] = $request->paid_date ?? now()->format('Y-m-d');
+          $expenseData['paid_by'] = auth()->id();
         } elseif ($request->paid_date) {
           $expenseData['paid_date'] = $request->paid_date;
         } else {
@@ -1773,7 +1775,8 @@ class ExpensesController extends Controller
       'actual_amount' => $expense->planned_amount,
       'balance_amount' => 0,
       'status' => 'paid',
-      'paid_date' => now()->format('Y-m-d')
+      'paid_date' => now()->format('Y-m-d'),
+      'paid_by' => auth()->id()
     ]);
 
     return response()->json([

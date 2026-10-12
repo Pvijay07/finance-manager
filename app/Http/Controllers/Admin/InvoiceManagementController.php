@@ -171,7 +171,7 @@ class InvoiceManagementController extends Controller
     $typeFilter = $request->input('type', 'all');
 
     // Query Non-Standard Income
-    $nsIncomeQuery = Income::with(['company', 'creator'])
+    $nsIncomeQuery = Income::with(['company', 'creator', 'paidByUser'])
       ->where(function($q) {
         $q->where('income_type', 'non-standard')
           ->orWhere(function($sq) {
@@ -286,6 +286,8 @@ class InvoiceManagementController extends Controller
           'payment_mode'    => 'Bank / Online',
           'status'          => $inv->status,
           'creator'         => $inv->creator,
+          'paidByUser'      => $inv->paidByUser ?? null,
+          'paid_by_name'    => $inv->paid_by_name ?? null,
           'raw'             => $inv,
         ]);
       }
@@ -310,6 +312,8 @@ class InvoiceManagementController extends Controller
           'payment_mode'    => ucfirst($inc->payment_mode ?? 'Cash'),
           'status'          => in_array($inc->status, ['received', 'paid']) ? 'paid' : $inc->status,
           'creator'         => $inc->creator,
+          'paidByUser'      => $inc->paidByUser,
+          'paid_by_name'    => $inc->paid_by_name,
           'raw'             => $inc,
         ]);
       }
@@ -616,6 +620,7 @@ class InvoiceManagementController extends Controller
         'source'          => 'manual',
         'currency'        => 'INR',
         'created_by'      => auth()->id(),
+        'paid_by'         => in_array($status, ['received', 'settle']) ? auth()->id() : null,
         'assigned_managers' => !empty($request->assigned_managers) ? array_values(array_filter(array_map('intval', (array)$request->assigned_managers))) : null
       ]);
 
@@ -809,6 +814,7 @@ class InvoiceManagementController extends Controller
         'status'          => $status,
         'income_date'     => $receivedDate,
         'paid_date'       => in_array($status, ['received', 'settle']) ? ($income->paid_date ?: $receivedDate) : $income->paid_date,
+        'paid_by'         => in_array($status, ['received', 'settle']) ? (auth()->id() ?? $income->paid_by) : $income->paid_by,
         'mail_status'     => $request->has('mail_status') ? ($request->mail_status ? 1 : 0) : $income->mail_status,
         'notes'           => $request->notes ?: $income->notes,
         'settle_notes'    => $request->filled('settle_notes') ? $request->settle_notes : $income->settle_notes,
@@ -938,6 +944,7 @@ class InvoiceManagementController extends Controller
       $receivedAmount = $request->amount ?? $income->amount;
       $income->update([
         'status'          => 'received',
+        'paid_by'         => auth()->id(),
         'actual_amount'   => $receivedAmount,
         'received_amount' => $receivedAmount,
         'paid_date'       => $request->paid_date ?? now(),

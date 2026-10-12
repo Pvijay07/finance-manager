@@ -396,6 +396,15 @@
                                         <span class="badge text-white px-2.5 py-1 rounded-pill text-xs text-capitalize" style="background-color: {{ $stBadge }};">
                                             {{ in_array($st, ['paid', 'received']) ? 'Received' : $st }}
                                         </span>
+                                        @php
+                                            $paidUser = $incItem->paidByUser ?? ($incItem->raw?->paidByUser ?? null);
+                                            $paidName = $paidUser ? $paidUser->name : ($incItem->paid_by_name ?? ($incItem->raw?->paid_by_name ?? null));
+                                        @endphp
+                                        @if($paidName && in_array($st, ['paid', 'received', 'settle', 'settled']))
+                                        <div class="text-xs text-success mt-1" title="Payment recorded by: {{ $paidName }}">
+                                            <i class="fas fa-check-circle me-1"></i>{{ $paidName }}
+                                        </div>
+                                        @endif
                                     </td>
                                     <td class="text-end pe-4 text-nowrap">
                                         <div class="btn-group btn-group-sm">
@@ -1266,6 +1275,7 @@
                                 <th style="padding: 12px 16px; text-align: left; font-weight: 600; font-size: 13px; color: #1a1a1a;">Company</th>
                                 <th style="padding: 12px 16px; text-align: left; font-weight: 600; font-size: 13px; color: #1a1a1a;">Client / Party</th>
                                 <th style="padding: 12px 16px; text-align: left; font-weight: 600; font-size: 13px; color: #1a1a1a;">Created By</th>
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; font-size: 13px; color: #1a1a1a;">Received By</th>
                                 <th style="padding: 12px 16px; text-align: right; font-weight: 600; font-size: 13px; color: #1a1a1a;">Amount</th>
                                 <th style="padding: 12px 16px; text-align: right; font-weight: 600; font-size: 13px; color: #1a1a1a;">Received</th>
                                 <th style="padding: 12px 16px; text-align: right; font-weight: 600; font-size: 13px; color: #1a1a1a;">Balance</th>
@@ -1294,6 +1304,23 @@
                                             <span class="badge bg-light text-secondary border text-capitalize" style="font-size: 11px;">
                                                 {{ str_replace('_', ' ', $nsIncome->creator->role ?? 'User') }}
                                             </span>
+                                        @else
+                                            <span class="text-muted">—</span>
+                                        @endif
+                                    </td>
+                                    <td style="padding: 12px 16px; font-size: 13px;">
+                                        @php
+                                            $paidUser = $nsIncome->paidByUser;
+                                            $paidName = $paidUser ? $paidUser->name : $nsIncome->paid_by_name;
+                                            $paidRole = $paidUser ? $paidUser->role : null;
+                                        @endphp
+                                        @if($paidName && in_array(strtolower($nsIncome->status), ['paid', 'received', 'settle', 'settled']))
+                                            <div class="fw-semibold text-dark">{{ $paidName }}</div>
+                                            @if($paidRole)
+                                            <span class="badge bg-light text-secondary border text-capitalize" style="font-size: 11px;">
+                                                {{ str_replace('_', ' ', $paidRole) }}
+                                            </span>
+                                            @endif
                                         @else
                                             <span class="text-muted">—</span>
                                         @endif
@@ -1337,7 +1364,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="9" style="padding: 40px; text-align: center; color: #94a3b8;">
+                                    <td colspan="10" style="padding: 40px; text-align: center; color: #94a3b8;">
                                         <i class="fas fa-hand-holding-usd mb-2" style="font-size: 36px; color: #cbd5e1; display: block;"></i>
                                         No non-standard incomes found matching your filter criteria.
                                     </td>

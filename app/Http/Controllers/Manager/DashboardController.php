@@ -538,7 +538,7 @@ class DashboardController extends Controller
 
         $incomes = Income::whereIn('company_id', $companyIds)
             ->visibleToUser($user)
-            ->with('company')
+            ->with(['company', 'creator'])
             ->latest('created_at')
             ->limit(5)
             ->get()
@@ -549,6 +549,7 @@ class DashboardController extends Controller
                     'title' => $item->description ?: ($item->party_name ?? 'Income Entry'),
                     'party' => $item->party_name ?? 'Client',
                     'company' => $item->company->name ?? 'N/A',
+                    'creator' => $item->creator ? $item->creator->name : null,
                     'amount' => (float)$item->amount,
                     'status' => $item->status ?? 'received',
                     'date' => $item->created_at ? $item->created_at->format('d M, h:i A') : 'N/A',
@@ -558,7 +559,7 @@ class DashboardController extends Controller
 
         $expenses = Expense::whereIn('company_id', $companyIds)
             ->visibleToUser($user)
-            ->with(['company', 'categoryRelation'])
+            ->with(['company', 'categoryRelation', 'creator'])
             ->latest('created_at')
             ->limit(5)
             ->get()
@@ -569,6 +570,7 @@ class DashboardController extends Controller
                     'title' => $item->expense_name ?: ($item->categoryRelation->name ?? 'Expense Entry'),
                     'party' => $item->party_name ?? 'Vendor',
                     'company' => $item->company->name ?? 'N/A',
+                    'creator' => $item->creator ? $item->creator->name : null,
                     'amount' => (float)($item->planned_amount ?? $item->actual_amount),
                     'status' => $item->status ?? 'paid',
                     'date' => $item->created_at ? $item->created_at->format('d M, h:i A') : 'N/A',
