@@ -71,6 +71,7 @@ class InvoiceManagementController extends Controller
 
     // Date range filter
     $now = Carbon::now();
+    $today = Carbon::today()->toDateString();
     $filterStartDate = null;
     $filterEndDate = null;
 
@@ -126,28 +127,78 @@ class InvoiceManagementController extends Controller
     $countQuery = clone $proformasQuery;
     $statusCounts = [
       'all'      => (clone $countQuery)->whereNotIn('status', ['replaced', 'cancelled'])->count(),
-      'pending'  => (clone $countQuery)->where('status', 'pending')->count(),
-      'upcoming' => (clone $countQuery)->where('status', 'upcoming')->count(),
-      'paid'     => (clone $countQuery)->where('status', 'paid')->count(),
+      'pending'  => (clone $countQuery)->whereNotIn('status', ['paid', 'received', 'settle', 'settled', 'replaced', 'cancelled'])
+        ->where(function ($q) use ($today) {
+          $q->whereDate('due_date', '=', $today)
+            ->orWhere(function ($sq) use ($today) {
+              $sq->whereNull('due_date')->whereDate('issue_date', '>=', $today);
+            });
+        })->count(),
+      'upcoming' => (clone $countQuery)->whereNotIn('status', ['paid', 'received', 'settle', 'settled', 'replaced', 'cancelled'])
+        ->whereDate('due_date', '>', $today)->count(),
+      'overdue'  => (clone $countQuery)->whereNotIn('status', ['paid', 'received', 'settle', 'settled', 'replaced', 'cancelled'])
+        ->where(function ($q) use ($today) {
+          $q->whereDate('due_date', '<', $today)
+            ->orWhere(function ($sq) use ($today) {
+              $sq->whereNull('due_date')->whereDate('issue_date', '<', $today);
+            });
+        })->count(),
+      'paid'     => (clone $countQuery)->whereIn('status', ['paid', 'received', 'settle', 'settled'])->count(),
     ];
 
     // Apply status filter
     if ($status && $status !== 'all') {
-      $proformasQuery->where('status', $status);
+      if ($status === 'paid') {
+        $proformasQuery->whereIn('status', ['paid', 'received', 'settle', 'settled']);
+      } elseif ($status === 'pending') {
+        $proformasQuery->whereNotIn('status', ['paid', 'received', 'settle', 'settled', 'replaced', 'cancelled'])
+          ->where(function ($q) use ($today) {
+            $q->whereDate('due_date', '=', $today)
+              ->orWhere(function ($sq) use ($today) {
+                $sq->whereNull('due_date')->whereDate('issue_date', '>=', $today);
+              });
+          });
+      } elseif ($status === 'upcoming') {
+        $proformasQuery->whereNotIn('status', ['paid', 'received', 'settle', 'settled', 'replaced', 'cancelled'])
+          ->whereDate('due_date', '>', $today);
+      } elseif ($status === 'overdue') {
+        $proformasQuery->whereNotIn('status', ['paid', 'received', 'settle', 'settled', 'replaced', 'cancelled'])
+          ->where(function ($q) use ($today) {
+            $q->whereDate('due_date', '<', $today)
+              ->orWhere(function ($sq) use ($today) {
+                $sq->whereNull('due_date')->whereDate('issue_date', '<', $today);
+              });
+          });
+      } else {
+        $proformasQuery->where('status', $status);
+      }
     } else {
       $proformasQuery->whereNotIn('status', ['replaced', 'cancelled']);
     }
 
     $pendingProformas = $proformasQuery->orderBy('due_date', 'asc')->paginate($perPage)->withQueryString();
 
-    // Decode JSON fields for current page
-    $pendingProformas->each(function ($invoice) {
+    // Decode JSON fields for current page and compute dynamic status
+    $pendingProformas->getCollection()->transform(function ($invoice) use ($today) {
       if ($invoice->client_details && is_string($invoice->client_details)) {
         $invoice->client_details = json_decode($invoice->client_details, true);
       }
       if ($invoice->line_items && is_string($invoice->line_items)) {
         $invoice->line_items = json_decode($invoice->line_items, true);
       }
+      if (in_array(strtolower($invoice->status ?? ''), ['paid', 'received', 'settle', 'settled'])) {
+        $invoice->status = 'received';
+      } else {
+        $dueDate = $invoice->due_date ? Carbon::parse($invoice->due_date)->toDateString() : ($invoice->issue_date ? Carbon::parse($invoice->issue_date)->toDateString() : null);
+        if ($dueDate && $dueDate > $today) {
+          $invoice->status = 'upcoming';
+        } elseif ($dueDate && $dueDate < $today) {
+          $invoice->status = 'overdue';
+        } else {
+          $invoice->status = 'pending';
+        }
+      }
+      return $invoice;
     });
 
     $pendingProformasCount = $statusCounts['pending'] + $statusCounts['upcoming'];
@@ -202,20 +253,68 @@ class InvoiceManagementController extends Controller
     $nsCountQuery = clone $nsIncomeQuery;
     $nsIncomeStatusCounts = [
       'all'      => (clone $nsCountQuery)->count(),
-      'pending'  => (clone $nsCountQuery)->where('status', 'pending')->count(),
-      'upcoming' => (clone $nsCountQuery)->where('status', 'upcoming')->count(),
+      'pending'  => (clone $nsCountQuery)->whereNotIn('status', ['paid', 'received', 'settle', 'settled'])
+        ->where(function ($q) use ($today) {
+          $q->whereDate('due_date', '=', $today)
+            ->orWhere(function ($sq) use ($today) {
+              $sq->whereNull('due_date')->whereDate('income_date', '>=', $today);
+            });
+        })->count(),
+      'upcoming' => (clone $nsCountQuery)->whereNotIn('status', ['paid', 'received', 'settle', 'settled'])
+        ->whereDate('due_date', '>', $today)->count(),
+      'overdue'  => (clone $nsCountQuery)->whereNotIn('status', ['paid', 'received', 'settle', 'settled'])
+        ->where(function ($q) use ($today) {
+          $q->whereDate('due_date', '<', $today)
+            ->orWhere(function ($sq) use ($today) {
+              $sq->whereNull('due_date')->whereDate('income_date', '<', $today);
+            });
+        })->count(),
       'paid'     => (clone $nsCountQuery)->whereIn('status', ['paid', 'received', 'settle', 'settled'])->count(),
     ];
 
     if ($status && $status !== 'all') {
       if ($status === 'paid') {
         $nsIncomeQuery->whereIn('status', ['paid', 'received', 'settle', 'settled']);
+      } elseif ($status === 'pending') {
+        $nsIncomeQuery->whereNotIn('status', ['paid', 'received', 'settle', 'settled'])
+          ->where(function ($q) use ($today) {
+            $q->whereDate('due_date', '=', $today)
+              ->orWhere(function ($sq) use ($today) {
+                $sq->whereNull('due_date')->whereDate('income_date', '>=', $today);
+              });
+          });
+      } elseif ($status === 'upcoming') {
+        $nsIncomeQuery->whereNotIn('status', ['paid', 'received', 'settle', 'settled'])
+          ->whereDate('due_date', '>', $today);
+      } elseif ($status === 'overdue') {
+        $nsIncomeQuery->whereNotIn('status', ['paid', 'received', 'settle', 'settled'])
+          ->where(function ($q) use ($today) {
+            $q->whereDate('due_date', '<', $today)
+              ->orWhere(function ($sq) use ($today) {
+                $sq->whereNull('due_date')->whereDate('income_date', '<', $today);
+              });
+          });
       } else {
         $nsIncomeQuery->where('status', $status);
       }
     }
 
     $nonStandardIncomes = $nsIncomeQuery->orderBy('income_date', 'desc')->paginate($perPage, ['*'], 'ns_page')->withQueryString();
+    $nonStandardIncomes->getCollection()->transform(function ($item) use ($today) {
+      if (in_array(strtolower($item->status ?? ''), ['paid', 'received', 'settle', 'settled'])) {
+        $item->status = 'received';
+      } else {
+        $dueDate = $item->due_date ? Carbon::parse($item->due_date)->toDateString() : ($item->income_date ? Carbon::parse($item->income_date)->toDateString() : null);
+        if ($dueDate && $dueDate > $today) {
+          $item->status = 'upcoming';
+        } elseif ($dueDate && $dueDate < $today) {
+          $item->status = 'overdue';
+        } else {
+          $item->status = 'pending';
+        }
+      }
+      return $item;
+    });
 
     // 3. Unified All Incomes Query (Shows all Standard and Non-Standard Incomes in one place)
     $allInvQuery = Invoice::with(['company', 'tdsTax', 'creator']);
@@ -240,20 +339,58 @@ class InvoiceManagementController extends Controller
     $allInvCountQuery = clone $allInvQuery;
     $invStatusCounts = [
       'all'      => (clone $allInvCountQuery)->whereNotIn('status', ['replaced', 'cancelled'])->count(),
-      'pending'  => (clone $allInvCountQuery)->where('status', 'pending')->count(),
-      'upcoming' => (clone $allInvCountQuery)->where('status', 'upcoming')->count(),
-      'paid'     => (clone $allInvCountQuery)->where('status', 'paid')->count(),
+      'pending'  => (clone $allInvCountQuery)->whereNotIn('status', ['paid', 'received', 'settle', 'settled', 'replaced', 'cancelled'])
+        ->where(function ($q) use ($today) {
+          $q->whereDate('due_date', '=', $today)
+            ->orWhere(function ($sq) use ($today) {
+              $sq->whereNull('due_date')->whereDate('issue_date', '>=', $today);
+            });
+        })->count(),
+      'upcoming' => (clone $allInvCountQuery)->whereNotIn('status', ['paid', 'received', 'settle', 'settled', 'replaced', 'cancelled'])
+        ->whereDate('due_date', '>', $today)->count(),
+      'overdue'  => (clone $allInvCountQuery)->whereNotIn('status', ['paid', 'received', 'settle', 'settled', 'replaced', 'cancelled'])
+        ->where(function ($q) use ($today) {
+          $q->whereDate('due_date', '<', $today)
+            ->orWhere(function ($sq) use ($today) {
+              $sq->whereNull('due_date')->whereDate('issue_date', '<', $today);
+            });
+        })->count(),
+      'paid'     => (clone $allInvCountQuery)->whereIn('status', ['paid', 'received', 'settle', 'settled'])->count(),
     ];
 
     $allIncomeStatusCounts = [
       'all'      => $invStatusCounts['all'] + $nsIncomeStatusCounts['all'],
       'pending'  => $invStatusCounts['pending'] + $nsIncomeStatusCounts['pending'],
       'upcoming' => $invStatusCounts['upcoming'] + $nsIncomeStatusCounts['upcoming'],
+      'overdue'  => $invStatusCounts['overdue'] + $nsIncomeStatusCounts['overdue'],
       'paid'     => $invStatusCounts['paid'] + $nsIncomeStatusCounts['paid'],
     ];
 
     if ($status && $status !== 'all') {
-      $allInvQuery->where('status', $status);
+      if ($status === 'paid') {
+        $allInvQuery->whereIn('status', ['paid', 'received', 'settle', 'settled']);
+      } elseif ($status === 'pending') {
+        $allInvQuery->whereNotIn('status', ['paid', 'received', 'settle', 'settled', 'replaced', 'cancelled'])
+          ->where(function ($q) use ($today) {
+            $q->whereDate('due_date', '=', $today)
+              ->orWhere(function ($sq) use ($today) {
+                $sq->whereNull('due_date')->whereDate('issue_date', '>=', $today);
+              });
+          });
+      } elseif ($status === 'upcoming') {
+        $allInvQuery->whereNotIn('status', ['paid', 'received', 'settle', 'settled', 'replaced', 'cancelled'])
+          ->whereDate('due_date', '>', $today);
+      } elseif ($status === 'overdue') {
+        $allInvQuery->whereNotIn('status', ['paid', 'received', 'settle', 'settled', 'replaced', 'cancelled'])
+          ->where(function ($q) use ($today) {
+            $q->whereDate('due_date', '<', $today)
+              ->orWhere(function ($sq) use ($today) {
+                $sq->whereNull('due_date')->whereDate('issue_date', '<', $today);
+              });
+          });
+      } else {
+        $allInvQuery->where('status', $status);
+      }
     } else {
       $allInvQuery->whereNotIn('status', ['replaced', 'cancelled']);
     }
@@ -270,6 +407,20 @@ class InvoiceManagementController extends Controller
           $decoded = json_decode($inv->client_details, true);
           $clientName = $decoded['name'] ?? $decoded['company_name'] ?? 'N/A';
         }
+        $invStatus = strtolower($inv->status ?? 'pending');
+        $isInvPaid = in_array($invStatus, ['paid', 'received', 'settle', 'settled']);
+        if ($isInvPaid) {
+          $computedStatus = 'received';
+        } else {
+          $d = $inv->due_date ? Carbon::parse($inv->due_date)->toDateString() : ($inv->issue_date ? Carbon::parse($inv->issue_date)->toDateString() : null);
+          if ($d && $d > $today) {
+            $computedStatus = 'upcoming';
+          } elseif ($d && $d < $today) {
+            $computedStatus = 'overdue';
+          } else {
+            $computedStatus = 'pending';
+          }
+        }
         $unifiedItems->push((object)[
           'id'              => $inv->id,
           'source'          => 'standard',
@@ -283,8 +434,8 @@ class InvoiceManagementController extends Controller
           'total_amount'    => (float)$inv->total_amount,
           'received_amount' => (float)($inv->received_amount ?? ($inv->status === 'paid' ? $inv->total_amount : 0)),
           'balance_amount'  => (float)($inv->balance_amount ?? max(0, $inv->total_amount - ($inv->received_amount ?? 0))),
-          'payment_mode'    => 'Bank / Online',
-          'status'          => $inv->status,
+          'payment_mode'    => $isInvPaid ? ($inv->payment_mode ?? 'Bank / Online') : '-',
+          'status'          => $computedStatus,
           'creator'         => $inv->creator,
           'paidByUser'      => $inv->paidByUser ?? null,
           'paid_by_name'    => $inv->paid_by_name ?? null,
@@ -296,6 +447,20 @@ class InvoiceManagementController extends Controller
     if ($typeFilter !== 'standard') {
       $allNsClone = clone $nsIncomeQuery;
       foreach ($allNsClone->get() as $inc) {
+        $incStatus = strtolower($inc->status ?? 'pending');
+        $isIncPaid = in_array($incStatus, ['paid', 'received', 'settle', 'settled']);
+        if ($isIncPaid) {
+          $computedStatus = 'received';
+        } else {
+          $d = $inc->due_date ? Carbon::parse($inc->due_date)->toDateString() : ($inc->income_date ? Carbon::parse($inc->income_date)->toDateString() : null);
+          if ($d && $d > $today) {
+            $computedStatus = 'upcoming';
+          } elseif ($d && $d < $today) {
+            $computedStatus = 'overdue';
+          } else {
+            $computedStatus = 'pending';
+          }
+        }
         $unifiedItems->push((object)[
           'id'              => $inc->id,
           'source'          => 'non-standard',
@@ -309,8 +474,8 @@ class InvoiceManagementController extends Controller
           'total_amount'    => (float)($inc->schedule_amount ?: ($inc->planned_amount ?: $inc->amount)),
           'received_amount' => (float)($inc->received_amount ?: 0),
           'balance_amount'  => (float)($inc->balance_amount ?: 0),
-          'payment_mode'    => ucfirst($inc->payment_mode ?? 'Cash'),
-          'status'          => in_array($inc->status, ['received', 'paid']) ? 'paid' : $inc->status,
+          'payment_mode'    => ($isIncPaid && !empty($inc->payment_mode)) ? ucfirst(str_replace('_', ' ', $inc->payment_mode)) : '-',
+          'status'          => $computedStatus,
           'creator'         => $inc->creator,
           'paidByUser'      => $inc->paidByUser,
           'paid_by_name'    => $inc->paid_by_name,
@@ -550,7 +715,7 @@ class InvoiceManagementController extends Controller
       'balance_amount'  => 'nullable|numeric|min:0',
       'received_date'   => 'nullable|date',
       'due_date'        => 'nullable|date',
-      'status'          => 'required|in:due,settle,paid,received,pending,upcoming',
+      'status'          => 'nullable|in:due,settle,paid,received,pending,upcoming',
       'settle_notes'    => 'nullable|string',
       'mail_status'     => 'nullable|in:0,1',
       'notes'           => 'nullable|string',
@@ -582,20 +747,24 @@ class InvoiceManagementController extends Controller
       }
 
       $balanceAmount = max(0, $payableAmountTotal - $receivedAmount);
-      $receivedDate = $request->received_date ?: now()->format('Y-m-d');
-      $dueDate = $request->due_date ?: $receivedDate;
+      $dueDate = $request->due_date ?: now()->format('Y-m-d');
+      $receivedDate = $request->received_date ?: null;
 
       $status = $request->status;
       if (in_array($status, ['paid', 'received']) || ($balanceAmount <= 0.01 && $receivedAmount > 0)) {
         $status = 'received';
       } elseif ($status === 'settle') {
         $status = 'settle';
-      } elseif ($status === 'due' || $status === 'upcoming') {
-        $status = 'upcoming';
-      } elseif ($dueDate && \Carbon\Carbon::parse($dueDate)->gte(now()->startOfDay())) {
-        $status = 'upcoming';
       } else {
-        $status = 'pending';
+        $dueDateStr = Carbon::parse($dueDate)->toDateString();
+        $todayStr = Carbon::today()->toDateString();
+        if ($dueDateStr > $todayStr) {
+          $status = 'upcoming';
+        } elseif ($dueDateStr < $todayStr) {
+          $status = 'overdue';
+        } else {
+          $status = 'pending';
+        }
       }
 
       $income = Income::create([
@@ -610,8 +779,8 @@ class InvoiceManagementController extends Controller
         'balance_amount'  => $balanceAmount,
         'due_date'        => $dueDate,
         'status'          => $status,
-        'income_date'     => $receivedDate,
-        'paid_date'       => in_array($status, ['received', 'settle']) ? $receivedDate : null,
+        'income_date'     => $receivedDate ?: $dueDate,
+        'paid_date'       => in_array($status, ['received', 'settle']) ? ($receivedDate ?: now()->format('Y-m-d')) : null,
         'mail_status'     => $request->mail_status ?? 0,
         'notes'           => $request->notes,
         'settle_notes'    => $request->settle_notes,
@@ -794,10 +963,16 @@ class InvoiceManagementController extends Controller
         $status = 'received';
       } elseif ($status === 'settle') {
         $status = 'settle';
-      } elseif ($status === 'due' || $status === 'upcoming') {
-        $status = 'upcoming';
-      } elseif ($dueDate && \Carbon\Carbon::parse($dueDate)->gte(now()->startOfDay())) {
-        $status = 'upcoming';
+      } else {
+        $dueDateStr = Carbon::parse($dueDate)->toDateString();
+        $todayStr = Carbon::today()->toDateString();
+        if ($dueDateStr > $todayStr) {
+          $status = 'upcoming';
+        } elseif ($dueDateStr < $todayStr) {
+          $status = 'overdue';
+        } else {
+          $status = 'pending';
+        }
       }
 
       $income->update([

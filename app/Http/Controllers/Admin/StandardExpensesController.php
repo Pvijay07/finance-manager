@@ -112,20 +112,22 @@ class StandardExpensesController extends Controller
     $allCountQuery = clone $allExpensesQuery;
     $allStatusCounts = [
       'all' => (clone $allCountQuery)->count(),
-      'pending' => (clone $allCountQuery)->where(function ($q) use ($today) {
-        $q->where('status', 'pending')
-          ->orWhere(function ($sq) use ($today) {
-            $sq->whereNotIn('status', ['paid', 'settle', 'settled'])
-              ->whereDate('due_date', '<', $today);
-          });
-      })->count(),
-      'upcoming' => (clone $allCountQuery)->where(function ($q) use ($today) {
-        $q->where('status', 'upcoming')
-          ->orWhere(function ($sq) use ($today) {
-            $sq->whereNotIn('status', ['paid', 'settle', 'settled'])
-              ->whereDate('due_date', '>=', $today);
-          });
-      })->count(),
+      'pending' => (clone $allCountQuery)->whereNotIn('status', ['paid', 'settle', 'settled'])
+        ->where(function ($q) use ($today) {
+          $q->whereDate('due_date', '=', $today)
+            ->orWhere(function ($sq) use ($today) {
+              $sq->whereNull('due_date')->whereDate('created_at', '>=', $today);
+            });
+        })->count(),
+      'upcoming' => (clone $allCountQuery)->whereNotIn('status', ['paid', 'settle', 'settled'])
+        ->whereDate('due_date', '>', $today)->count(),
+      'overdue' => (clone $allCountQuery)->whereNotIn('status', ['paid', 'settle', 'settled'])
+        ->where(function ($q) use ($today) {
+          $q->whereDate('due_date', '<', $today)
+            ->orWhere(function ($sq) use ($today) {
+              $sq->whereNull('due_date')->whereDate('created_at', '<', $today);
+            });
+        })->count(),
       'paid' => (clone $allCountQuery)->whereIn('status', ['paid', 'settle', 'settled'])->count(),
     ];
 
@@ -133,33 +135,39 @@ class StandardExpensesController extends Controller
       if ($statusFilter === 'paid') {
         $allExpensesQuery->whereIn('status', ['paid', 'settle', 'settled']);
       } elseif ($statusFilter === 'pending') {
-        $allExpensesQuery->where(function ($q) use ($today) {
-          $q->where('status', 'pending')
-            ->orWhere(function ($sq) use ($today) {
-              $sq->whereNotIn('status', ['paid', 'settle', 'settled'])
-                ->whereDate('due_date', '<', $today);
-            });
-        });
+        $allExpensesQuery->whereNotIn('status', ['paid', 'settle', 'settled'])
+          ->where(function ($q) use ($today) {
+            $q->whereDate('due_date', '=', $today)
+              ->orWhere(function ($sq) use ($today) {
+                $sq->whereNull('due_date')->whereDate('created_at', '>=', $today);
+              });
+          });
       } elseif ($statusFilter === 'upcoming') {
-        $allExpensesQuery->where(function ($q) use ($today) {
-          $q->where('status', 'upcoming')
-            ->orWhere(function ($sq) use ($today) {
-              $sq->whereNotIn('status', ['paid', 'settle', 'settled'])
-                ->whereDate('due_date', '>=', $today);
-            });
-        });
+        $allExpensesQuery->whereNotIn('status', ['paid', 'settle', 'settled'])
+          ->whereDate('due_date', '>', $today);
+      } elseif ($statusFilter === 'overdue') {
+        $allExpensesQuery->whereNotIn('status', ['paid', 'settle', 'settled'])
+          ->where(function ($q) use ($today) {
+            $q->whereDate('due_date', '<', $today)
+              ->orWhere(function ($sq) use ($today) {
+                $sq->whereNull('due_date')->whereDate('created_at', '<', $today);
+              });
+          });
       }
     }
 
     $allExpenses = $allExpensesQuery->latest('due_date')->paginate($perPage, ['*'], 'all_page')->withQueryString();
-    $allExpenses->getCollection()->transform(function ($item) {
-      $today = Carbon::today();
-      $dueDate = $item->due_date ? Carbon::parse($item->due_date) : null;
-      if (!in_array($item->status, ['paid', 'settle', 'settled'])) {
-        if ($dueDate && $dueDate->startOfDay()->isPast() && !$dueDate->isToday()) {
-          $item->status = 'pending';
-        } else {
+    $allExpenses->getCollection()->transform(function ($item) use ($today) {
+      if (in_array(strtolower($item->status ?? ''), ['paid', 'settle', 'settled'])) {
+        $item->status = 'paid';
+      } else {
+        $dueDate = $item->due_date ? Carbon::parse($item->due_date)->toDateString() : ($item->created_at ? Carbon::parse($item->created_at)->toDateString() : null);
+        if ($dueDate && $dueDate > $today) {
           $item->status = 'upcoming';
+        } elseif ($dueDate && $dueDate < $today) {
+          $item->status = 'overdue';
+        } else {
+          $item->status = 'pending';
         }
       }
       return $item;
@@ -194,20 +202,22 @@ class StandardExpensesController extends Controller
     $stdCountQuery = clone $stdQuery;
     $statusCounts = [
       'all' => (clone $stdCountQuery)->count(),
-      'pending' => (clone $stdCountQuery)->where(function ($q) use ($today) {
-        $q->where('status', 'pending')
-          ->orWhere(function ($sq) use ($today) {
-            $sq->whereNotIn('status', ['paid', 'settle', 'settled'])
-              ->whereDate('due_date', '<', $today);
-          });
-      })->count(),
-      'upcoming' => (clone $stdCountQuery)->where(function ($q) use ($today) {
-        $q->where('status', 'upcoming')
-          ->orWhere(function ($sq) use ($today) {
-            $sq->whereNotIn('status', ['paid', 'settle', 'settled'])
-              ->whereDate('due_date', '>=', $today);
-          });
-      })->count(),
+      'pending' => (clone $stdCountQuery)->whereNotIn('status', ['paid', 'settle', 'settled'])
+        ->where(function ($q) use ($today) {
+          $q->whereDate('due_date', '=', $today)
+            ->orWhere(function ($sq) use ($today) {
+              $sq->whereNull('due_date')->whereDate('created_at', '>=', $today);
+            });
+        })->count(),
+      'upcoming' => (clone $stdCountQuery)->whereNotIn('status', ['paid', 'settle', 'settled'])
+        ->whereDate('due_date', '>', $today)->count(),
+      'overdue' => (clone $stdCountQuery)->whereNotIn('status', ['paid', 'settle', 'settled'])
+        ->where(function ($q) use ($today) {
+          $q->whereDate('due_date', '<', $today)
+            ->orWhere(function ($sq) use ($today) {
+              $sq->whereNull('due_date')->whereDate('created_at', '<', $today);
+            });
+        })->count(),
       'paid' => (clone $stdCountQuery)->whereIn('status', ['paid', 'settle', 'settled'])->count(),
     ];
 
@@ -215,33 +225,39 @@ class StandardExpensesController extends Controller
       if ($statusFilter === 'paid') {
         $stdQuery->whereIn('status', ['paid', 'settle', 'settled']);
       } elseif ($statusFilter === 'pending') {
-        $stdQuery->where(function ($q) use ($today) {
-          $q->where('status', 'pending')
-            ->orWhere(function ($sq) use ($today) {
-              $sq->whereNotIn('status', ['paid', 'settle', 'settled'])
-                ->whereDate('due_date', '<', $today);
-            });
-        });
+        $stdQuery->whereNotIn('status', ['paid', 'settle', 'settled'])
+          ->where(function ($q) use ($today) {
+            $q->whereDate('due_date', '=', $today)
+              ->orWhere(function ($sq) use ($today) {
+                $sq->whereNull('due_date')->whereDate('created_at', '>=', $today);
+              });
+          });
       } elseif ($statusFilter === 'upcoming') {
-        $stdQuery->where(function ($q) use ($today) {
-          $q->where('status', 'upcoming')
-            ->orWhere(function ($sq) use ($today) {
-              $sq->whereNotIn('status', ['paid', 'settle', 'settled'])
-                ->whereDate('due_date', '>=', $today);
-            });
-        });
+        $stdQuery->whereNotIn('status', ['paid', 'settle', 'settled'])
+          ->whereDate('due_date', '>', $today);
+      } elseif ($statusFilter === 'overdue') {
+        $stdQuery->whereNotIn('status', ['paid', 'settle', 'settled'])
+          ->where(function ($q) use ($today) {
+            $q->whereDate('due_date', '<', $today)
+              ->orWhere(function ($sq) use ($today) {
+                $sq->whereNull('due_date')->whereDate('created_at', '<', $today);
+              });
+          });
       }
     }
 
     $templates = $stdQuery->latest('due_date')->paginate($perPage)->withQueryString();
-    $templates->getCollection()->transform(function ($item) {
-      $today = Carbon::today();
-      $dueDate = $item->due_date ? Carbon::parse($item->due_date) : null;
-      if (!in_array($item->status, ['paid', 'settle', 'settled'])) {
-        if ($dueDate && $dueDate->startOfDay()->isPast() && !$dueDate->isToday()) {
-          $item->status = 'pending';
-        } else {
+    $templates->getCollection()->transform(function ($item) use ($today) {
+      if (in_array(strtolower($item->status ?? ''), ['paid', 'settle', 'settled'])) {
+        $item->status = 'paid';
+      } else {
+        $dueDate = $item->due_date ? Carbon::parse($item->due_date)->toDateString() : ($item->created_at ? Carbon::parse($item->created_at)->toDateString() : null);
+        if ($dueDate && $dueDate > $today) {
           $item->status = 'upcoming';
+        } elseif ($dueDate && $dueDate < $today) {
+          $item->status = 'overdue';
+        } else {
+          $item->status = 'pending';
         }
       }
       return $item;
@@ -284,20 +300,22 @@ class StandardExpensesController extends Controller
     $nsCountQuery = clone $nonStandardQuery;
     $nsStatusCounts = [
       'all' => (clone $nsCountQuery)->count(),
-      'pending' => (clone $nsCountQuery)->where(function ($q) use ($today) {
-        $q->where('status', 'pending')
-          ->orWhere(function ($sq) use ($today) {
-            $sq->whereNotIn('status', ['paid', 'settle', 'settled'])
-              ->whereDate('due_date', '<', $today);
-          });
-      })->count(),
-      'upcoming' => (clone $nsCountQuery)->where(function ($q) use ($today) {
-        $q->where('status', 'upcoming')
-          ->orWhere(function ($sq) use ($today) {
-            $sq->whereNotIn('status', ['paid', 'settle', 'settled'])
-              ->whereDate('due_date', '>=', $today);
-          });
-      })->count(),
+      'pending' => (clone $nsCountQuery)->whereNotIn('status', ['paid', 'settle', 'settled'])
+        ->where(function ($q) use ($today) {
+          $q->whereDate('due_date', '=', $today)
+            ->orWhere(function ($sq) use ($today) {
+              $sq->whereNull('due_date')->whereDate('created_at', '>=', $today);
+            });
+        })->count(),
+      'upcoming' => (clone $nsCountQuery)->whereNotIn('status', ['paid', 'settle', 'settled'])
+        ->whereDate('due_date', '>', $today)->count(),
+      'overdue' => (clone $nsCountQuery)->whereNotIn('status', ['paid', 'settle', 'settled'])
+        ->where(function ($q) use ($today) {
+          $q->whereDate('due_date', '<', $today)
+            ->orWhere(function ($sq) use ($today) {
+              $sq->whereNull('due_date')->whereDate('created_at', '<', $today);
+            });
+        })->count(),
       'paid' => (clone $nsCountQuery)->whereIn('status', ['paid', 'settle', 'settled'])->count(),
     ];
 
@@ -305,25 +323,43 @@ class StandardExpensesController extends Controller
       if ($statusFilter === 'paid') {
         $nonStandardQuery->whereIn('status', ['paid', 'settle', 'settled']);
       } elseif ($statusFilter === 'pending') {
-        $nonStandardQuery->where(function ($q) use ($today) {
-          $q->where('status', 'pending')
-            ->orWhere(function ($sq) use ($today) {
-              $sq->whereNotIn('status', ['paid', 'settle', 'settled'])
-                ->whereDate('due_date', '<', $today);
-            });
-        });
+        $nonStandardQuery->whereNotIn('status', ['paid', 'settle', 'settled'])
+          ->where(function ($q) use ($today) {
+            $q->whereDate('due_date', '=', $today)
+              ->orWhere(function ($sq) use ($today) {
+                $sq->whereNull('due_date')->whereDate('created_at', '>=', $today);
+              });
+          });
       } elseif ($statusFilter === 'upcoming') {
-        $nonStandardQuery->where(function ($q) use ($today) {
-          $q->where('status', 'upcoming')
-            ->orWhere(function ($sq) use ($today) {
-              $sq->whereNotIn('status', ['paid', 'settle', 'settled'])
-                ->whereDate('due_date', '>=', $today);
-            });
-        });
+        $nonStandardQuery->whereNotIn('status', ['paid', 'settle', 'settled'])
+          ->whereDate('due_date', '>', $today);
+      } elseif ($statusFilter === 'overdue') {
+        $nonStandardQuery->whereNotIn('status', ['paid', 'settle', 'settled'])
+          ->where(function ($q) use ($today) {
+            $q->whereDate('due_date', '<', $today)
+              ->orWhere(function ($sq) use ($today) {
+                $sq->whereNull('due_date')->whereDate('created_at', '<', $today);
+              });
+          });
       }
     }
 
     $nonStandardExpenses = $nonStandardQuery->latest('due_date')->paginate($perPage, ['*'], 'ns_page')->withQueryString();
+    $nonStandardExpenses->getCollection()->transform(function ($item) use ($today) {
+      if (in_array(strtolower($item->status ?? ''), ['paid', 'settle', 'settled'])) {
+        $item->status = 'paid';
+      } else {
+        $dueDate = $item->due_date ? Carbon::parse($item->due_date)->toDateString() : ($item->created_at ? Carbon::parse($item->created_at)->toDateString() : null);
+        if ($dueDate && $dueDate > $today) {
+          $item->status = 'upcoming';
+        } elseif ($dueDate && $dueDate < $today) {
+          $item->status = 'overdue';
+        } else {
+          $item->status = 'pending';
+        }
+      }
+      return $item;
+    });
 
     $companies = Company::where('status', 'active')->get();
     $categories = Category::where('is_active', true)->get();
@@ -489,7 +525,7 @@ class StandardExpensesController extends Controller
       'settle_notes'    => 'nullable|string',
       'payment_date'    => 'nullable|date',
       'due_date'        => 'nullable|date',
-      'status'          => 'required|in:upcoming,pending,paid,settle,due,convert_to_tds',
+      'status'          => 'nullable|in:upcoming,pending,paid,settle,due,convert_to_tds',
       'tds_status'      => 'nullable|in:received,not_received,paid',
       'receipts.*'      => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:5120',
       'tds_receipt'     => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:5120',
@@ -539,8 +575,20 @@ class StandardExpensesController extends Controller
       $balanceAmount = max(0, $netPayableAmount - $paidAmount);
       $dueDate = $request->due_date ?: now()->format('Y-m-d');
       $status = $request->status;
-      if ($status === 'due') {
-        $status = 'upcoming';
+      if (in_array($status, ['paid', 'settle', 'settled']) || ($balanceAmount <= 0.01 && $paidAmount > 0)) {
+        $status = 'paid';
+      } elseif ($status === 'settle') {
+        $status = 'settle';
+      } else {
+        $dueDateStr = Carbon::parse($dueDate)->toDateString();
+        $todayStr = Carbon::today()->toDateString();
+        if ($dueDateStr > $todayStr) {
+          $status = 'upcoming';
+        } elseif ($dueDateStr < $todayStr) {
+          $status = 'overdue';
+        } else {
+          $status = 'pending';
+        }
       }
 
       $expense = Expense::create([
@@ -557,7 +605,7 @@ class StandardExpensesController extends Controller
         'payment_date'    => $request->payment_date,
         'paid_date'       => in_array($status, ['paid', 'settle']) ? ($request->payment_date ?: now()->format('Y-m-d')) : null,
         'status'          => $status,
-        'payment_mode'    => $request->payment_mode ?? 'cash',
+        'payment_mode'    => in_array($status, ['paid', 'settle']) ? ($request->payment_mode ?? 'cash') : ($request->payment_mode ?: null),
         'bank_name'       => $request->bank_name,
         'upi_type'        => $request->upi_type,
         'upi_number'      => $request->upi_number,
@@ -803,9 +851,6 @@ class StandardExpensesController extends Controller
 
       // Preserve existing payment status and paid amount if not passed by admin
       $status = $request->filled('status') ? $request->status : ($expense->status ?: 'upcoming');
-      if ($status === 'due') {
-        $status = 'upcoming';
-      }
 
       $paidAmount = $request->has('paid_amount') && $request->paid_amount !== null
         ? floatval($request->paid_amount)
@@ -817,6 +862,22 @@ class StandardExpensesController extends Controller
 
       $balanceAmount = max(0, $netPayableAmount - $paidAmount);
       $dueDate = $request->due_date ?: ($expense->due_date ?: now()->format('Y-m-d'));
+
+      if (in_array($status, ['paid', 'settle', 'settled']) || ($balanceAmount <= 0.01 && $paidAmount > 0)) {
+        $status = 'paid';
+      } elseif ($status === 'settle') {
+        $status = 'settle';
+      } else {
+        $dueDateStr = Carbon::parse($dueDate)->toDateString();
+        $todayStr = Carbon::today()->toDateString();
+        if ($dueDateStr > $todayStr) {
+          $status = 'upcoming';
+        } elseif ($dueDateStr < $todayStr) {
+          $status = 'overdue';
+        } else {
+          $status = 'pending';
+        }
+      }
       $paymentDate = $request->payment_date ?: $expense->payment_date;
       $paidDate = in_array($status, ['paid', 'settle']) ? ($request->payment_date ?: ($expense->paid_date ?: now()->format('Y-m-d'))) : $expense->paid_date;
 

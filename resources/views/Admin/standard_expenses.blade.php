@@ -64,6 +64,13 @@
                 <span class="badge ms-1 {{ ($statusFilter ?? '') == 'upcoming' ? 'bg-white text-primary' : 'bg-info text-white' }}">{{ $allStatusCounts['upcoming'] ?? 0 }}</span>
             </button>
             <button type="button"
+                class="btn btn-sm py-2 px-3 status-tab-btn {{ ($statusFilter ?? '') == 'overdue' ? 'active shadow-sm text-white' : 'btn-light border text-muted' }}"
+                onclick="setAllExpensesStatusFilter('overdue')"
+                style="border-radius: 8px; font-weight: 600; font-size: 0.85rem; {{ ($statusFilter ?? '') == 'overdue' ? 'background-color: #ef4444; border-color: #ef4444;' : 'background-color: #ffffff;' }}">
+                <i class="fas fa-exclamation-circle me-1"></i> Overdue
+                <span class="badge ms-1 {{ ($statusFilter ?? '') == 'overdue' ? 'bg-white text-danger' : 'bg-danger text-white' }}">{{ $allStatusCounts['overdue'] ?? 0 }}</span>
+            </button>
+            <button type="button"
                 class="btn btn-sm py-2 px-3 status-tab-btn {{ ($statusFilter ?? '') == 'paid' ? 'active shadow-sm text-white' : 'btn-light border text-muted' }}"
                 onclick="setAllExpensesStatusFilter('paid')"
                 style="border-radius: 8px; font-weight: 600; font-size: 0.85rem; {{ ($statusFilter ?? '') == 'paid' ? 'background-color: #10b981; border-color: #10b981;' : 'background-color: #ffffff;' }}">
@@ -277,9 +284,18 @@
                                     ₹{{ number_format($exp->balance_amount ?: 0, 2) }}
                                 </td>
                                 <td>
-                                    <span class="badge bg-light text-secondary border text-capitalize">
-                                        {{ str_replace('_', ' ', $exp->payment_mode ?? 'cash') }}
-                                    </span>
+                                    @php
+                                        $expStatus = strtolower($exp->status ?? 'pending');
+                                        $isExpPaid = in_array($expStatus, ['paid', 'settle', 'settled']) || (($exp->paid_amount ?? 0) > 0);
+                                        $mode = ($isExpPaid && !empty($exp->payment_mode)) ? str_replace('_', ' ', $exp->payment_mode) : null;
+                                    @endphp
+                                    @if($mode)
+                                        <span class="badge bg-light text-secondary border text-capitalize">
+                                            {{ $mode }}
+                                        </span>
+                                    @else
+                                        <span class="text-muted">—</span>
+                                    @endif
                                 </td>
                                 <td class="text-center">
                                     @php
@@ -291,6 +307,8 @@
                                     $badgeBg = '#3b82f6';
                                     } elseif ($s === 'pending' || $s === 'due') {
                                     $badgeBg = '#f59e0b';
+                                    } elseif ($s === 'overdue') {
+                                    $badgeBg = '#ef4444';
                                     }
                                     $paidUser = $exp->paidByUser;
                                     $paidName = $paidUser ? $paidUser->name : $exp->paid_by_name;
@@ -646,6 +664,13 @@
                 <span class="badge ms-1 {{ ($statusFilter ?? '') == 'upcoming' ? 'bg-white text-primary' : 'bg-info text-white' }}">{{ $statusCounts['upcoming'] ?? 0 }}</span>
             </button>
             <button type="button"
+                class="btn btn-sm py-2 px-3 status-tab-btn {{ ($statusFilter ?? '') == 'overdue' ? 'active shadow-sm text-white' : 'btn-light border text-muted' }}"
+                onclick="setStatusFilter('overdue')"
+                style="border-radius: 8px; font-weight: 600; font-size: 0.85rem; {{ ($statusFilter ?? '') == 'overdue' ? 'background-color: #ef4444; border-color: #ef4444;' : 'background-color: #ffffff;' }}">
+                <i class="fas fa-exclamation-circle me-1"></i> Overdue
+                <span class="badge ms-1 {{ ($statusFilter ?? '') == 'overdue' ? 'bg-white text-danger' : 'bg-danger text-white' }}">{{ $statusCounts['overdue'] ?? 0 }}</span>
+            </button>
+            <button type="button"
                 class="btn btn-sm py-2 px-3 status-tab-btn {{ ($statusFilter ?? '') == 'paid' ? 'active shadow-sm text-white' : 'btn-light border text-muted' }}"
                 onclick="setStatusFilter('paid')"
                 style="border-radius: 8px; font-weight: 600; font-size: 0.85rem; {{ ($statusFilter ?? '') == 'paid' ? 'background-color: #10b981; border-color: #10b981;' : 'background-color: #ffffff;' }}">
@@ -847,6 +872,8 @@
                                 $statusColor = '#3b82f6'; // blue
                                 } elseif ($type->status == 'pending') {
                                 $statusColor = '#f59e0b'; // orange
+                                } elseif ($type->status == 'overdue') {
+                                $statusColor = '#ef4444'; // red
                                 }
                                 @endphp
                                 <span
@@ -988,6 +1015,13 @@
                 style="border-radius: 8px; font-weight: 600; font-size: 0.85rem; {{ ($statusFilter ?? '') == 'upcoming' ? 'background-color: #3b82f6; border-color: #3b82f6;' : 'background-color: #ffffff;' }}">
                 <i class="fas fa-calendar-check me-1"></i> Upcoming
                 <span class="badge ms-1 {{ ($statusFilter ?? '') == 'upcoming' ? 'bg-white text-primary' : 'bg-info text-white' }}">{{ $nsStatusCounts['upcoming'] ?? 0 }}</span>
+            </button>
+            <button type="button"
+                class="btn btn-sm py-2 px-3 status-tab-btn {{ ($statusFilter ?? '') == 'overdue' ? 'active shadow-sm text-white' : 'btn-light border text-muted' }}"
+                onclick="setNonStandardStatusFilter('overdue')"
+                style="border-radius: 8px; font-weight: 600; font-size: 0.85rem; {{ ($statusFilter ?? '') == 'overdue' ? 'background-color: #ef4444; border-color: #ef4444;' : 'background-color: #ffffff;' }}">
+                <i class="fas fa-exclamation-circle me-1"></i> Overdue
+                <span class="badge ms-1 {{ ($statusFilter ?? '') == 'overdue' ? 'bg-white text-danger' : 'bg-danger text-white' }}">{{ $nsStatusCounts['overdue'] ?? 0 }}</span>
             </button>
             <button type="button"
                 class="btn btn-sm py-2 px-3 status-tab-btn {{ ($statusFilter ?? '') == 'paid' ? 'active shadow-sm text-white' : 'btn-light border text-muted' }}"
@@ -1183,8 +1217,12 @@
                             <td style="padding: 12px 16px; text-align: center;">
                                 @if(in_array($nsExpense->status, ['paid', 'settle', 'settled']))
                                 <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">Paid</span>
+                                @elseif($nsExpense->status === 'upcoming')
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">Upcoming</span>
                                 @elseif($nsExpense->status === 'pending')
                                 <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1">Pending</span>
+                                @elseif($nsExpense->status === 'overdue')
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1">Overdue</span>
                                 @else
                                 <span class="badge bg-info-subtle text-info border border-info-subtle px-2 py-1">{{ ucfirst($nsExpense->status) }}</span>
                                 @endif
@@ -1373,126 +1411,26 @@
                         </div>
                     </div>
 
-                    <!-- Amount After TDS & TDS Details -->
-                    <div class="row g-3 mb-4">
-                        <input type="hidden" class="form-control" id="amount_after_tds" name="amount_after_tds"
-                            value="0.00" readonly>
-                        <div class="col-md-4 tds-status-field">
-                            <label class="form-label fw-bold text-uppercase small text-muted">TDS Status</label>
-                            <select class="form-select" id="addTdsStatus" name="tds_status">
-                                <option value="" selected disabled>Select Status</option>
-                                <option value="received">Paid</option>
-                                <option value="not_received">Not Paid</option>
-                            </select>
-                        </div>
-                        <div class="col-md-4 tds-receipt-field">
-                            <label class="form-label fw-bold text-uppercase small text-muted">TDS Certificate/Receipt</label>
-                            <input type="file" id="addTdsReceipt" name="tds_receipt" class="form-control"
-                                accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
-                        </div>
-                    </div>
-
+                    <!-- Amount After TDS -->
+                    <input type="hidden" class="form-control" id="amount_after_tds" name="amount_after_tds" value="0.00" readonly>
                     <input type="hidden" class="form-control" id="grand_total" name="grand_total" value="0.00" readonly>
+                    <input type="hidden" class="form-control" id="schedule_amount" name="planned_amount" step="0.01" value="0.00">
 
                     <div class="section-divider"></div>
 
-                    <!-- Schedule, Paid, Balance -->
+                    <!-- Due Date, Party/Vendor & Mobile -->
                     <div class="row g-3 mb-3">
-                        <input type="hidden" class="form-control" id="schedule_amount" name="planned_amount" step="0.01"
-                            value="0.00">
-                        <div class="col-md-3">
-                            <label class="form-label">Paid Amount (₹)</label>
-                            <input type="number" class="form-control" id="paid_amount" name="paid_amount" step="0.01"
-                                value="0.00">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label">Payment Mode</label>
-                            <select class="form-select" name="payment_mode" id="payment_mode"
-                                onchange="togglePaymentModeDetails(this)">
-                                <option value="cash">Cash</option>
-                                <option value="bank_transfer">Bank Transfer</option>
-                                <option value="cheque">Cheque</option>
-                                <option value="upi">UPI</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label">Payment Date</label>
-                            <input type="date" class="form-control" name="payment_date" id="payment_date" max="{{ date('Y-m-d') }}">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label" id="receipts_label">Receipt</label>
-                            <div id="receiptsContainer">
-                                <div class="receipt-item mb-2">
-                                    <div class="input-group">
-                                        <input type="file" name="receipts[]" class="form-control" id="main_receipt"
-                                            accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Payment Mode Details Row (Hidden by default) -->
-                    <div class="row g-3 mb-3 payment-mode-details" style="display: none;">
-                        <div class="col-md-6 bank-details" style="display: none;">
-                            <label class="form-label">Select Bank</label>
-                            <select class="form-select" name="bank_name">
-                                <option value="">Select Bank</option>
-                                <option value="SBI">State Bank of India</option>
-                                <option value="HDFC">HDFC Bank</option>
-                                <option value="ICICI">ICICI Bank</option>
-                                <option value="Axis">Axis Bank</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6 upi-details" style="display: none;">
-                            <label class="form-label">UPI Type</label>
-                            <select class="form-select" name="upi_type">
-                                <option value="GPay">Google Pay</option>
-                                <option value="PhonePe">PhonePe</option>
-                                <option value="Paytm">Paytm</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6 upi-details" style="display: none;">
-                            <label class="form-label">UPI Phone Number</label>
-                            <input type="text" class="form-control" id="addUpiNumber" name="upi_number" placeholder="Enter phone number" maxlength="10" pattern="[0-9]{10}" title="UPI phone number must be exactly 10 digits">
-                        </div>
-                    </div>
-                    <input type="hidden" name="split_payment" id="split_payment" value="0">
-                    <input type="hidden" name="create_new_for_balance" id="create_new_for_balance" value="0">
-
-                    <!-- Status & Payment Date -->
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-3">
-                            <label class="form-label">Balance</label>
-                            <input type="number" class="form-control bg-light" id="balance_amount" name="balance_amount"
-                                step="0.01" readonly value="0.00">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label">Status <span class="text-danger">*</span></label>
-                            <select class="form-select" name="status" required id="payment_status">
-                                <option value="" selected disabled>Select Status</option>
-                                <option value="due" class="text-warning">Due</option>
-                                <option value="settle" class="text-info">Settle</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3" id="addSettleNotesContainer" style="display:none;">
-                            <label class="form-label" for="addSettleNotes">Settle Notes <span class="text-danger">*</span></label>
-                            <textarea class="form-control" id="addSettleNotes" name="settle_notes" rows="1" placeholder="Enter notes..."></textarea>
-                        </div>
-                        <div class="col-md-4" id="due_date_container" style="display: none;">
+                        <div class="col-md-6" id="due_date_container">
                             <label class="form-label">Due Date <span class="text-danger">*</span></label>
                             <input type="date" class="form-control" name="due_date" id="add_due_date"
-                                min="{{ date('Y-m-d') }}">
+                                min="{{ date('Y-m-d') }}" required>
                         </div>
-                    </div>
-                    <div class="section-divider"></div>
-
-                    <!-- Party/Vendor & Mobile -->
-                    <div class="row g-3 mb-3">
                         <div class="col-md-6">
                             <label class="form-label">Party/Vendor Name</label>
                             <input type="text" class="form-control" name="party_name" placeholder="Optional">
                         </div>
+                    </div>
+                    <div class="row g-3 mb-3">
                         <div class="col-md-6">
                             <label class="form-label">Mobile Number</label>
                             <input type="number" class="form-control" name="mobile_number" placeholder="Optional">
