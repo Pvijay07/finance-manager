@@ -12,7 +12,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        DB::statement("ALTER TABLE upcoming_payments MODIFY COLUMN source ENUM('standard', 'income', 'non_standard', 'salary_module') NOT NULL");
+        if (Schema::hasTable('upcoming_payments')) {
+            try {
+                DB::statement("ALTER TABLE upcoming_payments MODIFY COLUMN source ENUM('standard', 'income', 'non_standard', 'salary_module') NOT NULL");
+            } catch (\Throwable $e) {
+                // Ignore if column or enum update cannot be applied
+            }
+        }
     }
 
     /**
@@ -20,6 +26,12 @@ return new class extends Migration
      */
     public function down(): void
     {
-        DB::statement("ALTER TABLE upcoming_payments MODIFY COLUMN source ENUM('standard', 'income', 'non_standard') NOT NULL");
+        if (Schema::hasTable('upcoming_payments')) {
+            try {
+                DB::statement("ALTER TABLE upcoming_payments MODIFY COLUMN source ENUM('standard', 'income', 'non_standard') NOT NULL");
+            } catch (\Throwable $e) {
+                // Ignore
+            }
+        }
     }
 };

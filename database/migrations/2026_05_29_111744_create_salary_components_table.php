@@ -11,17 +11,19 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('salary_components', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('company_id');
-            $table->enum('type', ['earning', 'deduction']);
-            $table->string('name');
-            $table->string('default_value')->nullable(); // e.g. Fixed, 0, Optional
-            $table->boolean('is_editable')->default(1);
-            $table->timestamps();
+        if (!Schema::hasTable('salary_components')) {
+            Schema::create('salary_components', function (Blueprint $table) {
+                $table->id();
+                $table->unsignedBigInteger('company_id');
+                $table->enum('type', ['earning', 'deduction']);
+                $table->string('name');
+                $table->string('default_value')->nullable(); // e.g. Fixed, 0, Optional
+                $table->boolean('is_editable')->default(1);
+                $table->timestamps();
 
-            $table->foreign('company_id')->references('id')->on('companies')->onDelete('cascade');
-        });
+                $table->foreign('company_id')->references('id')->on('companies')->onDelete('cascade');
+            });
+        }
     }
 
     /**

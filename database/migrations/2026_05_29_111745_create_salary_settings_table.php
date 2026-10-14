@@ -11,17 +11,19 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('salary_settings', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('company_id')->unique();
-            $table->integer('standard_days')->default(30);
-            $table->decimal('ot_rate', 10, 2)->nullable();
-            $table->string('lop_rule')->default('CTC / Standard Days');
-            $table->text('notes')->nullable();
-            $table->timestamps();
+        if (!Schema::hasTable('salary_settings')) {
+            Schema::create('salary_settings', function (Blueprint $table) {
+                $table->id();
+                $table->unsignedBigInteger('company_id')->unique();
+                $table->integer('standard_days')->default(30);
+                $table->decimal('ot_rate', 10, 2)->nullable();
+                $table->string('lop_rule')->default('CTC / Standard Days');
+                $table->text('notes')->nullable();
+                $table->timestamps();
 
-            $table->foreign('company_id')->references('id')->on('companies')->onDelete('cascade');
-        });
+                $table->foreign('company_id')->references('id')->on('companies')->onDelete('cascade');
+            });
+        }
     }
 
     /**

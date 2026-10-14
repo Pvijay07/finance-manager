@@ -80,18 +80,17 @@ class LoginController extends Controller
 
     protected function authenticated(Request $request, $user)
     {
-        // Redirect based on user role
+        // Redirect directly based on user role
         switch ($user->role) {
             case 'admin':
-                return redirect()->intended('/admin/dashboard');
+                return redirect('/admin/dashboard');
             case 'manager':
-                return redirect()->intended('/manager/dashboard');
+                return redirect('/manager/dashboard');
             case 'ca':
-                return redirect()->intended('/ca/dashboard');
             case 'user':
-                return redirect()->intended('/ca/dashboard');
+                return redirect('/ca/dashboard');
             default:
-                return redirect()->intended('/dashboard');
+                return redirect('/dashboard');
         }
     }
 

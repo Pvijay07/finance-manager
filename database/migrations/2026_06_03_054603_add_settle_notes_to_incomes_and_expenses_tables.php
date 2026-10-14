@@ -11,12 +11,16 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('incomes', function (Blueprint $table) {
-            $table->text('settle_notes')->nullable()->after('notes');
-        });
-        Schema::table('expenses', function (Blueprint $table) {
-            $table->text('settle_notes')->nullable()->after('notes');
-        });
+        if (Schema::hasTable('incomes') && !Schema::hasColumn('incomes', 'settle_notes')) {
+            Schema::table('incomes', function (Blueprint $table) {
+                $table->text('settle_notes')->nullable()->after('notes');
+            });
+        }
+        if (Schema::hasTable('expenses') && !Schema::hasColumn('expenses', 'settle_notes')) {
+            Schema::table('expenses', function (Blueprint $table) {
+                $table->text('settle_notes')->nullable()->after('notes');
+            });
+        }
     }
 
     /**
@@ -24,11 +28,15 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('incomes', function (Blueprint $table) {
-            $table->dropColumn('settle_notes');
-        });
-        Schema::table('expenses', function (Blueprint $table) {
-            $table->dropColumn('settle_notes');
-        });
+        if (Schema::hasTable('incomes') && Schema::hasColumn('incomes', 'settle_notes')) {
+            Schema::table('incomes', function (Blueprint $table) {
+                $table->dropColumn('settle_notes');
+            });
+        }
+        if (Schema::hasTable('expenses') && Schema::hasColumn('expenses', 'settle_notes')) {
+            Schema::table('expenses', function (Blueprint $table) {
+                $table->dropColumn('settle_notes');
+            });
+        }
     }
 };
