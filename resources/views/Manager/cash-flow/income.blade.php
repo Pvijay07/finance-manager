@@ -377,8 +377,11 @@
                                 </td>
 
                                 <td>
-                                    <span class="badge {{ $income->invoice_id ? 'bg-info' : 'bg-secondary' }}">
-                                        {{ $income->invoice_id ? 'Standard' : 'Non-Standard' }}
+                                    @php
+                                        $isNonStandard = ($income->income_type === 'non-standard' || empty($income->invoice_id) || $income->source !== 'standard');
+                                    @endphp
+                                    <span class="badge {{ $isNonStandard ? 'bg-secondary' : 'bg-info' }}">
+                                        {{ $isNonStandard ? 'Non-Standard' : 'Standard' }}
                                     </span>
                                 </td>
                                 <td>

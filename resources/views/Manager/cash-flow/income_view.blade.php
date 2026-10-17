@@ -43,8 +43,11 @@
                         <div class="col-sm-6">
                             <label class="text-muted small fw-bold mb-1">Income Type</label>
                             <div>
-                                <span class="badge {{ $income->invoice_id ? 'bg-info' : 'bg-secondary' }}">
-                                    {{ $income->invoice_id ? 'Standard' : 'Non-Standard' }}
+                                @php
+                                    $isNonStandard = ($income->income_type === 'non-standard' || empty($income->invoice_id) || $income->source !== 'standard');
+                                @endphp
+                                <span class="badge {{ $isNonStandard ? 'bg-secondary' : 'bg-info' }}">
+                                    {{ $isNonStandard ? 'Non-Standard' : 'Standard' }}
                                 </span>
                             </div>
                         </div>

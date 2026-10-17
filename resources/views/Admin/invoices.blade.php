@@ -1424,6 +1424,13 @@
                             <span class="badge ms-1 {{ ($status ?? 'all') == 'all' ? 'bg-white text-dark' : 'bg-secondary text-white' }}">{{ $nsIncomeStatusCounts['all'] ?? 0 }}</span>
                         </button>
                         <button type="button"
+                            class="btn btn-sm py-2 px-3 {{ ($status ?? '') == 'paid' ? 'active shadow-sm text-white' : 'btn-light border text-muted' }}"
+                            onclick="setNsIncomeStatusFilter('paid')"
+                            style="border-radius: 8px; font-weight: 600; font-size: 0.85rem; {{ ($status ?? '') == 'paid' ? 'background-color: #10b981; border-color: #10b981;' : 'background-color: #ffffff;' }}">
+                            <i class="fas fa-check-circle me-1"></i> Paid / Received
+                            <span class="badge ms-1 {{ ($status ?? '') == 'paid' ? 'bg-white text-success' : 'bg-success text-white' }}">{{ $nsIncomeStatusCounts['paid'] ?? 0 }}</span>
+                        </button>
+                        <button type="button"
                             class="btn btn-sm py-2 px-3 {{ ($status ?? '') == 'pending' ? 'active shadow-sm text-white' : 'btn-light border text-muted' }}"
                             onclick="setNsIncomeStatusFilter('pending')"
                             style="border-radius: 8px; font-weight: 600; font-size: 0.85rem; {{ ($status ?? '') == 'pending' ? 'background-color: #f59e0b; border-color: #f59e0b;' : 'background-color: #ffffff;' }}">
