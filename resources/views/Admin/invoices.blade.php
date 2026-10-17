@@ -142,6 +142,10 @@
                     <a href="{{ route('admin.invoices', ['tab' => 'standard', 'subtab' => 'create']) }}" class="btn btn-sm btn-primary" style="border-radius: 8px; font-weight: 600; padding: 8px 16px; background-color: #4f46e5; border-color: #4f46e5;">
                         <i class="fas fa-plus-circle me-1"></i> Create Invoice
                     </a>
+                @elseif(($mainTab ?? '') === 'non-standard')
+                    <button type="button" class="btn btn-sm btn-primary" onclick="switchNsIncomeTab('ns-income-create-tab')" style="border-radius: 8px; font-weight: 600; padding: 8px 16px; background-color: #4f46e5; border-color: #4f46e5;">
+                        <i class="fas fa-plus-circle me-1"></i> Add Non-Standard Income
+                    </button>
                 @else
                     <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addNonStandardIncomeModal" style="border-radius: 8px; font-weight: 600; padding: 8px 16px; background-color: #4f46e5; border-color: #4f46e5;">
                         <i class="fas fa-hand-holding-usd me-1"></i> Add Non-Standard Income
@@ -240,6 +244,19 @@
                             </div>
                         </div>
 
+                        <!-- Date Type Filter -->
+                        <div class="col-md-2 col-sm-6">
+                            <label class="form-label small mb-1">Date Based On</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text"><i class="fas fa-clock"></i></span>
+                                <select class="form-select" name="date_type" onchange="this.form.submit()">
+                                    <option value="due_date" {{ ($dateType ?? 'due_date') == 'due_date' ? 'selected' : '' }}>Due Date</option>
+                                    <option value="paid_date" {{ ($dateType ?? '') == 'paid_date' ? 'selected' : '' }}>Paid Date</option>
+                                    <option value="created_at" {{ ($dateType ?? '') == 'created_at' ? 'selected' : '' }}>Created Date</option>
+                                </select>
+                            </div>
+                        </div>
+
                         <!-- Date Range -->
                         <div class="col-md-2 col-sm-6">
                             <label class="form-label small mb-1">Date Range</label>
@@ -319,7 +336,7 @@
                         <table class="table table-hover align-middle mb-0" style="font-size: 13.5px;">
                             <thead class="table-light text-uppercase text-secondary" style="font-size: 11px; letter-spacing: 0.5px;">
                                 <tr>
-                                    <th class="ps-4">Date</th>
+                                    <th class="ps-4">Dates</th>
                                     <th>Ref / Invoice #</th>
                                     <th>Type</th>
                                     <th>Company</th>
@@ -337,10 +354,26 @@
                                 <tr>
                                     <td class="ps-4 text-nowrap">
                                         <div class="fw-semibold text-dark">
+                                            <span class="text-muted text-xs d-inline-block" style="width: 48px;">Date:</span>
                                             {{ $incItem->date ? \Carbon\Carbon::parse($incItem->date)->format('d M Y') : '—' }}
                                         </div>
                                         @if($incItem->due_date)
-                                        <div class="text-muted text-xs">Due: {{ \Carbon\Carbon::parse($incItem->due_date)->format('d M Y') }}</div>
+                                        <div class="text-muted text-xs mt-0.5">
+                                            <span class="d-inline-block" style="width: 48px;">Due:</span>
+                                            {{ \Carbon\Carbon::parse($incItem->due_date)->format('d M Y') }}
+                                        </div>
+                                        @endif
+                                        @if(!empty($incItem->paid_date))
+                                        <div class="text-success text-xs mt-0.5">
+                                            <span class="text-muted d-inline-block" style="width: 48px;">Paid:</span>
+                                            <strong>{{ \Carbon\Carbon::parse($incItem->paid_date)->format('d M Y') }}</strong>
+                                        </div>
+                                        @endif
+                                        @if(!empty($incItem->created_at))
+                                        <div class="text-muted text-xs mt-0.5">
+                                            <span class="d-inline-block" style="width: 48px;">Created:</span>
+                                            {{ \Carbon\Carbon::parse($incItem->created_at)->format('d M Y') }}
+                                        </div>
                                         @endif
                                     </td>
                                     <td>
@@ -931,7 +964,7 @@
                         class="btn btn-sm py-2 px-3 {{ ($status ?? 'all') == 'all' ? 'active shadow-sm text-white' : 'btn-light border text-muted' }}"
                         onclick="setProformaStatusFilter('all')"
                         style="border-radius: 8px; font-weight: 600; font-size: 0.85rem; {{ ($status ?? 'all') == 'all' ? 'background-color: #4f46e5; border-color: #4f46e5;' : 'background-color: #ffffff;' }}">
-                        <i class="fas fa-list-ul me-1"></i> All Incomes
+                        <i class="fas fa-list-ul me-1"></i> All Unpaid
                         <span class="badge ms-1 {{ ($status ?? 'all') == 'all' ? 'bg-white text-dark' : 'bg-secondary text-white' }}">{{ $statusCounts['all'] ?? 0 }}</span>
                     </button>
                     <button type="button" 
@@ -954,13 +987,6 @@
                         style="border-radius: 8px; font-weight: 600; font-size: 0.85rem; {{ ($status ?? '') == 'overdue' ? 'background-color: #ef4444; border-color: #ef4444;' : 'background-color: #ffffff;' }}">
                         <i class="fas fa-exclamation-circle me-1"></i> Overdue
                         <span class="badge ms-1 {{ ($status ?? '') == 'overdue' ? 'bg-white text-danger' : 'bg-danger text-white' }}">{{ $statusCounts['overdue'] ?? 0 }}</span>
-                    </button>
-                    <button type="button" 
-                        class="btn btn-sm py-2 px-3 {{ ($status ?? '') == 'paid' ? 'active shadow-sm text-white' : 'btn-light border text-muted' }}"
-                        onclick="setProformaStatusFilter('paid')"
-                        style="border-radius: 8px; font-weight: 600; font-size: 0.85rem; {{ ($status ?? '') == 'paid' ? 'background-color: #10b981; border-color: #10b981;' : 'background-color: #ffffff;' }}">
-                        <i class="fas fa-check-circle me-1"></i> Paid
-                        <span class="badge ms-1 {{ ($status ?? '') == 'paid' ? 'bg-white text-success' : 'bg-success text-white' }}">{{ $statusCounts['paid'] ?? 0 }}</span>
                     </button>
                 </div>
 
@@ -993,6 +1019,19 @@
                                             {{ $comp->name }}
                                         </option>
                                         @endforeach
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Date Type Filter -->
+                            <div class="col-md-2 col-sm-6">
+                                <label class="form-label small mb-1">Date Based On</label>
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text"><i class="fas fa-clock"></i></span>
+                                    <select class="form-select" name="date_type" onchange="this.form.submit()">
+                                        <option value="due_date" {{ ($dateType ?? 'due_date') == 'due_date' ? 'selected' : '' }}>Due Date</option>
+                                        <option value="paid_date" {{ ($dateType ?? '') == 'paid_date' ? 'selected' : '' }}>Paid Date</option>
+                                        <option value="created_at" {{ ($dateType ?? '') == 'created_at' ? 'selected' : '' }}>Created Date</option>
                                     </select>
                                 </div>
                             </div>
@@ -1072,7 +1111,7 @@
                                         <th>Client</th>
                                         <th>Receivable amount</th>
                                         <th>Actual amount</th>
-                                        <th>Due Date</th>
+                                        <th>Dates</th>
                                         <th>Status</th>
                                         <th class="text-end">Actions</th>
                                     </tr>
@@ -1100,7 +1139,24 @@
                                             {{ $invoice->currency === 'USD' ? '$' : $invoice->currency }}
                                             {{ number_format ( $invoice->subtotal ?? $invoice->received_amount, 2 ) }}
                                         </td>
-                                        <td>{{ $invoice->due_date ? \Carbon\Carbon::parse ( $invoice->due_date )->format ( 'd-m-Y' ) : '-' }}</td>
+                                        <td class="text-nowrap">
+                                            <div class="fw-semibold text-dark">
+                                                <span class="text-muted text-xs d-inline-block" style="width: 48px;">Due:</span>
+                                                {{ $invoice->due_date ? \Carbon\Carbon::parse ( $invoice->due_date )->format ( 'd-m-Y' ) : '-' }}
+                                            </div>
+                                            @if($invoice->paid_date)
+                                            <div class="text-success text-xs mt-0.5">
+                                                <span class="text-muted d-inline-block" style="width: 48px;">Paid:</span>
+                                                <strong>{{ \Carbon\Carbon::parse($invoice->paid_date)->format('d-m-Y') }}</strong>
+                                            </div>
+                                            @endif
+                                            @if($invoice->created_at)
+                                            <div class="text-muted text-xs mt-0.5">
+                                                <span class="d-inline-block" style="width: 48px;">Created:</span>
+                                                {{ \Carbon\Carbon::parse($invoice->created_at)->format('d-m-Y') }}
+                                            </div>
+                                            @endif
+                                        </td>
                                         <td>
                                             @if ( $invoice->status == 'pending' )
                                             <span class="badge bg-warning text-dark">Pending</span>
@@ -1159,6 +1215,185 @@
         @else
         <!-- Non-Standard Income Section -->
         <div id="non-standard-income-section">
+            <!-- Tabs for Non-Standard Incomes (Add Form vs List) -->
+            <ul class="nav nav-tabs mb-4" id="nsIncomeTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="ns-income-create-tab"
+                        data-bs-toggle="tab" data-bs-target="#ns-income-create" type="button" role="tab">
+                        <i class="fas fa-plus-circle me-1"></i> Add Non-Standard Income
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="ns-income-list-tab"
+                        data-bs-toggle="tab" data-bs-target="#ns-income-list" type="button" role="tab">
+                        <i class="fas fa-list me-1"></i> Income List
+                        <span class="badge bg-secondary ms-1">{{ $nonStandardIncomes->total() }}</span>
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content" id="nsIncomeTabsContent">
+                <!-- Non-Standard Income Form Tab -->
+                <div class="tab-pane fade" id="ns-income-create" role="tabpanel">
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="mb-0 fw-bold">Add Non-Standard Income</h6>
+                            </div>
+                            <small class="text-muted d-block mb-3">
+                                Create and record a non-standard incoming payment or direct income record.
+                            </small>
+
+                            <form id="tabNsIncomeForm" action="{{ route('admin.invoices.non-standard.store') }}" method="POST" enctype="multipart/form-data">
+                                @csrf
+                                <input type="hidden" name="source" value="manual">
+
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Company *</label>
+                                        <select class="form-select" id="tab_ns_inc_companyId" name="company_id" required onchange="loadCompanyManagersForNsIncome(this.value, 'tab_add')">
+                                            <option value="">Select Company</option>
+                                            @foreach ($companies as $company)
+                                            <option value="{{ $company->id }}">{{ $company->name }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Client Name / Description *</label>
+                                        <input type="text" class="form-control" name="client_name" required placeholder="Enter client name or description">
+                                    </div>
+                                    <div class="col-md-12 mb-3">
+                                        <label class="form-label d-flex justify-content-between align-items-center">
+                                            <span>Assign Manager(s)</span>
+                                            <small class="text-muted" id="tab_ns_inc_manager_count">All managers (default)</small>
+                                        </label>
+                                        <div class="dropdown">
+                                            <button class="btn btn-outline-secondary w-100 text-start d-flex justify-content-between align-items-center dropdown-toggle bg-white" type="button" id="tab_ns_inc_manager_dropdown_btn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" style="border: 1px solid #ced4da; border-radius: 6px; padding: 7px 12px;">
+                                                <span class="text-truncate" id="tab_ns_inc_manager_btn_text"><i class="fas fa-user-tie me-2 text-muted"></i>Select manager(s)...</span>
+                                            </button>
+                                            <div class="dropdown-menu w-100 p-2 shadow-sm" aria-labelledby="tab_ns_inc_manager_dropdown_btn" style="max-height: 260px; overflow-y: auto;">
+                                                <input type="text" class="form-control form-control-sm mb-2" placeholder="Search managers..." onkeyup="filterNsIncManagerDropdown(this)">
+                                                <div class="d-flex justify-content-between px-1 mb-2 border-bottom pb-1">
+                                                    <a href="javascript:void(0)" class="text-decoration-none small text-primary fw-semibold" onclick="toggleSelectAllNsIncManagers(this, true, 'tab_add')">Select All</a>
+                                                    <a href="javascript:void(0)" class="text-decoration-none small text-muted fw-semibold" onclick="toggleSelectAllNsIncManagers(this, false, 'tab_add')">Clear All</a>
+                                                </div>
+                                                <div class="manager-options-container">
+                                                    @if(isset($managers) && $managers->isNotEmpty())
+                                                        @foreach ($managers as $manager)
+                                                            <div class="form-check py-1 px-3 manager-option-item" data-name="{{ strtolower($manager->name) }}" data-email="{{ strtolower($manager->email ?? '') }}">
+                                                                <input class="form-check-input ns-inc-manager-checkbox" type="checkbox" name="assigned_managers[]" value="{{ $manager->id }}" id="tab_ns_inc_mgr_{{ $manager->id }}" onchange="updateNsIncManagerDropdownText('tab_add')">
+                                                                <label class="form-check-label w-100 cursor-pointer" for="tab_ns_inc_mgr_{{ $manager->id }}">
+                                                                    <div class="fw-medium text-dark">{{ $manager->name }}</div>
+                                                                    @if(!empty($manager->email))
+                                                                        <div class="text-muted small" style="font-size: 0.75rem;">{{ $manager->email }}</div>
+                                                                    @endif
+                                                                </label>
+                                                            </div>
+                                                        @endforeach
+                                                    @else
+                                                        <div class="text-muted small px-3 py-1">No managers found</div>
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <small class="text-muted" style="font-size: 0.75rem;">Selected manager(s) will be the only managers who can view this income. Leave unselected to allow all managers of the company.</small>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Base Amount *</label>
+                                        <input type="number" step="0.01" class="form-control" id="tab_ns_inc_actualAmount" name="amount"
+                                            value="" required placeholder="0.00">
+                                        <input type="hidden" id="tab_ns_inc_grand_total" name="grand_total">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Mobile Number</label>
+                                        <input type="text" class="form-control" name="mobile_number" placeholder="Enter mobile number">
+                                    </div>
+
+                                    <!-- Tax Section -->
+                                    <div class="col-12 mb-3">
+                                        <!-- GST Section -->
+                                        <div class="tax-section mb-3 p-3 border rounded bg-light">
+                                            <div class="d-flex align-items-center mb-2 pb-1 border-bottom border-light">
+                                                <div class="form-check d-flex align-items-center mb-0">
+                                                    <input class="form-check-input me-2 mt-0 cursor-pointer" type="checkbox" name="apply_gst" id="tab_ns_inc_applyGst"
+                                                        value="1" checked>
+                                                    <label class="form-check-label fw-bold text-uppercase small text-dark mb-0 cursor-pointer" for="tab_ns_inc_applyGst">Apply GST</label>
+                                                </div>
+                                            </div>
+                                            <div class="row g-3">
+                                                <div class="col-md-6">
+                                                    <label class="form-label small text-muted fw-bold">GST %</label>
+                                                    <div class="input-group">
+                                                        <input type="number" class="form-control" id="tab_ns_inc_gst_percentage"
+                                                            name="gst_percentage" value="18" min="0" max="100" step="0.01">
+                                                        <span class="input-group-text">%</span>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label small text-muted fw-bold">GST Amount</label>
+                                                    <input type="number" class="form-control" id="tab_ns_inc_gst_amount" name="gst_amount" readonly>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- TDS Section -->
+                                        <div class="tax-section mb-3 p-3 border rounded bg-light">
+                                            <div class="d-flex align-items-center mb-2 pb-1 border-bottom border-light">
+                                                <div class="form-check d-flex align-items-center mb-0">
+                                                    <input class="form-check-input me-2 mt-0 cursor-pointer" type="checkbox" name="apply_tds"
+                                                        id="tab_ns_inc_applyTds" value="1" checked>
+                                                    <label class="form-check-label fw-bold text-uppercase small text-dark mb-0 cursor-pointer" for="tab_ns_inc_applyTds">Apply TDS</label>
+                                                </div>
+                                            </div>
+                                            <div class="row g-3">
+                                                <div class="col-md-6">
+                                                    <label class="form-label small text-muted fw-bold">TDS %</label>
+                                                    <div class="input-group">
+                                                        <input type="number" class="form-control" id="tab_ns_inc_tds_percentage"
+                                                            name="tds_percentage" value="10" min="0" max="100" step="0.01">
+                                                        <span class="input-group-text">%</span>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label small text-muted fw-bold">TDS Amount</label>
+                                                    <input type="number" class="form-control" id="tab_ns_inc_tds_amount" name="tds_amount" readonly>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Due Date *</label>
+                                        <input type="date" class="form-control" name="due_date"
+                                            min="{{ date('Y-m-d') }}" required>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Mail Status</label>
+                                        <select class="form-select" name="mail_status">
+                                            <option value="1">Yes</option>
+                                            <option value="0" selected>No</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-12 mb-3">
+                                        <label class="form-label">Notes</label>
+                                        <textarea class="form-control" name="notes" rows="3"
+                                            placeholder="Add any additional notes..."></textarea>
+                                    </div>
+                                </div>
+
+                                <div class="d-flex justify-content-end gap-2">
+                                    <button type="button" class="btn btn-secondary" onclick="switchNsIncomeTab('ns-income-list-tab')">Cancel</button>
+                                    <button type="submit" class="btn btn-primary" style="background-color: #4f46e5; border-color: #4f46e5;">
+                                        <i class="fas fa-save me-2"></i> Save Income
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Non-Standard Income List Tab -->
+                <div class="tab-pane fade show active" id="ns-income-list" role="tabpanel">
             <!-- Summary Cards -->
             @if(isset($cardStats))
                 @include('Admin.partials.summary_cards', ['cardType' => 'income'])
@@ -1170,7 +1405,7 @@
                     class="btn btn-sm py-2 px-3 {{ ($status ?? 'all') == 'all' ? 'active shadow-sm text-white' : 'btn-light border text-muted' }}"
                     onclick="setNsIncomeStatusFilter('all')"
                     style="border-radius: 8px; font-weight: 600; font-size: 0.85rem; {{ ($status ?? 'all') == 'all' ? 'background-color: #4f46e5; border-color: #4f46e5;' : 'background-color: #ffffff;' }}">
-                    <i class="fas fa-list-ul me-1"></i> All Incomes
+                    <i class="fas fa-list-ul me-1"></i> All Unpaid
                     <span class="badge ms-1 {{ ($status ?? 'all') == 'all' ? 'bg-white text-dark' : 'bg-secondary text-white' }}">{{ $nsIncomeStatusCounts['all'] ?? 0 }}</span>
                 </button>
                 <button type="button" 
@@ -1193,13 +1428,6 @@
                     style="border-radius: 8px; font-weight: 600; font-size: 0.85rem; {{ ($status ?? '') == 'overdue' ? 'background-color: #ef4444; border-color: #ef4444;' : 'background-color: #ffffff;' }}">
                     <i class="fas fa-exclamation-circle me-1"></i> Overdue
                     <span class="badge ms-1 {{ ($status ?? '') == 'overdue' ? 'bg-white text-danger' : 'bg-danger text-white' }}">{{ $nsIncomeStatusCounts['overdue'] ?? 0 }}</span>
-                </button>
-                <button type="button" 
-                    class="btn btn-sm py-2 px-3 {{ ($status ?? '') == 'paid' ? 'active shadow-sm text-white' : 'btn-light border text-muted' }}"
-                    onclick="setNsIncomeStatusFilter('paid')"
-                    style="border-radius: 8px; font-weight: 600; font-size: 0.85rem; {{ ($status ?? '') == 'paid' ? 'background-color: #10b981; border-color: #10b981;' : 'background-color: #ffffff;' }}">
-                    <i class="fas fa-check-circle me-1"></i> Paid / Received
-                    <span class="badge ms-1 {{ ($status ?? '') == 'paid' ? 'bg-white text-success' : 'bg-success text-white' }}">{{ $nsIncomeStatusCounts['paid'] ?? 0 }}</span>
                 </button>
             </div>
 
@@ -1229,6 +1457,19 @@
                                     @foreach ($companies as $comp)
                                         <option value="{{ $comp->id }}" {{ ($companyFilter ?? '') == $comp->id ? 'selected' : '' }}>{{ $comp->name }}</option>
                                     @endforeach
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Date Type Filter -->
+                        <div class="col-md-2 col-sm-6">
+                            <label class="form-label small mb-1">Date Based On</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text"><i class="fas fa-clock"></i></span>
+                                <select class="form-select" name="date_type" onchange="this.form.submit()">
+                                    <option value="due_date" {{ ($dateType ?? 'due_date') == 'due_date' ? 'selected' : '' }}>Due Date</option>
+                                    <option value="paid_date" {{ ($dateType ?? '') == 'paid_date' ? 'selected' : '' }}>Paid Date</option>
+                                    <option value="created_at" {{ ($dateType ?? '') == 'created_at' ? 'selected' : '' }}>Created Date</option>
                                 </select>
                             </div>
                         </div>
@@ -1298,7 +1539,7 @@
                     <table class="table table-hover align-middle mb-0" style="width: 100%; border-collapse: collapse;">
                         <thead class="bg-light">
                             <tr style="border-bottom: 1px solid #e0e0e0;">
-                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; font-size: 13px; color: #1a1a1a;">Date</th>
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; font-size: 13px; color: #1a1a1a;">Dates</th>
                                 <th style="padding: 12px 16px; text-align: left; font-weight: 600; font-size: 13px; color: #1a1a1a;">Company</th>
                                 <th style="padding: 12px 16px; text-align: left; font-weight: 600; font-size: 13px; color: #1a1a1a;">Client / Party</th>
                                 <th style="padding: 12px 16px; text-align: left; font-weight: 600; font-size: 13px; color: #1a1a1a;">Created By</th>
@@ -1313,8 +1554,29 @@
                         <tbody>
                             @forelse ($nonStandardIncomes as $nsIncome)
                                 <tr style="border-bottom: 1px solid #f0f0f0;">
-                                    <td style="padding: 12px 16px; font-size: 13px;">
-                                        {{ $nsIncome->income_date ? \Carbon\Carbon::parse($nsIncome->income_date)->format('d M Y') : ($nsIncome->created_at ? $nsIncome->created_at->format('d M Y') : '—') }}
+                                    <td style="padding: 12px 16px; font-size: 13px;" class="text-nowrap">
+                                        <div class="fw-semibold text-dark">
+                                            <span class="text-muted text-xs d-inline-block" style="width: 48px;">Date:</span>
+                                            {{ $nsIncome->income_date ? \Carbon\Carbon::parse($nsIncome->income_date)->format('d M Y') : '—' }}
+                                        </div>
+                                        @if($nsIncome->due_date)
+                                        <div class="text-muted text-xs mt-0.5">
+                                            <span class="d-inline-block" style="width: 48px;">Due:</span>
+                                            {{ \Carbon\Carbon::parse($nsIncome->due_date)->format('d M Y') }}
+                                        </div>
+                                        @endif
+                                        @if(!empty($nsIncome->paid_date))
+                                        <div class="text-success text-xs mt-0.5">
+                                            <span class="text-muted d-inline-block" style="width: 48px;">Paid:</span>
+                                            <strong>{{ \Carbon\Carbon::parse($nsIncome->paid_date)->format('d M Y') }}</strong>
+                                        </div>
+                                        @endif
+                                        @if(!empty($nsIncome->created_at))
+                                        <div class="text-muted text-xs mt-0.5">
+                                            <span class="d-inline-block" style="width: 48px;">Created:</span>
+                                            {{ \Carbon\Carbon::parse($nsIncome->created_at)->format('d M Y') }}
+                                        </div>
+                                        @endif
                                     </td>
                                     <td style="padding: 12px 16px;">
                                         <span class="badge bg-light text-dark border">{{ $nsIncome->company->name ?? 'N/A' }}</span>
@@ -1409,6 +1671,8 @@
                         {{ $nonStandardIncomes->links('pagination::bootstrap-4') }}
                     </div>
                 @endif
+            </div>
+            </div>
             </div>
         </div>
         @endif
@@ -2067,10 +2331,14 @@ async function openEditNonStandardIncomeModal(id) {
 }
 
 async function loadCompanyManagersForNsIncome(companyId, mode, preselectedManagerIds = null) {
-    const modalId = mode === 'edit' ? 'editNonStandardIncomeModal' : 'addNonStandardIncomeModal';
-    const modal = document.getElementById(modalId);
-    if (!modal) return;
-    const container = modal.querySelector('.manager-options-container');
+    let container = null;
+    if (mode === 'edit') {
+        container = document.querySelector('#editNonStandardIncomeModal .manager-options-container');
+    } else if (mode === 'tab_add') {
+        container = document.querySelector('#ns-income-create .manager-options-container');
+    } else {
+        container = document.querySelector('#addNonStandardIncomeModal .manager-options-container');
+    }
     if (!container) return;
 
     if (!companyId) {
@@ -2081,9 +2349,12 @@ async function loadCompanyManagersForNsIncome(companyId, mode, preselectedManage
 
     let currentSelected = preselectedManagerIds ? preselectedManagerIds.map(String) : [];
     if (!preselectedManagerIds) {
-        modal.querySelectorAll('.ns-inc-manager-checkbox:checked').forEach(cb => {
-            currentSelected.push(String(cb.value));
-        });
+        const scope = mode === 'edit' ? document.getElementById('editNonStandardIncomeModal') : (mode === 'tab_add' ? document.getElementById('ns-income-create') : document.getElementById('addNonStandardIncomeModal'));
+        if (scope) {
+            scope.querySelectorAll('.ns-inc-manager-checkbox:checked').forEach(cb => {
+                currentSelected.push(String(cb.value));
+            });
+        }
     }
 
     container.innerHTML = '<div class="text-muted small px-3 py-2 text-center"><i class="fas fa-spinner fa-spin me-1"></i> Loading managers...</div>';
@@ -2102,7 +2373,7 @@ async function loadCompanyManagersForNsIncome(companyId, mode, preselectedManage
             container.innerHTML = '<div class="text-muted small px-3 py-1">No managers assigned to this company</div>';
         } else {
             let html = '';
-            const prefix = mode === 'edit' ? 'edit_ns_inc_mgr_' : 'add_ns_inc_mgr_';
+            const prefix = mode === 'edit' ? 'edit_ns_inc_mgr_' : (mode === 'tab_add' ? 'tab_ns_inc_mgr_' : 'add_ns_inc_mgr_');
             managers.forEach(m => {
                 const isChecked = currentSelected.includes(String(m.id));
                 const emailHtml = m.email ? `<div class="text-muted small" style="font-size: 0.75rem;">${m.email}</div>` : '';
@@ -2141,20 +2412,18 @@ function filterNsIncManagerDropdown(input) {
 }
 
 function toggleSelectAllNsIncManagers(link, selectAll, mode) {
-    const modalId = mode === 'edit' ? 'editNonStandardIncomeModal' : 'addNonStandardIncomeModal';
-    const modal = document.getElementById(modalId);
-    if (!modal) return;
-    const visibleCheckboxes = modal.querySelectorAll('.manager-option-item:not([style*="display: none"]) .ns-inc-manager-checkbox');
+    const scope = mode === 'edit' ? document.getElementById('editNonStandardIncomeModal') : (mode === 'tab_add' ? document.getElementById('ns-income-create') : document.getElementById('addNonStandardIncomeModal'));
+    if (!scope) return;
+    const visibleCheckboxes = scope.querySelectorAll('.manager-option-item:not([style*="display: none"]) .ns-inc-manager-checkbox');
     visibleCheckboxes.forEach(cb => cb.checked = selectAll);
     updateNsIncManagerDropdownText(mode);
 }
 
 function updateNsIncManagerDropdownText(mode) {
-    const modalId = mode === 'edit' ? 'editNonStandardIncomeModal' : 'addNonStandardIncomeModal';
-    const prefix = mode === 'edit' ? 'edit_ns_inc_' : 'add_ns_inc_';
-    const modal = document.getElementById(modalId);
-    if (!modal) return;
-    const checked = modal.querySelectorAll('.ns-inc-manager-checkbox:checked');
+    const prefix = mode === 'edit' ? 'edit_ns_inc_' : (mode === 'tab_add' ? 'tab_ns_inc_' : 'add_ns_inc_');
+    const scope = mode === 'edit' ? document.getElementById('editNonStandardIncomeModal') : (mode === 'tab_add' ? document.getElementById('ns-income-create') : document.getElementById('addNonStandardIncomeModal'));
+    if (!scope) return;
+    const checked = scope.querySelectorAll('.ns-inc-manager-checkbox:checked');
     const count = checked.length;
     const btnText = document.getElementById(prefix + 'manager_btn_text');
     const countBadge = document.getElementById(prefix + 'manager_count');
@@ -2171,6 +2440,94 @@ function updateNsIncManagerDropdownText(mode) {
         if (countBadge) countBadge.textContent = `${count} managers selected`;
     }
 }
+
+// In-page Tab Non-Standard Income Tax Calculation
+function calculateTabNsIncomeTax() {
+    const actualAmountInput = document.getElementById('tab_ns_inc_actualAmount');
+    const gstCheckbox = document.getElementById('tab_ns_inc_applyGst');
+    const tdsCheckbox = document.getElementById('tab_ns_inc_applyTds');
+    const gstPercentageInput = document.getElementById('tab_ns_inc_gst_percentage');
+    const tdsPercentageInput = document.getElementById('tab_ns_inc_tds_percentage');
+
+    if (!actualAmountInput || !gstCheckbox || !tdsCheckbox) return;
+
+    const actualAmount = parseFloat(actualAmountInput.value) || 0;
+    const applyGst = gstCheckbox.checked;
+    const applyTds = tdsCheckbox.checked;
+    const gstPercentage = parseFloat(gstPercentageInput?.value) || 0;
+    const tdsPercentage = parseFloat(tdsPercentageInput?.value) || 0;
+
+    let gstAmount = 0;
+    let tdsAmount = 0;
+    let amountAfterGst = actualAmount;
+    let grandTotal = actualAmount;
+
+    if (applyGst && gstPercentage > 0) {
+        gstAmount = (actualAmount * gstPercentage) / 100;
+        amountAfterGst = actualAmount + gstAmount;
+        grandTotal = amountAfterGst;
+    }
+
+    if (applyTds && tdsPercentage > 0) {
+        const baseForTds = applyGst ? amountAfterGst : actualAmount;
+        tdsAmount = (baseForTds * tdsPercentage) / 100;
+    }
+
+    const gstAmountEl = document.getElementById('tab_ns_inc_gst_amount');
+    const tdsAmountEl = document.getElementById('tab_ns_inc_tds_amount');
+    const grandTotalEl = document.getElementById('tab_ns_inc_grand_total');
+
+    if (gstAmountEl) gstAmountEl.value = gstAmount.toFixed(2);
+    if (tdsAmountEl) tdsAmountEl.value = tdsAmount.toFixed(2);
+    if (grandTotalEl) grandTotalEl.value = grandTotal.toFixed(2);
+
+    if (gstPercentageInput) gstPercentageInput.disabled = !applyGst;
+    if (tdsPercentageInput) tdsPercentageInput.disabled = !applyTds;
+}
+
+// Switch Tab for Non-Standard Income
+function switchNsIncomeTab(tabBtnId) {
+    const tabBtn = document.getElementById(tabBtnId);
+    if (tabBtn) {
+        const tabTrigger = new bootstrap.Tab(tabBtn);
+        tabTrigger.show();
+        localStorage.setItem('lastActiveNsIncomeTab', tabBtnId);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // In-page Tab listeners
+    const tabIncActual = document.getElementById('tab_ns_inc_actualAmount');
+    const tabIncGst = document.getElementById('tab_ns_inc_applyGst');
+    const tabIncTds = document.getElementById('tab_ns_inc_applyTds');
+    const tabIncGstPct = document.getElementById('tab_ns_inc_gst_percentage');
+    const tabIncTdsPct = document.getElementById('tab_ns_inc_tds_percentage');
+
+    if (tabIncActual) tabIncActual.addEventListener('input', calculateTabNsIncomeTax);
+    if (tabIncGst) tabIncGst.addEventListener('change', calculateTabNsIncomeTax);
+    if (tabIncTds) tabIncTds.addEventListener('change', calculateTabNsIncomeTax);
+    if (tabIncGstPct) tabIncGstPct.addEventListener('input', calculateTabNsIncomeTax);
+    if (tabIncTdsPct) tabIncTdsPct.addEventListener('input', calculateTabNsIncomeTax);
+
+    // Initial non-standard income tab state
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('tab') === 'non-standard') {
+        const hasNsIncFilters = urlParams.has('search') || urlParams.has('company') ||
+            urlParams.has('status') || urlParams.has('date_range') ||
+            urlParams.has('start_date') || urlParams.has('end_date') ||
+            urlParams.has('page') || urlParams.has('per_page') || urlParams.get('subtab') === 'list';
+
+        const lastTabId = hasNsIncFilters ? 'ns-income-list-tab' : (urlParams.get('subtab') === 'create' || urlParams.get('subtab') === 'add' ? 'ns-income-create-tab' : (localStorage.getItem('lastActiveNsIncomeTab') || 'ns-income-list-tab'));
+        switchNsIncomeTab(lastTabId);
+    }
+
+    // Tab click tracking
+    document.querySelectorAll('#nsIncomeTabs button[data-bs-toggle="tab"]').forEach(btn => {
+        btn.addEventListener('shown.bs.tab', function(e) {
+            localStorage.setItem('lastActiveNsIncomeTab', e.target.id);
+        });
+    });
+});
 </script>
 
 <!-- Partial Payment / Split Modal -->

@@ -21,8 +21,8 @@
                 <i class="fas fa-plus-circle me-1"></i> Add Standard Expense
             </button>
             @elseif(($mainTab ?? '') === 'non-standard')
-            <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addNonStandardModal" style="border-radius: 8px; font-weight: 600; padding: 8px 16px; background-color: #4f46e5; border-color: #4f46e5;">
-                <i class="fas fa-receipt me-1"></i> Add Non-Standard Expense
+            <button type="button" class="btn btn-sm btn-primary" onclick="switchNsTab('ns-form-tab')" style="border-radius: 8px; font-weight: 600; padding: 8px 16px; background-color: #4f46e5; border-color: #4f46e5;">
+                <i class="fas fa-plus-circle me-1"></i> Add Non-Standard Expense
             </button>
             @else
             <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addNonStandardModal" style="border-radius: 8px; font-weight: 600; padding: 8px 16px; background-color: #4f46e5; border-color: #4f46e5;">
@@ -142,6 +142,19 @@
                         </div>
                     </div>
 
+                    <!-- Date Type Filter -->
+                    <div class="col-md-2 col-sm-6">
+                        <label class="form-label small mb-1">Date Based On</label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="fas fa-clock"></i></span>
+                            <select class="form-select" name="date_type" onchange="this.form.submit()">
+                                <option value="due_date" {{ ($dateType ?? 'due_date') == 'due_date' ? 'selected' : '' }}>Due Date</option>
+                                <option value="paid_date" {{ ($dateType ?? '') == 'paid_date' ? 'selected' : '' }}>Paid Date</option>
+                                <option value="created_at" {{ ($dateType ?? '') == 'created_at' ? 'selected' : '' }}>Created Date</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <!-- Date Range Filter -->
                     <div class="col-md-2 col-sm-6">
                         <label class="form-label small mb-1">Date Range</label>
@@ -169,6 +182,18 @@
                                 <option value="50" {{ $perPage == 50 ? 'selected' : '' }}>50</option>
                                 <option value="100" {{ $perPage == 100 ? 'selected' : '' }}>100</option>
                             </select>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="col-md-2 col-sm-12">
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary btn-sm flex-fill" style="background-color: #4f46e5; border-color: #4f46e5;">
+                                <i class="fas fa-search me-1"></i> Filter
+                            </button>
+                            <a href="{{ route('admin.standard-expenses', ['tab' => 'expenses']) }}" class="btn btn-outline-secondary btn-sm flex-fill">
+                                <i class="fas fa-redo me-1"></i> Reset
+                            </a>
                         </div>
                     </div>
 
@@ -210,7 +235,7 @@
                     <table class="table table-hover align-middle mb-0" style="font-size: 13.5px;">
                         <thead class="table-light text-uppercase text-secondary" style="font-size: 11px; letter-spacing: 0.5px;">
                             <tr>
-                                <th class="ps-4">Due Date</th>
+                                <th class="ps-4">Dates</th>
                                 <th>Expense Name & Ref</th>
                                 <th>Type</th>
                                 <th>Company</th>
@@ -227,9 +252,24 @@
                             @forelse($allExpenses as $exp)
                             <tr>
                                 <td class="ps-4 text-nowrap">
-                                    <div class="fw-semibold text-dark">{{ $exp->due_date ? \Carbon\Carbon::parse($exp->due_date)->format('d M Y') : 'N/A' }}</div>
-                                    @if($exp->payment_date)
-                                    <div class="text-muted text-xs">Paid: {{ \Carbon\Carbon::parse($exp->payment_date)->format('d M Y') }}</div>
+                                    <div class="fw-semibold text-dark">
+                                        <span class="text-muted text-xs d-inline-block" style="width: 48px;">Due:</span>
+                                        {{ $exp->due_date ? \Carbon\Carbon::parse($exp->due_date)->format('d M Y') : 'N/A' }}
+                                    </div>
+                                    @php
+                                        $actualPaidDate = $exp->paid_date ?: $exp->payment_date;
+                                    @endphp
+                                    @if($actualPaidDate)
+                                    <div class="text-success text-xs mt-0.5">
+                                        <span class="text-muted d-inline-block" style="width: 48px;">Paid:</span>
+                                        <strong>{{ \Carbon\Carbon::parse($actualPaidDate)->format('d M Y') }}</strong>
+                                    </div>
+                                    @endif
+                                    @if($exp->created_at)
+                                    <div class="text-muted text-xs mt-0.5">
+                                        <span class="d-inline-block" style="width: 48px;">Created:</span>
+                                        {{ \Carbon\Carbon::parse($exp->created_at)->format('d M Y') }}
+                                    </div>
                                     @endif
                                 </td>
                                 <td>
@@ -640,13 +680,11 @@
         @include('Admin.partials.summary_cards', ['cardType' => 'expense'])
         @endif
 
-        <!-- Status Tabs -->
-        <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
             <button type="button"
                 class="btn btn-sm py-2 px-3 status-tab-btn {{ ($statusFilter ?? 'all') == 'all' ? 'active shadow-sm text-white' : 'btn-light border text-muted' }}"
                 onclick="setStatusFilter('all')"
                 style="border-radius: 8px; font-weight: 600; font-size: 0.85rem; {{ ($statusFilter ?? 'all') == 'all' ? 'background-color: #4f46e5; border-color: #4f46e5;' : 'background-color: #ffffff;' }}">
-                <i class="fas fa-list-ul me-1"></i> All Expenses
+                <i class="fas fa-list-ul me-1"></i> All Unpaid
                 <span class="badge ms-1 {{ ($statusFilter ?? 'all') == 'all' ? 'bg-white text-dark' : 'bg-secondary text-white' }}">{{ $statusCounts['all'] ?? 0 }}</span>
             </button>
             <button type="button"
@@ -669,13 +707,6 @@
                 style="border-radius: 8px; font-weight: 600; font-size: 0.85rem; {{ ($statusFilter ?? '') == 'overdue' ? 'background-color: #ef4444; border-color: #ef4444;' : 'background-color: #ffffff;' }}">
                 <i class="fas fa-exclamation-circle me-1"></i> Overdue
                 <span class="badge ms-1 {{ ($statusFilter ?? '') == 'overdue' ? 'bg-white text-danger' : 'bg-danger text-white' }}">{{ $statusCounts['overdue'] ?? 0 }}</span>
-            </button>
-            <button type="button"
-                class="btn btn-sm py-2 px-3 status-tab-btn {{ ($statusFilter ?? '') == 'paid' ? 'active shadow-sm text-white' : 'btn-light border text-muted' }}"
-                onclick="setStatusFilter('paid')"
-                style="border-radius: 8px; font-weight: 600; font-size: 0.85rem; {{ ($statusFilter ?? '') == 'paid' ? 'background-color: #10b981; border-color: #10b981;' : 'background-color: #ffffff;' }}">
-                <i class="fas fa-check-circle me-1"></i> Paid
-                <span class="badge ms-1 {{ ($statusFilter ?? '') == 'paid' ? 'bg-white text-success' : 'bg-success text-white' }}">{{ $statusCounts['paid'] ?? 0 }}</span>
             </button>
         </div>
 
@@ -727,6 +758,19 @@
                                 <option value="standard_editable" {{ $categoryFilter == 'standard_editable' ? 'selected' : '' }}>
                                     Standard Editable
                                 </option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Date Type Filter -->
+                    <div class="col-md-2 col-sm-6">
+                        <label class="form-label small mb-1">Date Based On</label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="fas fa-clock"></i></span>
+                            <select class="form-select" name="date_type" onchange="this.form.submit()">
+                                <option value="due_date" {{ ($dateType ?? 'due_date') == 'due_date' ? 'selected' : '' }}>Due Date</option>
+                                <option value="paid_date" {{ ($dateType ?? '') == 'paid_date' ? 'selected' : '' }}>Paid Date</option>
+                                <option value="created_at" {{ ($dateType ?? '') == 'created_at' ? 'selected' : '' }}>Created Date</option>
                             </select>
                         </div>
                     </div>
@@ -988,6 +1032,204 @@
     @else
     <!-- Non-Standard Expenses Section -->
     <div id="non-standard-section">
+        <!-- Tab Navigation for Non-Standard Expenses (Add Form vs List) -->
+        <div class="tabs-container" style="margin-bottom: 20px;">
+            <div class="tabs-header">
+                <button class="tab-button" id="ns-form-tab-btn" data-ns-tab="ns-form-tab" onclick="switchNsTab('ns-form-tab')">
+                    <i class="fas fa-plus-circle"></i> Add Non-Standard Expense
+                </button>
+                <button class="tab-button active" id="ns-table-tab-btn" data-ns-tab="ns-table-tab" onclick="switchNsTab('ns-table-tab')">
+                    <i class="fas fa-list"></i> Expense List
+                    <span class="tab-badge">{{ $nonStandardExpenses->total() }}</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Non-Standard Expense Form Tab -->
+        <div id="ns-form-tab" class="tab-content">
+            <div class="card" style="margin-bottom: 30px; border: 1px solid #e0e0e0; border-radius: 8px; background: white;">
+                <div class="card-header" style="padding: 20px; border-bottom: 1px solid #e0e0e0;">
+                    <h3 style="margin: 0; font-size: 16px; font-weight: 600;">Add Non-Standard Expense</h3>
+                    <span style="font-size: 12px; color: #666; margin-left: 10px;">(Create non-standard expenditure)</span>
+                </div>
+                <div style="padding: 25px;">
+                    <form id="tabAddNonStandardForm" action="{{ route('admin.standard-expenses.non-standard.store') }}" method="POST" enctype="multipart/form-data">
+                        @csrf
+                        <input type="hidden" name="source" value="manual">
+
+                        <!-- Company & Expense Name -->
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Company <span class="text-danger">*</span></label>
+                                <select class="form-select" id="tab_ns_company_id" name="company_id" required onchange="loadCompanyManagersForNsExpense(this.value, 'tab_add')">
+                                    <option value="" selected disabled>Select Company</option>
+                                    @foreach ($companies as $company)
+                                    <option value="{{ $company->id }}">{{ $company->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Expense Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" name="expense_name" required placeholder="e.g., Server Maintenance">
+                            </div>
+                        </div>
+
+                        <!-- Assign Managers -->
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-12">
+                                <label class="form-label d-flex justify-content-between align-items-center">
+                                    <span>Assign Manager(s)</span>
+                                    <small class="text-muted" id="tab_ns_manager_count">All managers (default)</small>
+                                </label>
+                                <div class="dropdown">
+                                    <button class="btn btn-outline-secondary w-100 text-start d-flex justify-content-between align-items-center dropdown-toggle bg-white" type="button" id="tab_ns_manager_dropdown_btn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" style="border: 1px solid #ced4da; border-radius: 6px; padding: 7px 12px;">
+                                        <span class="text-truncate" id="tab_ns_manager_btn_text"><i class="fas fa-user-tie me-2 text-muted"></i>Select manager(s)...</span>
+                                    </button>
+                                    <div class="dropdown-menu w-100 p-2 shadow-sm" aria-labelledby="tab_ns_manager_dropdown_btn" style="max-height: 260px; overflow-y: auto;">
+                                        <input type="text" class="form-control form-control-sm mb-2" placeholder="Search managers..." onkeyup="filterNsManagerDropdown(this)">
+                                        <div class="d-flex justify-content-between px-1 mb-2 border-bottom pb-1">
+                                            <a href="javascript:void(0)" class="text-decoration-none small text-primary fw-semibold" onclick="toggleSelectAllNsManagers(this, true, 'tab_add')">Select All</a>
+                                            <a href="javascript:void(0)" class="text-decoration-none small text-muted fw-semibold" onclick="toggleSelectAllNsManagers(this, false, 'tab_add')">Clear All</a>
+                                        </div>
+                                        <div class="manager-options-container">
+                                            @if(isset($managers) && $managers->isNotEmpty())
+                                            @foreach ($managers as $manager)
+                                            <div class="form-check py-1 px-3 manager-option-item" data-name="{{ strtolower($manager->name) }}" data-email="{{ strtolower($manager->email ?? '') }}">
+                                                <input class="form-check-input ns-manager-checkbox" type="checkbox" name="assigned_managers[]" value="{{ $manager->id }}" id="tab_ns_mgr_{{ $manager->id }}" onchange="updateNsManagerDropdownText('tab_add')">
+                                                <label class="form-check-label w-100 cursor-pointer" for="tab_ns_mgr_{{ $manager->id }}">
+                                                    <div class="fw-medium text-dark">{{ $manager->name }}</div>
+                                                    @if(!empty($manager->email))
+                                                    <div class="text-muted small" style="font-size: 0.75rem;">{{ $manager->email }}</div>
+                                                    @endif
+                                                </label>
+                                            </div>
+                                            @endforeach
+                                            @else
+                                            <div class="text-muted small px-3 py-1">No managers found</div>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </div>
+                                <small class="text-muted" style="font-size: 0.75rem;">Selected manager(s) will be the only managers who can view this expense. Leave unselected to allow all managers of the company.</small>
+                            </div>
+                        </div>
+
+                        <!-- Category & Amount -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label">Category <span class="text-danger">*</span></label>
+                                <select class="form-select" name="category_id" required>
+                                    <option value="" selected disabled>Select Category</option>
+                                    @foreach ($categories as $category)
+                                    <option value="{{ $category->id }}">{{ $category->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Actual Amount (₹) <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control" id="tab_ns_actual_amount" name="actual_amount"
+                                    step="0.01" required value="" placeholder="0.00">
+                            </div>
+                        </div>
+                        <div class="section-divider"></div>
+
+                        <!-- GST Section -->
+                        <div class="tax-section mb-3">
+                            <div class="d-flex align-items-center mb-2 pb-1 border-bottom border-light">
+                                <div class="form-check d-flex align-items-center mb-0">
+                                    <input class="form-check-input me-2 mt-0 cursor-pointer" type="checkbox" id="tab_ns_apply_gst" name="apply_gst"
+                                        value="1" checked>
+                                    <label class="form-check-label fw-bold text-uppercase small text-dark mb-0 cursor-pointer" for="tab_ns_apply_gst">Apply GST</label>
+                                </div>
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label small text-muted fw-bold">GST %</label>
+                                    <div class="input-group">
+                                        <input type="number" class="form-control" id="tab_ns_gst_percentage" name="gst_percentage"
+                                            value="18" min="0" max="100" step="0.01">
+                                        <span class="input-group-text">%</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small text-muted fw-bold">GST Amount</label>
+                                    <input type="number" class="form-control" id="tab_ns_gst_amount" name="gst_amount" value="0.00"
+                                        readonly>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TDS Section -->
+                        <div class="tax-section mb-3">
+                            <div class="d-flex align-items-center mb-2 pb-1 border-bottom border-light">
+                                <div class="form-check d-flex align-items-center mb-0">
+                                    <input class="form-check-input me-2 mt-0 cursor-pointer" type="checkbox" id="tab_ns_apply_tds" name="apply_tds"
+                                        value="1" checked>
+                                    <label class="form-check-label fw-bold text-uppercase small text-dark mb-0 cursor-pointer" for="tab_ns_apply_tds">Apply TDS</label>
+                                </div>
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label small text-muted fw-bold">TDS %</label>
+                                    <div class="input-group">
+                                        <input type="number" class="form-control" id="tab_ns_tds_percentage" name="tds_percentage"
+                                            value="10" min="0" max="100" step="0.01">
+                                        <span class="input-group-text">%</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small text-muted fw-bold">TDS Amount</label>
+                                    <input type="number" class="form-control" id="tab_ns_tds_amount" name="tds_amount" value="0.00"
+                                        readonly>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Amount After TDS / Planned Amount -->
+                        <input type="hidden" class="form-control" id="tab_ns_amount_after_tds" name="amount_after_tds" value="0.00" readonly>
+                        <input type="hidden" class="form-control" id="tab_ns_grand_total" name="grand_total" value="0.00" readonly>
+                        <input type="hidden" class="form-control" id="tab_ns_schedule_amount" name="planned_amount" step="0.01" value="0.00">
+
+                        <div class="section-divider"></div>
+
+                        <!-- Due Date, Party/Vendor & Mobile -->
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Due Date <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control" name="due_date" id="tab_ns_due_date"
+                                    min="{{ date('Y-m-d') }}" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Party/Vendor Name</label>
+                                <input type="text" class="form-control" name="party_name" placeholder="Optional">
+                            </div>
+                        </div>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Mobile Number</label>
+                                <input type="number" class="form-control" name="mobile_number" placeholder="Optional">
+                            </div>
+                        </div>
+
+                        <!-- Notes -->
+                        <div class="mb-4">
+                            <label class="form-label" for="tab_ns_notes">Notes</label>
+                            <textarea class="form-control" id="tab_ns_notes" name="notes" rows="3" placeholder="Optional notes..."></textarea>
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-2">
+                            <button type="button" class="btn btn-secondary" onclick="switchNsTab('ns-table-tab')">Cancel</button>
+                            <button type="submit" class="btn btn-primary" style="background-color: #4f46e5; border-color: #4f46e5;">
+                                <i class="fas fa-save me-2"></i>Save Expense
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Non-Standard Expense Table Tab -->
+        <div id="ns-table-tab" class="tab-content active">
         <!-- Summary Cards -->
         @if(isset($cardStats))
         @include('Admin.partials.summary_cards', ['cardType' => 'expense'])
@@ -999,7 +1241,7 @@
                 class="btn btn-sm py-2 px-3 status-tab-btn {{ ($statusFilter ?? 'all') == 'all' ? 'active shadow-sm text-white' : 'btn-light border text-muted' }}"
                 onclick="setNonStandardStatusFilter('all')"
                 style="border-radius: 8px; font-weight: 600; font-size: 0.85rem; {{ ($statusFilter ?? 'all') == 'all' ? 'background-color: #4f46e5; border-color: #4f46e5;' : 'background-color: #ffffff;' }}">
-                <i class="fas fa-list-ul me-1"></i> All Expenses
+                <i class="fas fa-list-ul me-1"></i> All Unpaid
                 <span class="badge ms-1 {{ ($statusFilter ?? 'all') == 'all' ? 'bg-white text-dark' : 'bg-secondary text-white' }}">{{ $nsStatusCounts['all'] ?? 0 }}</span>
             </button>
             <button type="button"
@@ -1022,13 +1264,6 @@
                 style="border-radius: 8px; font-weight: 600; font-size: 0.85rem; {{ ($statusFilter ?? '') == 'overdue' ? 'background-color: #ef4444; border-color: #ef4444;' : 'background-color: #ffffff;' }}">
                 <i class="fas fa-exclamation-circle me-1"></i> Overdue
                 <span class="badge ms-1 {{ ($statusFilter ?? '') == 'overdue' ? 'bg-white text-danger' : 'bg-danger text-white' }}">{{ $nsStatusCounts['overdue'] ?? 0 }}</span>
-            </button>
-            <button type="button"
-                class="btn btn-sm py-2 px-3 status-tab-btn {{ ($statusFilter ?? '') == 'paid' ? 'active shadow-sm text-white' : 'btn-light border text-muted' }}"
-                onclick="setNonStandardStatusFilter('paid')"
-                style="border-radius: 8px; font-weight: 600; font-size: 0.85rem; {{ ($statusFilter ?? '') == 'paid' ? 'background-color: #10b981; border-color: #10b981;' : 'background-color: #ffffff;' }}">
-                <i class="fas fa-check-circle me-1"></i> Paid
-                <span class="badge ms-1 {{ ($statusFilter ?? '') == 'paid' ? 'bg-white text-success' : 'bg-success text-white' }}">{{ $nsStatusCounts['paid'] ?? 0 }}</span>
             </button>
         </div>
 
@@ -1076,6 +1311,19 @@
                                     {{ $cat->name }}
                                 </option>
                                 @endforeach
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Date Type Filter -->
+                    <div class="col-md-2 col-sm-6">
+                        <label class="form-label small mb-1">Date Based On</label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="fas fa-clock"></i></span>
+                            <select class="form-select" name="date_type" onchange="this.form.submit()">
+                                <option value="due_date" {{ ($dateType ?? 'due_date') == 'due_date' ? 'selected' : '' }}>Due Date</option>
+                                <option value="paid_date" {{ ($dateType ?? '') == 'paid_date' ? 'selected' : '' }}>Paid Date</option>
+                                <option value="created_at" {{ ($dateType ?? '') == 'created_at' ? 'selected' : '' }}>Created Date</option>
                             </select>
                         </div>
                     </div>
@@ -1153,7 +1401,7 @@
                             <th style="padding: 12px 16px; text-align: left; font-weight: 600; font-size: 13px; color: #1a1a1a;">Paid By</th>
                             <th style="padding: 12px 16px; text-align: right; font-weight: 600; font-size: 13px; color: #1a1a1a;">Planned Amount</th>
                             <th style="padding: 12px 16px; text-align: right; font-weight: 600; font-size: 13px; color: #1a1a1a;">Paid Amount</th>
-                            <th style="padding: 12px 16px; text-align: center; font-weight: 600; font-size: 13px; color: #1a1a1a;">Due Date</th>
+                            <th style="padding: 12px 16px; text-align: left; font-weight: 600; font-size: 13px; color: #1a1a1a;">Dates</th>
                             <th style="padding: 12px 16px; text-align: center; font-weight: 600; font-size: 13px; color: #1a1a1a;">Status</th>
                             <th style="padding: 12px 16px; text-align: center; font-weight: 600; font-size: 13px; color: #1a1a1a;">Actions</th>
                         </tr>
@@ -1211,8 +1459,26 @@
                             <td style="padding: 12px 16px; text-align: right; font-weight: 600; color: #10b981;">
                                 ₹ {{ number_format($nsExpense->actual_amount ?? $nsExpense->paid_amount ?? 0, 2) }}
                             </td>
-                            <td style="padding: 12px 16px; text-align: center; font-size: 13px;">
-                                {{ $nsExpense->due_date ? \Carbon\Carbon::parse($nsExpense->due_date)->format('d M Y') : '—' }}
+                            <td style="padding: 12px 16px; font-size: 13px;" class="text-nowrap">
+                                <div class="fw-semibold text-dark">
+                                    <span class="text-muted text-xs d-inline-block" style="width: 48px;">Due:</span>
+                                    {{ $nsExpense->due_date ? \Carbon\Carbon::parse($nsExpense->due_date)->format('d M Y') : '—' }}
+                                </div>
+                                @php
+                                    $nsPaidDate = $nsExpense->paid_date ?: $nsExpense->payment_date;
+                                @endphp
+                                @if($nsPaidDate)
+                                <div class="text-success text-xs mt-0.5">
+                                    <span class="text-muted d-inline-block" style="width: 48px;">Paid:</span>
+                                    <strong>{{ \Carbon\Carbon::parse($nsPaidDate)->format('d M Y') }}</strong>
+                                </div>
+                                @endif
+                                @if($nsExpense->created_at)
+                                <div class="text-muted text-xs mt-0.5">
+                                    <span class="d-inline-block" style="width: 48px;">Created:</span>
+                                    {{ \Carbon\Carbon::parse($nsExpense->created_at)->format('d M Y') }}
+                                </div>
+                                @endif
                             </td>
                             <td style="padding: 12px 16px; text-align: center;">
                                 @if(in_array($nsExpense->status, ['paid', 'settle', 'settled']))
@@ -1262,6 +1528,7 @@
                 {{ $nonStandardExpenses->links() }}
             </div>
             @endif
+        </div>
         </div>
     </div>
     @endif
@@ -1739,10 +2006,48 @@
         localStorage.setItem('lastActiveTab', tabId);
     }
 
+    // Tab switching for Non-Standard Expenses (Add Form vs List)
+    function switchNsTab(tabId) {
+        const nsSection = document.getElementById('non-standard-section');
+        if (!nsSection) return;
+
+        // Hide all ns tab contents
+        nsSection.querySelectorAll('.tab-content').forEach(tab => {
+            tab.classList.remove('active');
+        });
+
+        // Show selected tab content
+        const tabContent = document.getElementById(tabId);
+        if (tabContent) {
+            tabContent.classList.add('active');
+        }
+
+        // Update tab buttons
+        nsSection.querySelectorAll('.tab-button').forEach(button => {
+            button.classList.remove('active');
+        });
+
+        const tabButton = nsSection.querySelector(`[data-ns-tab="${tabId}"]`);
+        if (tabButton) {
+            tabButton.classList.add('active');
+        }
+
+        // Save last active ns tab to localStorage
+        localStorage.setItem('lastActiveNsTab', tabId);
+    }
+
     // Update the initial tab setup
     document.addEventListener('DOMContentLoaded', function() {
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('tab') === 'non-standard') {
+            const hasNsFilterParams = urlParams.has('search') || urlParams.has('company_id') ||
+                urlParams.has('category_id') || urlParams.has('status') ||
+                urlParams.has('date_range') || urlParams.has('start_date') ||
+                urlParams.has('end_date') || urlParams.has('page') ||
+                urlParams.has('per_page') || urlParams.get('subtab') === 'list';
+
+            const lastNsTab = hasNsFilterParams ? 'ns-table-tab' : (urlParams.get('subtab') === 'add' ? 'ns-form-tab' : (localStorage.getItem('lastActiveNsTab') || 'ns-table-tab'));
+            switchNsTab(lastNsTab);
             return;
         }
         const hasFilterParams = urlParams.has('search') || urlParams.has('company_id') ||
@@ -3672,10 +3977,14 @@
     }
 
     async function loadCompanyManagersForNsExpense(companyId, mode, preselectedManagerIds = null) {
-        const modalId = mode === 'edit' ? 'editNonStandardModal' : 'addNonStandardModal';
-        const modal = document.getElementById(modalId);
-        if (!modal) return;
-        const container = modal.querySelector('.manager-options-container');
+        let container = null;
+        if (mode === 'edit') {
+            container = document.querySelector('#editNonStandardModal .manager-options-container');
+        } else if (mode === 'tab_add') {
+            container = document.querySelector('#ns-form-tab .manager-options-container');
+        } else {
+            container = document.querySelector('#addNonStandardModal .manager-options-container');
+        }
         if (!container) return;
 
         if (!companyId) {
@@ -3687,9 +3996,12 @@
         // Get currently checked IDs if preselectedManagerIds not passed
         let currentSelected = preselectedManagerIds ? preselectedManagerIds.map(String) : [];
         if (!preselectedManagerIds) {
-            modal.querySelectorAll('.ns-manager-checkbox:checked').forEach(cb => {
-                currentSelected.push(String(cb.value));
-            });
+            const scope = mode === 'edit' ? document.getElementById('editNonStandardModal') : (mode === 'tab_add' ? document.getElementById('ns-form-tab') : document.getElementById('addNonStandardModal'));
+            if (scope) {
+                scope.querySelectorAll('.ns-manager-checkbox:checked').forEach(cb => {
+                    currentSelected.push(String(cb.value));
+                });
+            }
         }
 
         container.innerHTML = '<div class="text-muted small px-3 py-2 text-center"><i class="fas fa-spinner fa-spin me-1"></i> Loading managers...</div>';
@@ -3708,7 +4020,7 @@
                 container.innerHTML = '<div class="text-muted small px-3 py-1">No managers assigned to this company</div>';
             } else {
                 let html = '';
-                const prefix = mode === 'edit' ? 'edit_ns_mgr_' : 'add_ns_mgr_';
+                const prefix = mode === 'edit' ? 'edit_ns_mgr_' : (mode === 'tab_add' ? 'tab_ns_mgr_' : 'add_ns_mgr_');
                 managers.forEach(m => {
                     const isChecked = currentSelected.includes(String(m.id));
                     const emailHtml = m.email ? `<div class="text-muted small" style="font-size: 0.75rem;">${m.email}</div>` : '';
@@ -3747,20 +4059,18 @@
     }
 
     function toggleSelectAllNsManagers(link, selectAll, mode) {
-        const modalId = mode === 'edit' ? 'editNonStandardModal' : 'addNonStandardModal';
-        const modal = document.getElementById(modalId);
-        if (!modal) return;
-        const visibleCheckboxes = modal.querySelectorAll('.manager-option-item:not([style*="display: none"]) .ns-manager-checkbox');
+        const scope = mode === 'edit' ? document.getElementById('editNonStandardModal') : (mode === 'tab_add' ? document.getElementById('ns-form-tab') : document.getElementById('addNonStandardModal'));
+        if (!scope) return;
+        const visibleCheckboxes = scope.querySelectorAll('.manager-option-item:not([style*="display: none"]) .ns-manager-checkbox');
         visibleCheckboxes.forEach(cb => cb.checked = selectAll);
         updateNsManagerDropdownText(mode);
     }
 
     function updateNsManagerDropdownText(mode) {
-        const modalId = mode === 'edit' ? 'editNonStandardModal' : 'addNonStandardModal';
-        const prefix = mode === 'edit' ? 'edit_ns_' : 'add_ns_';
-        const modal = document.getElementById(modalId);
-        if (!modal) return;
-        const checked = modal.querySelectorAll('.ns-manager-checkbox:checked');
+        const prefix = mode === 'edit' ? 'edit_ns_' : (mode === 'tab_add' ? 'tab_ns_' : 'add_ns_');
+        const scope = mode === 'edit' ? document.getElementById('editNonStandardModal') : (mode === 'tab_add' ? document.getElementById('ns-form-tab') : document.getElementById('addNonStandardModal'));
+        if (!scope) return;
+        const checked = scope.querySelectorAll('.ns-manager-checkbox:checked');
         const count = checked.length;
         const btnText = document.getElementById(prefix + 'manager_btn_text');
         const countBadge = document.getElementById(prefix + 'manager_count');
@@ -3778,6 +4088,48 @@
         }
     }
 
+    // In-page Tab Non-Standard Expense calculations
+    function calculateTabNsTax() {
+        const baseAmount = parseFloat(document.getElementById('tab_ns_actual_amount')?.value) || 0;
+
+        let gstAmount = 0;
+        let tdsAmount = 0;
+
+        const applyGST = document.getElementById('tab_ns_apply_gst');
+        if (applyGST && applyGST.checked) {
+            const gstPercentage = parseFloat(document.getElementById('tab_ns_gst_percentage')?.value) || 0;
+            gstAmount = (baseAmount * gstPercentage) / 100;
+            const gstAmountField = document.getElementById('tab_ns_gst_amount');
+            if (gstAmountField) gstAmountField.value = gstAmount.toFixed(2);
+        } else {
+            const gstAmountField = document.getElementById('tab_ns_gst_amount');
+            if (gstAmountField) gstAmountField.value = '0.00';
+        }
+
+        const applyTDS = document.getElementById('tab_ns_apply_tds');
+        if (applyTDS && applyTDS.checked) {
+            const tdsPercentage = parseFloat(document.getElementById('tab_ns_tds_percentage')?.value) || 0;
+            tdsAmount = (baseAmount * tdsPercentage) / 100;
+            const tdsAmountField = document.getElementById('tab_ns_tds_amount');
+            const amountAfterTDSField = document.getElementById('tab_ns_amount_after_tds');
+            if (tdsAmountField) tdsAmountField.value = tdsAmount.toFixed(2);
+            if (amountAfterTDSField) amountAfterTDSField.value = (baseAmount - tdsAmount).toFixed(2);
+        } else {
+            const tdsAmountField = document.getElementById('tab_ns_tds_amount');
+            const amountAfterTDSField = document.getElementById('tab_ns_amount_after_tds');
+            if (tdsAmountField) tdsAmountField.value = '0.00';
+            if (amountAfterTDSField) amountAfterTDSField.value = baseAmount.toFixed(2);
+        }
+
+        const grandTotalField = document.getElementById('tab_ns_grand_total');
+        const netPayable = baseAmount + gstAmount - tdsAmount;
+
+        if (grandTotalField) grandTotalField.value = (baseAmount + gstAmount).toFixed(2);
+
+        const scheduleAmountInput = document.getElementById('tab_ns_schedule_amount');
+        if (scheduleAmountInput) scheduleAmountInput.value = netPayable.toFixed(2);
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('addNonStandardModal')?.addEventListener('show.bs.modal', function() {
             const companySelect = document.getElementById('add_ns_company_id');
@@ -3789,6 +4141,19 @@
                 updateNsManagerDropdownText('add');
             }
         });
+
+        // Event listeners for in-page Non-Standard Expense Form tab
+        const tabNsActual = document.getElementById('tab_ns_actual_amount');
+        const tabNsApplyGst = document.getElementById('tab_ns_apply_gst');
+        const tabNsGstPct = document.getElementById('tab_ns_gst_percentage');
+        const tabNsApplyTds = document.getElementById('tab_ns_apply_tds');
+        const tabNsTdsPct = document.getElementById('tab_ns_tds_percentage');
+
+        if (tabNsActual) tabNsActual.addEventListener('input', calculateTabNsTax);
+        if (tabNsApplyGst) tabNsApplyGst.addEventListener('change', calculateTabNsTax);
+        if (tabNsGstPct) tabNsGstPct.addEventListener('input', calculateTabNsTax);
+        if (tabNsApplyTds) tabNsApplyTds.addEventListener('change', calculateTabNsTax);
+        if (tabNsTdsPct) tabNsTdsPct.addEventListener('input', calculateTabNsTax);
     });
 </script>
 <style>

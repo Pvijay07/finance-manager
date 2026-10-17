@@ -23,6 +23,7 @@ class InvoiceManagementController extends Controller
     $dateRange = $request->input('date_range', 'all');
     $startDate = $request->input('start_date');
     $endDate = $request->input('end_date');
+    $dateType = $request->input('date_type', 'due_date');
 
     // Base query for invoices
     $invoices = Invoice::with(['company', 'upcomingPayment', 'tdsTax'])
@@ -51,9 +52,10 @@ class InvoiceManagementController extends Controller
 
     $companies = Company::all();
 
-    // Repeated Incomes / Proformas Query
+    // Repeated Incomes / Proformas Query (Show only unpaid proformas)
     $proformasQuery = Invoice::with(['company', 'upcomingPayment', 'tdsTax'])
-      ->where('type', 'proforma');
+      ->where('type', 'proforma')
+      ->whereNotIn('status', ['paid', 'received', 'settle', 'settled', 'replaced', 'cancelled']);
 
     // Search filter
     if ($search) {
@@ -115,55 +117,72 @@ class InvoiceManagementController extends Controller
       }
     }
 
-    if ($filterStartDate && $filterEndDate) {
-      $proformasQuery->whereBetween('due_date', [$filterStartDate, $filterEndDate]);
-    } elseif ($filterStartDate) {
-      $proformasQuery->where('due_date', '>=', $filterStartDate);
-    } elseif ($filterEndDate) {
-      $proformasQuery->where('due_date', '<=', $filterEndDate);
-    }
+    $applyInvoiceDateFilter = function ($query) use ($dateType, $filterStartDate, $filterEndDate) {
+      if (!$filterStartDate && !$filterEndDate) return;
+      if ($dateType === 'paid_date') {
+        if ($filterStartDate && $filterEndDate) {
+          $query->whereBetween('paid_date', [$filterStartDate, $filterEndDate]);
+        } elseif ($filterStartDate) {
+          $query->where('paid_date', '>=', $filterStartDate);
+        } elseif ($filterEndDate) {
+          $query->where('paid_date', '<=', $filterEndDate);
+        }
+      } elseif ($dateType === 'created_at') {
+        if ($filterStartDate && $filterEndDate) {
+          $query->whereBetween(DB::raw('DATE(created_at)'), [$filterStartDate, $filterEndDate]);
+        } elseif ($filterStartDate) {
+          $query->whereDate('created_at', '>=', $filterStartDate);
+        } elseif ($filterEndDate) {
+          $query->whereDate('created_at', '<=', $filterEndDate);
+        }
+      } else {
+        if ($filterStartDate && $filterEndDate) {
+          $query->whereBetween('due_date', [$filterStartDate, $filterEndDate]);
+        } elseif ($filterStartDate) {
+          $query->where('due_date', '>=', $filterStartDate);
+        } elseif ($filterEndDate) {
+          $query->where('due_date', '<=', $filterEndDate);
+        }
+      }
+    };
 
-    // Status counts for status tabs
+    $applyInvoiceDateFilter($proformasQuery);
+
+    // Status counts for status tabs (unpaid only)
     $countQuery = clone $proformasQuery;
     $statusCounts = [
-      'all'      => (clone $countQuery)->whereNotIn('status', ['replaced', 'cancelled'])->count(),
-      'pending'  => (clone $countQuery)->whereNotIn('status', ['paid', 'received', 'settle', 'settled', 'replaced', 'cancelled'])
+      'all'      => (clone $countQuery)->count(),
+      'pending'  => (clone $countQuery)
         ->where(function ($q) use ($today) {
           $q->whereDate('due_date', '=', $today)
             ->orWhere(function ($sq) use ($today) {
               $sq->whereNull('due_date')->whereDate('issue_date', '>=', $today);
             });
         })->count(),
-      'upcoming' => (clone $countQuery)->whereNotIn('status', ['paid', 'received', 'settle', 'settled', 'replaced', 'cancelled'])
+      'upcoming' => (clone $countQuery)
         ->whereDate('due_date', '>', $today)->count(),
-      'overdue'  => (clone $countQuery)->whereNotIn('status', ['paid', 'received', 'settle', 'settled', 'replaced', 'cancelled'])
+      'overdue'  => (clone $countQuery)
         ->where(function ($q) use ($today) {
           $q->whereDate('due_date', '<', $today)
             ->orWhere(function ($sq) use ($today) {
               $sq->whereNull('due_date')->whereDate('issue_date', '<', $today);
             });
         })->count(),
-      'paid'     => (clone $countQuery)->whereIn('status', ['paid', 'received', 'settle', 'settled'])->count(),
     ];
 
     // Apply status filter
     if ($status && $status !== 'all') {
-      if ($status === 'paid') {
-        $proformasQuery->whereIn('status', ['paid', 'received', 'settle', 'settled']);
-      } elseif ($status === 'pending') {
-        $proformasQuery->whereNotIn('status', ['paid', 'received', 'settle', 'settled', 'replaced', 'cancelled'])
-          ->where(function ($q) use ($today) {
+      if ($status === 'pending') {
+        $proformasQuery->where(function ($q) use ($today) {
             $q->whereDate('due_date', '=', $today)
               ->orWhere(function ($sq) use ($today) {
                 $sq->whereNull('due_date')->whereDate('issue_date', '>=', $today);
               });
           });
       } elseif ($status === 'upcoming') {
-        $proformasQuery->whereNotIn('status', ['paid', 'received', 'settle', 'settled', 'replaced', 'cancelled'])
-          ->whereDate('due_date', '>', $today);
+        $proformasQuery->whereDate('due_date', '>', $today);
       } elseif ($status === 'overdue') {
-        $proformasQuery->whereNotIn('status', ['paid', 'received', 'settle', 'settled', 'replaced', 'cancelled'])
-          ->where(function ($q) use ($today) {
+        $proformasQuery->where(function ($q) use ($today) {
             $q->whereDate('due_date', '<', $today)
               ->orWhere(function ($sq) use ($today) {
                 $sq->whereNull('due_date')->whereDate('issue_date', '<', $today);
@@ -172,8 +191,6 @@ class InvoiceManagementController extends Controller
       } else {
         $proformasQuery->where('status', $status);
       }
-    } else {
-      $proformasQuery->whereNotIn('status', ['replaced', 'cancelled']);
     }
 
     $pendingProformas = $proformasQuery->orderBy('due_date', 'asc')->paginate($perPage)->withQueryString();
@@ -221,14 +238,15 @@ class InvoiceManagementController extends Controller
 
     $typeFilter = $request->input('type', 'all');
 
-    // Query Non-Standard Income
+    // Query Non-Standard Income (Show only unpaid incomes)
     $nsIncomeQuery = Income::with(['company', 'creator', 'paidByUser'])
       ->where(function($q) {
         $q->where('income_type', 'non-standard')
           ->orWhere(function($sq) {
             $sq->whereNull('invoice_id')->where('source', 'manual');
           });
-      });
+      })
+      ->whereNotIn('status', ['paid', 'received', 'settle', 'settled']);
 
     if ($search) {
       $nsIncomeQuery->where(function ($q) use ($search) {
@@ -242,53 +260,70 @@ class InvoiceManagementController extends Controller
       $nsIncomeQuery->where('company_id', $company);
     }
 
-    if ($filterStartDate && $filterEndDate) {
-      $nsIncomeQuery->whereBetween('income_date', [$filterStartDate, $filterEndDate]);
-    } elseif ($filterStartDate) {
-      $nsIncomeQuery->where('income_date', '>=', $filterStartDate);
-    } elseif ($filterEndDate) {
-      $nsIncomeQuery->where('income_date', '<=', $filterEndDate);
-    }
+    $applyIncomeDateFilter = function ($query) use ($dateType, $filterStartDate, $filterEndDate) {
+      if (!$filterStartDate && !$filterEndDate) return;
+      if ($dateType === 'paid_date') {
+        if ($filterStartDate && $filterEndDate) {
+          $query->whereBetween('paid_date', [$filterStartDate, $filterEndDate]);
+        } elseif ($filterStartDate) {
+          $query->where('paid_date', '>=', $filterStartDate);
+        } elseif ($filterEndDate) {
+          $query->where('paid_date', '<=', $filterEndDate);
+        }
+      } elseif ($dateType === 'created_at') {
+        if ($filterStartDate && $filterEndDate) {
+          $query->whereBetween(DB::raw('DATE(created_at)'), [$filterStartDate, $filterEndDate]);
+        } elseif ($filterStartDate) {
+          $query->whereDate('created_at', '>=', $filterStartDate);
+        } elseif ($filterEndDate) {
+          $query->whereDate('created_at', '<=', $filterEndDate);
+        }
+      } else {
+        if ($filterStartDate && $filterEndDate) {
+          $query->whereBetween('income_date', [$filterStartDate, $filterEndDate]);
+        } elseif ($filterStartDate) {
+          $query->where('income_date', '>=', $filterStartDate);
+        } elseif ($filterEndDate) {
+          $query->where('income_date', '<=', $filterEndDate);
+        }
+      }
+    };
+
+    $applyIncomeDateFilter($nsIncomeQuery);
 
     $nsCountQuery = clone $nsIncomeQuery;
     $nsIncomeStatusCounts = [
       'all'      => (clone $nsCountQuery)->count(),
-      'pending'  => (clone $nsCountQuery)->whereNotIn('status', ['paid', 'received', 'settle', 'settled'])
+      'pending'  => (clone $nsCountQuery)
         ->where(function ($q) use ($today) {
           $q->whereDate('due_date', '=', $today)
             ->orWhere(function ($sq) use ($today) {
               $sq->whereNull('due_date')->whereDate('income_date', '>=', $today);
             });
         })->count(),
-      'upcoming' => (clone $nsCountQuery)->whereNotIn('status', ['paid', 'received', 'settle', 'settled'])
+      'upcoming' => (clone $nsCountQuery)
         ->whereDate('due_date', '>', $today)->count(),
-      'overdue'  => (clone $nsCountQuery)->whereNotIn('status', ['paid', 'received', 'settle', 'settled'])
+      'overdue'  => (clone $nsCountQuery)
         ->where(function ($q) use ($today) {
           $q->whereDate('due_date', '<', $today)
             ->orWhere(function ($sq) use ($today) {
               $sq->whereNull('due_date')->whereDate('income_date', '<', $today);
             });
         })->count(),
-      'paid'     => (clone $nsCountQuery)->whereIn('status', ['paid', 'received', 'settle', 'settled'])->count(),
     ];
 
     if ($status && $status !== 'all') {
-      if ($status === 'paid') {
-        $nsIncomeQuery->whereIn('status', ['paid', 'received', 'settle', 'settled']);
-      } elseif ($status === 'pending') {
-        $nsIncomeQuery->whereNotIn('status', ['paid', 'received', 'settle', 'settled'])
-          ->where(function ($q) use ($today) {
+      if ($status === 'pending') {
+        $nsIncomeQuery->where(function ($q) use ($today) {
             $q->whereDate('due_date', '=', $today)
               ->orWhere(function ($sq) use ($today) {
                 $sq->whereNull('due_date')->whereDate('income_date', '>=', $today);
               });
           });
       } elseif ($status === 'upcoming') {
-        $nsIncomeQuery->whereNotIn('status', ['paid', 'received', 'settle', 'settled'])
-          ->whereDate('due_date', '>', $today);
+        $nsIncomeQuery->whereDate('due_date', '>', $today);
       } elseif ($status === 'overdue') {
-        $nsIncomeQuery->whereNotIn('status', ['paid', 'received', 'settle', 'settled'])
-          ->where(function ($q) use ($today) {
+        $nsIncomeQuery->where(function ($q) use ($today) {
             $q->whereDate('due_date', '<', $today)
               ->orWhere(function ($sq) use ($today) {
                 $sq->whereNull('due_date')->whereDate('income_date', '<', $today);
@@ -328,13 +363,7 @@ class InvoiceManagementController extends Controller
     if ($company && $company !== 'all') {
       $allInvQuery->where('company_id', $company);
     }
-    if ($filterStartDate && $filterEndDate) {
-      $allInvQuery->whereBetween('due_date', [$filterStartDate, $filterEndDate]);
-    } elseif ($filterStartDate) {
-      $allInvQuery->where('due_date', '>=', $filterStartDate);
-    } elseif ($filterEndDate) {
-      $allInvQuery->where('due_date', '<=', $filterEndDate);
-    }
+    $applyInvoiceDateFilter($allInvQuery);
 
     $allInvCountQuery = clone $allInvQuery;
     $invStatusCounts = [
@@ -431,6 +460,8 @@ class InvoiceManagementController extends Controller
           'company_id'      => $inv->company_id,
           'date'            => $inv->issue_date ?? $inv->created_at,
           'due_date'        => $inv->due_date,
+          'paid_date'       => $inv->paid_date,
+          'created_at'      => $inv->created_at,
           'total_amount'    => (float)$inv->total_amount,
           'received_amount' => (float)($inv->received_amount ?? ($inv->status === 'paid' ? $inv->total_amount : 0)),
           'balance_amount'  => (float)($inv->balance_amount ?? max(0, $inv->total_amount - ($inv->received_amount ?? 0))),
@@ -471,6 +502,8 @@ class InvoiceManagementController extends Controller
           'company_id'      => $inc->company_id,
           'date'            => $inc->income_date ?? $inc->created_at,
           'due_date'        => $inc->due_date,
+          'paid_date'       => $inc->paid_date,
+          'created_at'      => $inc->created_at,
           'total_amount'    => (float)($inc->schedule_amount ?: ($inc->planned_amount ?: $inc->amount)),
           'received_amount' => (float)($inc->received_amount ?: 0),
           'balance_amount'  => (float)($inc->balance_amount ?: 0),
@@ -683,6 +716,7 @@ class InvoiceManagementController extends Controller
       'dateRange',
       'startDate',
       'endDate',
+      'dateType',
       'perPage',
       'statusCounts',
       'allIncomes',

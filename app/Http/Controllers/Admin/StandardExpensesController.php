@@ -26,6 +26,7 @@ class StandardExpensesController extends Controller
     $dateRange      = $request->input('date_range', 'all');
     $startDate      = $request->input('start_date');
     $endDate        = $request->input('end_date');
+    $dateType       = $request->input('date_type', 'due_date');
 
     // 1. All Expenses Query (Shows all Standard and Non-Standard Expenses in one place)
     $allExpensesQuery = Expense::with(['company', 'categoryRelation', 'creator', 'paidByUser']);
@@ -101,13 +102,43 @@ class StandardExpensesController extends Controller
       if ($endDate) $filterEndDate = Carbon::parse($endDate)->toDateString();
     }
 
-    if ($filterStartDate && $filterEndDate) {
-      $allExpensesQuery->whereBetween('due_date', [$filterStartDate, $filterEndDate]);
-    } elseif ($filterStartDate) {
-      $allExpensesQuery->where('due_date', '>=', $filterStartDate);
-    } elseif ($filterEndDate) {
-      $allExpensesQuery->where('due_date', '<=', $filterEndDate);
-    }
+    // Apply date filter based on selected date_type (due_date, paid_date, created_at)
+    $applyExpenseDateFilter = function ($query) use ($dateType, $filterStartDate, $filterEndDate) {
+      if (!$filterStartDate && !$filterEndDate) return;
+      if ($dateType === 'paid_date') {
+        $query->where(function ($q) use ($filterStartDate, $filterEndDate) {
+          $dateCol = DB::raw('COALESCE(paid_date, payment_date)');
+          if ($filterStartDate && $filterEndDate) {
+            $q->whereBetween('paid_date', [$filterStartDate, $filterEndDate])
+              ->orWhereBetween('payment_date', [$filterStartDate, $filterEndDate]);
+          } elseif ($filterStartDate) {
+            $q->where('paid_date', '>=', $filterStartDate)
+              ->orWhere('payment_date', '>=', $filterStartDate);
+          } elseif ($filterEndDate) {
+            $q->where('paid_date', '<=', $filterEndDate)
+              ->orWhere('payment_date', '<=', $filterEndDate);
+          }
+        });
+      } elseif ($dateType === 'created_at') {
+        if ($filterStartDate && $filterEndDate) {
+          $query->whereBetween(DB::raw('DATE(created_at)'), [$filterStartDate, $filterEndDate]);
+        } elseif ($filterStartDate) {
+          $query->whereDate('created_at', '>=', $filterStartDate);
+        } elseif ($filterEndDate) {
+          $query->whereDate('created_at', '<=', $filterEndDate);
+        }
+      } else {
+        if ($filterStartDate && $filterEndDate) {
+          $query->whereBetween('due_date', [$filterStartDate, $filterEndDate]);
+        } elseif ($filterStartDate) {
+          $query->where('due_date', '>=', $filterStartDate);
+        } elseif ($filterEndDate) {
+          $query->where('due_date', '<=', $filterEndDate);
+        }
+      }
+    };
+
+    $applyExpenseDateFilter($allExpensesQuery);
 
     $allCountQuery = clone $allExpensesQuery;
     $allStatusCounts = [
@@ -173,8 +204,10 @@ class StandardExpensesController extends Controller
       return $item;
     });
 
-    // 2. Standard Expenses Query
-    $stdQuery = Expense::where('source', 'standard')->with(['company', 'categoryRelation']);
+    // 2. Standard Expenses Query (Show only unpaid expenses)
+    $stdQuery = Expense::where('source', 'standard')
+      ->whereNotIn('status', ['paid', 'settle', 'settled'])
+      ->with(['company', 'categoryRelation']);
     if ($search) {
       $stdQuery->where(function ($q) use ($search) {
         $q->where('expense_name', 'like', "%{$search}%")
@@ -191,53 +224,41 @@ class StandardExpensesController extends Controller
         $q->where('category_type', $categoryFilter);
       });
     }
-    if ($filterStartDate && $filterEndDate) {
-      $stdQuery->whereBetween('due_date', [$filterStartDate, $filterEndDate]);
-    } elseif ($filterStartDate) {
-      $stdQuery->where('due_date', '>=', $filterStartDate);
-    } elseif ($filterEndDate) {
-      $stdQuery->where('due_date', '<=', $filterEndDate);
-    }
+    $applyExpenseDateFilter($stdQuery);
 
     $stdCountQuery = clone $stdQuery;
     $statusCounts = [
       'all' => (clone $stdCountQuery)->count(),
-      'pending' => (clone $stdCountQuery)->whereNotIn('status', ['paid', 'settle', 'settled'])
+      'pending' => (clone $stdCountQuery)
         ->where(function ($q) use ($today) {
           $q->whereDate('due_date', '=', $today)
             ->orWhere(function ($sq) use ($today) {
               $sq->whereNull('due_date')->whereDate('created_at', '>=', $today);
             });
         })->count(),
-      'upcoming' => (clone $stdCountQuery)->whereNotIn('status', ['paid', 'settle', 'settled'])
+      'upcoming' => (clone $stdCountQuery)
         ->whereDate('due_date', '>', $today)->count(),
-      'overdue' => (clone $stdCountQuery)->whereNotIn('status', ['paid', 'settle', 'settled'])
+      'overdue' => (clone $stdCountQuery)
         ->where(function ($q) use ($today) {
           $q->whereDate('due_date', '<', $today)
             ->orWhere(function ($sq) use ($today) {
               $sq->whereNull('due_date')->whereDate('created_at', '<', $today);
             });
         })->count(),
-      'paid' => (clone $stdCountQuery)->whereIn('status', ['paid', 'settle', 'settled'])->count(),
     ];
 
     if ($statusFilter && $statusFilter !== 'all') {
-      if ($statusFilter === 'paid') {
-        $stdQuery->whereIn('status', ['paid', 'settle', 'settled']);
-      } elseif ($statusFilter === 'pending') {
-        $stdQuery->whereNotIn('status', ['paid', 'settle', 'settled'])
-          ->where(function ($q) use ($today) {
+      if ($statusFilter === 'pending') {
+        $stdQuery->where(function ($q) use ($today) {
             $q->whereDate('due_date', '=', $today)
               ->orWhere(function ($sq) use ($today) {
                 $sq->whereNull('due_date')->whereDate('created_at', '>=', $today);
               });
           });
       } elseif ($statusFilter === 'upcoming') {
-        $stdQuery->whereNotIn('status', ['paid', 'settle', 'settled'])
-          ->whereDate('due_date', '>', $today);
+        $stdQuery->whereDate('due_date', '>', $today);
       } elseif ($statusFilter === 'overdue') {
-        $stdQuery->whereNotIn('status', ['paid', 'settle', 'settled'])
-          ->where(function ($q) use ($today) {
+        $stdQuery->where(function ($q) use ($today) {
             $q->whereDate('due_date', '<', $today)
               ->orWhere(function ($sq) use ($today) {
                 $sq->whereNull('due_date')->whereDate('created_at', '<', $today);
@@ -263,8 +284,9 @@ class StandardExpensesController extends Controller
       return $item;
     });
 
-    // 3. Non-Standard Expenses Query
+    // 3. Non-Standard Expenses Query (Show only unpaid expenses)
     $nonStandardQuery = Expense::where('source', '!=', 'standard')
+      ->whereNotIn('status', ['paid', 'settle', 'settled'])
       ->with(['company', 'categoryRelation', 'creator', 'paidByUser']);
 
     if ($search) {
@@ -289,53 +311,41 @@ class StandardExpensesController extends Controller
       });
     }
 
-    if ($filterStartDate && $filterEndDate) {
-      $nonStandardQuery->whereBetween('due_date', [$filterStartDate, $filterEndDate]);
-    } elseif ($filterStartDate) {
-      $nonStandardQuery->where('due_date', '>=', $filterStartDate);
-    } elseif ($filterEndDate) {
-      $nonStandardQuery->where('due_date', '<=', $filterEndDate);
-    }
+    $applyExpenseDateFilter($nonStandardQuery);
 
     $nsCountQuery = clone $nonStandardQuery;
     $nsStatusCounts = [
       'all' => (clone $nsCountQuery)->count(),
-      'pending' => (clone $nsCountQuery)->whereNotIn('status', ['paid', 'settle', 'settled'])
+      'pending' => (clone $nsCountQuery)
         ->where(function ($q) use ($today) {
           $q->whereDate('due_date', '=', $today)
             ->orWhere(function ($sq) use ($today) {
               $sq->whereNull('due_date')->whereDate('created_at', '>=', $today);
             });
         })->count(),
-      'upcoming' => (clone $nsCountQuery)->whereNotIn('status', ['paid', 'settle', 'settled'])
+      'upcoming' => (clone $nsCountQuery)
         ->whereDate('due_date', '>', $today)->count(),
-      'overdue' => (clone $nsCountQuery)->whereNotIn('status', ['paid', 'settle', 'settled'])
+      'overdue' => (clone $nsCountQuery)
         ->where(function ($q) use ($today) {
           $q->whereDate('due_date', '<', $today)
             ->orWhere(function ($sq) use ($today) {
               $sq->whereNull('due_date')->whereDate('created_at', '<', $today);
             });
         })->count(),
-      'paid' => (clone $nsCountQuery)->whereIn('status', ['paid', 'settle', 'settled'])->count(),
     ];
 
     if ($statusFilter && $statusFilter !== 'all') {
-      if ($statusFilter === 'paid') {
-        $nonStandardQuery->whereIn('status', ['paid', 'settle', 'settled']);
-      } elseif ($statusFilter === 'pending') {
-        $nonStandardQuery->whereNotIn('status', ['paid', 'settle', 'settled'])
-          ->where(function ($q) use ($today) {
+      if ($statusFilter === 'pending') {
+        $nonStandardQuery->where(function ($q) use ($today) {
             $q->whereDate('due_date', '=', $today)
               ->orWhere(function ($sq) use ($today) {
                 $sq->whereNull('due_date')->whereDate('created_at', '>=', $today);
               });
           });
       } elseif ($statusFilter === 'upcoming') {
-        $nonStandardQuery->whereNotIn('status', ['paid', 'settle', 'settled'])
-          ->whereDate('due_date', '>', $today);
+        $nonStandardQuery->whereDate('due_date', '>', $today);
       } elseif ($statusFilter === 'overdue') {
-        $nonStandardQuery->whereNotIn('status', ['paid', 'settle', 'settled'])
-          ->where(function ($q) use ($today) {
+        $nonStandardQuery->where(function ($q) use ($today) {
             $q->whereDate('due_date', '<', $today)
               ->orWhere(function ($sq) use ($today) {
                 $sq->whereNull('due_date')->whereDate('created_at', '<', $today);
@@ -487,6 +497,7 @@ class StandardExpensesController extends Controller
       'dateRange'           => $dateRange,
       'startDate'           => $startDate,
       'endDate'             => $endDate,
+      'dateType'            => $dateType,
       'allStatusCounts'     => $allStatusCounts,
       'statusCounts'        => $statusCounts,
       'nsStatusCounts'      => $nsStatusCounts,
