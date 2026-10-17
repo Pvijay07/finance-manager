@@ -12,6 +12,7 @@ use App\Models\Receipt;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class StandardExpensesController extends Controller
 {
@@ -375,6 +376,7 @@ class StandardExpensesController extends Controller
 
     $companies = Company::where('status', 'active')->get();
     $categories = Category::where('is_active', true)->get();
+    $nonStandardCategories = Category::where('is_active', true)->where('category_type', 'not_standard')->get();
     $requestedTab = $request->input('tab', 'expenses');
     if ($requestedTab === 'all') {
       $mainTab = 'expenses';
@@ -490,6 +492,7 @@ class StandardExpensesController extends Controller
       'nonStandardExpenses' => $nonStandardExpenses,
       'companies'           => $companies,
       'categories'          => $categories,
+      'nonStandardCategories' => $nonStandardCategories,
       'perPage'             => $perPage,
       'search'              => $search,
       'companyFilter'       => $companyFilter,
@@ -609,7 +612,8 @@ class StandardExpensesController extends Controller
         'expense_name'    => $request->expense_name,
         'name'            => $request->expense_name,
         'category_id'     => $request->category_id ?: null,
-        'actual_amount'   => in_array($status, ['paid', 'settle']) ? ($paidAmount ?: $netPayableAmount) : ($paidAmount > 0 ? $paidAmount : null),
+        'actual_amount'   => $actualTotalBase,
+        'paid_amount'     => $paidAmount,
         'planned_amount'  => $grandTotal,
         'original_amount' => $actualTotalBase,
         'schedule_amount' => $netPayableAmount,
@@ -899,7 +903,8 @@ class StandardExpensesController extends Controller
         'expense_name'    => $request->expense_name,
         'name'            => $request->expense_name,
         'category_id'     => $request->category_id ?: null,
-        'actual_amount'   => in_array($status, ['paid', 'settle']) ? ($paidAmount ?: $netPayableAmount) : ($paidAmount > 0 ? $paidAmount : $expense->actual_amount),
+        'actual_amount'   => $actualTotalBase,
+        'paid_amount'     => $paidAmount,
         'planned_amount'  => $grandTotal,
         'original_amount' => $actualTotalBase,
         'schedule_amount' => $netPayableAmount,
@@ -1831,5 +1836,131 @@ class StandardExpensesController extends Controller
         'message' => 'Failed to record payment: ' . $e->getMessage()
       ], 500);
     }
+  }
+
+  /**
+   * Download payment receipt / voucher for paid expense
+   */
+  public function downloadReceipt($id)
+  {
+    $expense = Expense::with(['company', 'categoryRelation', 'creator', 'paidByUser'])->findOrFail($id);
+
+    $company = $expense->company;
+    $amount = (float) ($expense->actual_amount ?: ($expense->paid_amount ?: ($expense->schedule_amount ?: $expense->planned_amount)));
+    $currencySymbol = '₹';
+
+    $logoBase64 = null;
+    $logoPath   = public_path('uploads/logo.png');
+    if (file_exists($logoPath)) {
+      $logoData   = file_get_contents($logoPath);
+      $logoBase64 = 'data:image/png;base64,' . base64_encode($logoData);
+    }
+
+    $receiptNumber = 'EXP-REC-' . str_pad($expense->id, 5, '0', STR_PAD_LEFT);
+    $referenceNo   = $expense->expense_number ?: ('#EXP-' . str_pad($expense->id, 4, '0', STR_PAD_LEFT));
+    $paymentDate   = $expense->paid_date ?: ($expense->payment_date ?: ($expense->due_date ?: $expense->created_at));
+    $paymentMode   = !empty($expense->payment_mode) ? ucfirst(str_replace('_', ' ', $expense->payment_mode)) : 'Bank / Online Transfer';
+    $recordedBy    = $expense->paidByUser?->name ?: ($expense->paid_by_name ?: ($expense->creator?->name ?: 'Administrator'));
+
+    $amountInWords = $this->numberToWords($amount, 'INR');
+
+    $pdf = Pdf::loadView('Admin.pdf.payment-receipt', [
+      'receiptType'    => 'expense',
+      'title'          => 'Expense Payment Voucher',
+      'company'        => $company,
+      'receiptNumber'  => $receiptNumber,
+      'referenceNo'    => $referenceNo,
+      'statusLabel'    => 'PAID',
+      'partyName'      => $expense->party_name ?: ($expense->expense_name ?: 'Vendor / Beneficiary'),
+      'partyDetails'   => $expense->mobile_number ? ('Contact: ' . $expense->mobile_number) : null,
+      'itemName'       => $expense->expense_name ?: ($expense->name ?: 'Corporate Expense'),
+      'itemSubtitle'   => $expense->notes ?: ($expense->purpose_comment ?: null),
+      'categoryName'   => $expense->categoryRelation?->name ?: ($expense->category_name ?: 'Expense'),
+      'amount'         => $amount,
+      'currencySymbol' => $currencySymbol,
+      'taxAmount'      => (float) ($expense->tax_amount ?: 0),
+      'paymentDate'    => $paymentDate,
+      'paymentMode'    => $paymentMode,
+      'recordedBy'     => $recordedBy,
+      'notes'          => $expense->settle_notes ?: ($expense->notes ?: null),
+      'amountInWords'  => $amountInWords,
+      'logoBase64'     => $logoBase64,
+    ]);
+
+    $pdf->setOptions([
+      'defaultFont'          => 'DejaVu Sans',
+      'isHtml5ParserEnabled' => true,
+      'isRemoteEnabled'      => false,
+      'isPhpEnabled'         => false,
+      'dpi'                  => 150,
+      'margin_top'           => 10,
+      'margin_right'         => 10,
+      'margin_bottom'        => 10,
+      'margin_left'          => 10
+    ]);
+    $pdf->setPaper('A4', 'portrait');
+
+    $filename = 'expense_receipt_' . strtolower(str_replace([' ', '/', '\\'], '_', $referenceNo)) . '.pdf';
+    return $pdf->download($filename);
+  }
+
+  private function numberToWords($number, $currency = 'INR')
+  {
+    $currency = strtoupper($currency);
+    $currencyText = 'Rupees';
+    $centsText = 'Paise';
+
+    $number = number_format($number, 2, '.', '');
+    [$whole, $decimal] = explode('.', $number);
+
+    $words = $this->convertNumberToWords((int)$whole) . ' ' . $currencyText;
+
+    if ((int)$decimal > 0) {
+      $words .= ' and ' . $this->convertNumberToWords((int)$decimal) . ' ' . $centsText;
+    }
+
+    return ucfirst($words) . ' Only';
+  }
+
+  private function convertNumberToWords($number)
+  {
+    $ones = [
+      '', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
+      'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'
+    ];
+
+    $tens = [
+      '', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'
+    ];
+
+    if ($number == 0) {
+      return 'Zero';
+    }
+
+    if ($number < 20) {
+      return $ones[$number];
+    }
+
+    if ($number < 100) {
+      return $tens[intval($number / 10)] . (($number % 10) ? ' ' . $ones[$number % 10] : '');
+    }
+
+    if ($number < 1000) {
+      return $ones[intval($number / 100)] . ' Hundred' .
+        (($number % 100) ? ' ' . $this->convertNumberToWords($number % 100) : '');
+    }
+
+    if ($number < 100000) {
+      return $this->convertNumberToWords(intval($number / 1000)) . ' Thousand' .
+        (($number % 1000) ? ' ' . $this->convertNumberToWords($number % 1000) : '');
+    }
+
+    if ($number < 10000000) {
+      return $this->convertNumberToWords(intval($number / 100000)) . ' Lakh' .
+        (($number % 100000) ? ' ' . $this->convertNumberToWords($number % 100000) : '');
+    }
+
+    return $this->convertNumberToWords(intval($number / 10000000)) . ' Crore' .
+      (($number % 10000000) ? ' ' . $this->convertNumberToWords($number % 10000000) : '');
   }
 }

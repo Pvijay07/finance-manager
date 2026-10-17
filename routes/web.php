@@ -96,6 +96,7 @@ Route::middleware(['auth', 'role:admin'])
         Route::delete('/standard-expenses/{id}', [StandardExpensesController::class, 'destroy'])->name('standard-expenses.destroy');
         Route::post('/generate-expenses', [StandardExpensesController::class, 'generateExpenses'])->name('generate-expenses');
         Route::post('/standard-expenses/get-categories', [StandardExpensesController::class, 'getCategories'])->name('standard-expenses.get-categories');
+        Route::get('/standard-expenses/{id}/download-receipt', [StandardExpensesController::class, 'downloadReceipt'])->name('standard-expenses.download-receipt');
         Route::get('/standard-expenses/{id}/taxes', [StandardExpensesController::class, 'getTaxDetails']);
         Route::post('/taxes/{id}/pay', [StandardExpensesController::class, 'markTaxAsPaid']);
         Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs');
@@ -115,8 +116,10 @@ Route::middleware(['auth', 'role:admin'])
         Route::put('/invoices/{id}/update', [InvoiceManagementController::class, 'update'])->name('invoices.update');
         Route::get('/invoices/{id}/view', [InvoiceManagementController::class, 'view'])->name('invoices.view');
         Route::get('/invoices/{id}/download', [InvoiceManagementController::class, 'download'])->name('invoices.download');
+        Route::get('/invoices/income/{id}/download-receipt', [InvoiceManagementController::class, 'downloadIncomeReceipt'])->name('invoices.income.download-receipt');
         Route::post('/invoices/send-email', [InvoiceManagementController::class, 'sendEmail'])->name('invoices.send-email');
         Route::get('/invoices/{id}/edit', [InvoiceManagementController::class, 'edit'])->name('invoices.edit');
+
 
 
         Route::get('/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');

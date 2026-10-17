@@ -230,7 +230,8 @@
                     $avatarBg = $roleColors[$user->role] ?? '#64748b';
                     @endphp
                     <tr data-role="{{ $user->role }}" data-status="{{ $user->status }}"
-                        data-company="{{ $user->company_id }}">
+                        data-company="{{ $user->company_id }}"
+                        data-all-companies="{{ empty($user->company_id) ? '1' : '0' }}">
                         <td>
                             <span class="badge-user-id">#{{ str_pad($user->id, 3, '0', STR_PAD_LEFT) }}</span>
                         </td>
@@ -522,7 +523,14 @@
 
             if (role && row.dataset.role !== role) show = false;
             if (status && row.dataset.status !== status) show = false;
-            if (company && row.dataset.company !== company) show = false;
+            if (company) {
+                // If row company is specific and doesn't match selected company, and is not all companies
+                const rowCompany = (row.dataset.company || '').trim();
+                const allCompanies = (row.dataset.allCompanies || '') === '1';
+                if (!allCompanies && rowCompany !== company) {
+                    show = false;
+                }
+            }
             if (searchVal) {
                 const rowText = (row.innerText || '').toLowerCase();
                 if (!rowText.includes(searchVal)) show = false;

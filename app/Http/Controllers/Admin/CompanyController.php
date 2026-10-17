@@ -93,8 +93,15 @@ public function index(Request $request)
 
       $company = Company::create($validated);
 
-      if (!empty($managerIds)) {
-        $company->managers()->sync($managerIds);
+      // Auto-assign managers/users who have "All Companies" access (company_id is null)
+      $allCompanyManagerIds = User::whereIn('role', ['manager'])
+        ->whereNull('company_id')
+        ->pluck('id')
+        ->toArray();
+
+      $combinedManagerIds = array_values(array_unique(array_merge($managerIds, $allCompanyManagerIds)));
+      if (!empty($combinedManagerIds)) {
+        $company->managers()->sync($combinedManagerIds);
       }
 
       return response()->json([
@@ -150,7 +157,15 @@ public function index(Request $request)
       if ($company->manager_id && !in_array($company->manager_id, $managerIds)) {
         $managerIds[] = (int) $company->manager_id;
       }
-      $managerIds = array_values(array_unique(array_filter($managerIds)));
+
+      // Also include any active managers assigned to "All Companies"
+      $allCompanyManagerIds = User::where('role', 'manager')
+        ->whereNull('company_id')
+        ->where('status', 'active')
+        ->pluck('id')
+        ->toArray();
+
+      $managerIds = array_values(array_unique(array_filter(array_merge($managerIds, $allCompanyManagerIds))));
 
       $managers = User::whereIn('id', $managerIds)
         ->where('status', 'active')
@@ -159,7 +174,10 @@ public function index(Request $request)
 
       // Fallback: If no managers assigned specifically to this company, get users with company_id matching
       if ($managers->isEmpty()) {
-        $managers = User::where('company_id', $company->id)
+        $managers = User::where(function($q) use ($company) {
+            $q->where('company_id', $company->id)
+              ->orWhereNull('company_id');
+          })
           ->whereIn('role', ['manager', 'user'])
           ->where('status', 'active')
           ->orderBy('name')

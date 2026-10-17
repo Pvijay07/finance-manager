@@ -2486,4 +2486,74 @@ class InvoiceManagementController extends Controller
       ], 404);
     }
   }
+
+  /**
+   * Download payment receipt / voucher for paid income (standard or non-standard)
+   */
+  public function downloadIncomeReceipt($id)
+  {
+    $income = Income::with(['company', 'creator', 'paidByUser', 'invoice'])->findOrFail($id);
+
+    $company = $income->company;
+    $amount = (float) ($income->actual_amount ?: ($income->received_amount ?: ($income->amount ?: $income->planned_amount)));
+    
+    $currencySymbols = ['USD' => '$', 'EUR' => '€', 'GBP' => '£', 'INR' => '₹'];
+    $currency = strtoupper($income->currency ?: ($company?->currency ?: 'INR'));
+    $currencySymbol = $currencySymbols[$currency] ?? '₹';
+
+    $logoBase64 = null;
+    $logoPath   = public_path('uploads/logo.png');
+    if (file_exists($logoPath)) {
+      $logoData   = file_get_contents($logoPath);
+      $logoBase64 = 'data:image/png;base64,' . base64_encode($logoData);
+    }
+
+    $receiptNumber = 'INC-REC-' . str_pad($income->id, 5, '0', STR_PAD_LEFT);
+    $referenceNo   = $income->invoice_number ?: ($income->invoice?->invoice_number ?: ('#INC-' . str_pad($income->id, 4, '0', STR_PAD_LEFT)));
+    $paymentDate   = $income->paid_date ?: ($income->income_date ?: ($income->due_date ?: $income->created_at));
+    $paymentMode   = 'Bank / Online Transfer';
+    $recordedBy    = $income->paidByUser?->name ?: ($income->paid_by_name ?: ($income->creator?->name ?: 'Administrator'));
+
+    $amountInWords = $this->numberToWords($amount, $currency);
+
+    $pdf = Pdf::loadView('Admin.pdf.payment-receipt', [
+      'receiptType'    => 'income',
+      'title'          => 'Income Payment Receipt',
+      'company'        => $company,
+      'receiptNumber'  => $receiptNumber,
+      'referenceNo'    => $referenceNo,
+      'statusLabel'    => 'RECEIVED / PAID',
+      'partyName'      => $income->client_name ?: ($income->party_name ?: 'Client / Customer'),
+      'partyDetails'   => null,
+      'itemName'       => $income->description ?: ($income->source ?: 'Business Income'),
+      'itemSubtitle'   => $income->notes ?: ($income->settle_notes ?: null),
+      'categoryName'   => $income->category?->name ?: ($income->income_type ?: 'Income'),
+      'amount'         => $amount,
+      'currencySymbol' => $currencySymbol,
+      'taxAmount'      => 0,
+      'paymentDate'    => $paymentDate,
+      'paymentMode'    => $paymentMode,
+      'recordedBy'     => $recordedBy,
+      'notes'          => $income->settle_notes ?: ($income->notes ?: null),
+      'amountInWords'  => $amountInWords,
+      'logoBase64'     => $logoBase64,
+    ]);
+
+    $pdf->setOptions([
+      'defaultFont'          => 'DejaVu Sans',
+      'isHtml5ParserEnabled' => true,
+      'isRemoteEnabled'      => false,
+      'isPhpEnabled'         => false,
+      'dpi'                  => 150,
+      'margin_top'           => 10,
+      'margin_right'         => 10,
+      'margin_bottom'        => 10,
+      'margin_left'          => 10
+    ]);
+    $pdf->setPaper('A4', 'portrait');
+
+    $filename = 'income_receipt_' . strtolower(str_replace([' ', '/', '\\'], '_', $referenceNo)) . '.pdf';
+    return $pdf->download($filename);
+  }
 }
+

@@ -13,7 +13,19 @@ class UserController extends Controller
 {
   public function index(Request $request)
   {
-    $users     = User::with('company')->get();
+    // Ensure all active managers/users who have "All Companies" (company_id is null) are synced in company_user
+    $allCompanyIds = Company::pluck('id')->toArray();
+    if (!empty($allCompanyIds)) {
+      $unlinkedGlobalUsers = User::whereIn('role', ['manager', 'user'])
+        ->whereNull('company_id')
+        ->doesntHave('companies')
+        ->get();
+      foreach ($unlinkedGlobalUsers as $u) {
+        $u->companies()->sync($allCompanyIds);
+      }
+    }
+
+    $users     = User::with(['company', 'companies'])->get();
     $companies = Company::active()->get();
     $roles     = ['admin', 'manager', 'user'];
 
@@ -54,15 +66,26 @@ class UserController extends Controller
       ], 422);
     }
 
+    $companyId = !empty($request->company_id) ? (int) $request->company_id : null;
+
     $user = User::create([
       'name'        => $request->name,
       'email'       => $request->email,
       'password'    => Hash::make($request->password),
       'role'        => $request->role,
-      'company_id'  => $request->company_id,
+      'company_id'  => $companyId,
       'status'      => $request->status,
       'permissions' => $request->permissions ? json_decode($request->permissions, true) : []
     ]);
+
+    // Sync company assignments in company_user pivot table
+    if (empty($companyId)) {
+      // Assigned to "All Companies"
+      $allCompanyIds = Company::pluck('id')->toArray();
+      $user->companies()->sync($allCompanyIds);
+    } else {
+      $user->companies()->sync([$companyId]);
+    }
 
     return response()->json([
       'success' => true,
@@ -90,7 +113,7 @@ class UserController extends Controller
     $validator = Validator::make($request->all(), [
       'name'       => 'required|string|max:255',
       'email'      => 'required|string|email|max:255|unique:users,email,' . $id,
-      'role'       => 'required|in:admin,manager,user',
+      'role'       => 'required|in:admin,manager,user,ca',
       'company_id' => 'nullable|exists:companies,id',
       'status'     => 'required|in:active,inactive'
     ]);
@@ -102,11 +125,13 @@ class UserController extends Controller
       ], 422);
     }
 
+    $companyId = !empty($request->company_id) ? (int) $request->company_id : null;
+
     $data = [
       'name'        => $request->name,
       'email'       => $request->email,
       'role'        => $request->role,
-      'company_id'  => $request->company_id,
+      'company_id'  => $companyId,
       'status'      => $request->status,
       'permissions' => $request->permissions ? json_decode($request->permissions, true) : []
     ];
@@ -117,6 +142,15 @@ class UserController extends Controller
     }
 
     $user->update($data);
+
+    // Sync company assignments in company_user pivot table
+    if (empty($companyId)) {
+      // Assigned to "All Companies"
+      $allCompanyIds = Company::pluck('id')->toArray();
+      $user->companies()->sync($allCompanyIds);
+    } else {
+      $user->companies()->sync([$companyId]);
+    }
 
     return response()->json([
       'success' => true,
@@ -137,6 +171,7 @@ class UserController extends Controller
       ], 403);
     }
 
+    $user->companies()->detach();
     $user->delete();
 
     return response()->json([

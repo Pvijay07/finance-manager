@@ -364,6 +364,11 @@
                                 </td>
                                 <td class="text-end pe-4 text-nowrap">
                                     <div class="btn-group btn-group-sm">
+                                        @if(in_array($exp->status, ['paid', 'settle', 'settled']))
+                                        <a href="{{ route('admin.standard-expenses.download-receipt', $exp->id) }}" class="btn btn-outline-success btn-sm" title="Download Payment Receipt" target="_blank">
+                                            <i class="fas fa-file-invoice-dollar"></i>
+                                        </a>
+                                        @endif
                                         @if(!in_array($exp->status, ['paid', 'settle', 'settled']))
                                         @if($exp->source === 'standard')
                                         <button type="button" class="btn btn-outline-primary btn-sm" onclick="editTemplate({{ $exp->id }})" title="Edit Standard Expense">
@@ -1120,7 +1125,7 @@
                                 <label class="form-label">Category <span class="text-danger">*</span></label>
                                 <select class="form-select" name="category_id" required>
                                     <option value="" selected disabled>Select Category</option>
-                                    @foreach ($categories as $category)
+                                    @foreach (($nonStandardCategories ?? $categories->where('category_type', 'not_standard')) as $category)
                                     <option value="{{ $category->id }}">{{ $category->name }}</option>
                                     @endforeach
                                 </select>
@@ -1495,6 +1500,11 @@
                             </td>
                             <td style="padding: 12px 16px; text-align: center;">
                                 <div class="d-flex align-items-center justify-content-center gap-1">
+                                    @if(in_array($nsExpense->status, ['paid', 'settle', 'settled']))
+                                    <a href="{{ route('admin.standard-expenses.download-receipt', $nsExpense->id) }}" class="btn btn-sm btn-outline-success py-1 px-2" title="Download Payment Receipt" target="_blank">
+                                        <i class="fas fa-file-invoice-dollar"></i>
+                                    </a>
+                                    @endif
                                     @if(!in_array($nsExpense->status, ['paid', 'settle', 'settled']))
                                     <button type="button" class="btn btn-sm btn-outline-primary py-1 px-2" title="Edit" onclick="editNonStandardExpense({{ $nsExpense->id }})">
                                         <i class="fas fa-edit"></i>
@@ -1613,7 +1623,7 @@
                             <label class="form-label">Category <span class="text-danger">*</span></label>
                             <select class="form-select" name="category_id" required>
                                 <option value="" selected disabled>Select Category</option>
-                                @foreach ($categories as $category)
+                                @foreach (($nonStandardCategories ?? $categories->where('category_type', 'not_standard')) as $category)
                                 <option value="{{ $category->id }}">{{ $category->name }}</option>
                                 @endforeach
                             </select>
@@ -1821,7 +1831,7 @@
                             <label class="form-label">Category</label>
                             <select class="form-select" id="edit_ns_category_id" name="category_id">
                                 <option value="">Select Category</option>
-                                @foreach ($categories as $category)
+                                @foreach (($nonStandardCategories ?? $categories->where('category_type', 'not_standard')) as $category)
                                 <option value="{{ $category->id }}">{{ $category->name }}</option>
                                 @endforeach
                             </select>

@@ -344,10 +344,15 @@
                                     <td>{{ $expense->company->name ?? 'All Companies' }}</td>
                                     <td>{{ $expense->categoryRelation->name ?? 'N/A' }}</td>
                                     <td>
-                                        <span class="badge @if ($expense->categoryRelation->category_type == 'standard_fixed') bg-success @elseif($expense->categoryRelation->category_type == 'standard_editable') bg-info @else bg-warning @endif">
-                                            @if ($expense->categoryRelation->category_type == 'standard_fixed')
+                                        @php
+                                            $displayType = ($expense->source !== 'standard')
+                                                ? 'non_standard'
+                                                : ($expense->categoryRelation?->category_type ?? 'non_standard');
+                                        @endphp
+                                        <span class="badge @if ($displayType == 'standard_fixed') bg-success @elseif($displayType == 'standard_editable') bg-info @else bg-warning @endif">
+                                            @if ($displayType == 'standard_fixed')
                                                 Standard Fixed
-                                            @elseif($expense->categoryRelation->category_type == 'standard_editable')
+                                            @elseif($displayType == 'standard_editable')
                                                 Standard Editable
                                             @else
                                                 Non Standard
@@ -404,13 +409,13 @@
                                     <td>
                                         <div class="btn-group btn-group-sm">
                                             @php
-                                                $expenseType =
-                                                    $expense->categoryRelation->category_type === 'standard_fixed'
-                                                    ? 'standard_fixed'
-                                                    : ($expense->categoryRelation->category_type ===
-                                                        'standard_editable'
-                                                        ? 'standard_editable'
-                                                        : 'non-standard');
+                                                $expenseType = ($expense->source !== 'standard')
+                                                    ? 'non-standard'
+                                                    : (($expense->categoryRelation?->category_type === 'standard_fixed')
+                                                        ? 'standard_fixed'
+                                                        : (($expense->categoryRelation?->category_type === 'standard_editable')
+                                                            ? 'standard_editable'
+                                                            : 'non-standard'));
                                             @endphp
                                            @if (!in_array($expense->status, ['paid', 'settle']))
     <button class="btn btn-outline-primary"
