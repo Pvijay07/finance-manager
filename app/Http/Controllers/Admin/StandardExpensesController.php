@@ -107,19 +107,13 @@ class StandardExpensesController extends Controller
     $applyExpenseDateFilter = function ($query) use ($dateType, $filterStartDate, $filterEndDate) {
       if (!$filterStartDate && !$filterEndDate) return;
       if ($dateType === 'paid_date') {
-        $query->where(function ($q) use ($filterStartDate, $filterEndDate) {
-          $dateCol = DB::raw('COALESCE(paid_date, payment_date)');
-          if ($filterStartDate && $filterEndDate) {
-            $q->whereBetween('paid_date', [$filterStartDate, $filterEndDate])
-              ->orWhereBetween('payment_date', [$filterStartDate, $filterEndDate]);
-          } elseif ($filterStartDate) {
-            $q->where('paid_date', '>=', $filterStartDate)
-              ->orWhere('payment_date', '>=', $filterStartDate);
-          } elseif ($filterEndDate) {
-            $q->where('paid_date', '<=', $filterEndDate)
-              ->orWhere('payment_date', '<=', $filterEndDate);
-          }
-        });
+        if ($filterStartDate && $filterEndDate) {
+          $query->whereBetween('paid_date', [$filterStartDate, $filterEndDate]);
+        } elseif ($filterStartDate) {
+          $query->where('paid_date', '>=', $filterStartDate);
+        } elseif ($filterEndDate) {
+          $query->where('paid_date', '<=', $filterEndDate);
+        }
       } elseif ($dateType === 'created_at') {
         if ($filterStartDate && $filterEndDate) {
           $query->whereBetween(DB::raw('DATE(created_at)'), [$filterStartDate, $filterEndDate]);
