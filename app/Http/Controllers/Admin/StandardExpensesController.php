@@ -245,6 +245,7 @@ class StandardExpensesController extends Controller
               $sq->whereNull('due_date')->whereDate('created_at', '<', $today);
             });
         })->count(),
+      'paid' => 0,
     ];
 
     if ($statusFilter && $statusFilter !== 'all') {
@@ -332,6 +333,7 @@ class StandardExpensesController extends Controller
               $sq->whereNull('due_date')->whereDate('created_at', '<', $today);
             });
         })->count(),
+      'paid' => 0,
     ];
 
     if ($statusFilter && $statusFilter !== 'all') {

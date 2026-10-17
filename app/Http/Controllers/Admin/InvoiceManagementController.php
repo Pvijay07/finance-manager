@@ -168,6 +168,7 @@ class InvoiceManagementController extends Controller
               $sq->whereNull('due_date')->whereDate('issue_date', '<', $today);
             });
         })->count(),
+      'paid'     => 0,
     ];
 
     // Apply status filter
@@ -310,6 +311,7 @@ class InvoiceManagementController extends Controller
               $sq->whereNull('due_date')->whereDate('income_date', '<', $today);
             });
         })->count(),
+      'paid'     => 0,
     ];
 
     if ($status && $status !== 'all') {
