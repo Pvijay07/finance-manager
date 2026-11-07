@@ -27,6 +27,7 @@
                 <option value="month" {{ $dateRange == 'month' ? 'selected' : '' }}>This Month</option>
                 <option value="quarter" {{ $dateRange == 'quarter' ? 'selected' : '' }}>This Quarter</option>
                 <option value="year" {{ $dateRange == 'year' ? 'selected' : '' }}>This Year</option>
+                <option value="all" {{ $dateRange == 'all' ? 'selected' : '' }}>All Time</option>
                 <option value="next7days" {{ $dateRange == 'next7days' ? 'selected' : '' }}>Next 7 Days</option>
             </select>
         </div>

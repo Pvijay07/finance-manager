@@ -92,6 +92,11 @@ class IncomeController extends Controller
         $statsEndDate = $now->copy()->endOfYear();
         $dateRangeTitle = $now->format('Y');
         break;
+      case 'all':
+        $statsStartDate = null;
+        $statsEndDate = null;
+        $dateRangeTitle = 'All Time';
+        break;
       case 'next7days':
         $query->whereBetween('created_at', [$now->copy(), $now->copy()->addDays(7)]);
         $statsStartDate = $now->copy();
