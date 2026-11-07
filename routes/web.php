@@ -31,6 +31,23 @@ use App\Http\Controllers\Manager\GstController;
 use App\Http\Controllers\Manager\TDSController;
 
 // Authentication Routes
+Route::get('/cron/generate-expenses', function () {
+    try {
+        \Illuminate\Support\Facades\Artisan::call('expenses:generate-standard');
+        $output = \Illuminate\Support\Facades\Artisan::output();
+        return response()->json([
+            'success' => true,
+            'message' => 'Standard expenses generation completed',
+            'output'  => $output
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'error'   => $e->getMessage()
+        ], 500);
+    }
+});
+
 Route::get('/login', function () {
     return redirect('/manager/login');
 })->name('login'); // Fallback to manager
