@@ -15,16 +15,35 @@ class StandardExpensesController extends Controller
 {
     public function index(Request $request)
     {
+        $user = auth()->user();
+        
+        // Get the companies the manager has access to
+        $managedCompanyIds = [];
+        if ($user) {
+            if ($user->company_id) {
+                $managedCompanyIds[] = $user->company_id;
+            }
+            if (method_exists($user, 'companies')) {
+                $managedCompanyIds = array_merge($managedCompanyIds, $user->companies()->pluck('companies.id')->toArray());
+            }
+            $managedCompanyIds = array_unique(array_filter($managedCompanyIds));
+        }
+
         // Get filters
         $companyId = $request->get('company');
         $month = $request->get('month');
         $category = $request->get('category');
         $status = $request->get('status');
         
-        // Query standard expenses
+        // Query standard expenses — include company access filter
         $query = Expense::where('source', 'standard')
-            ->with(['company', 'expenseType', 'creator', 'paidByUser'])
+            ->with(['company', 'expenseType', 'categoryRelation', 'creator', 'paidByUser'])
             ->orderBy('due_date', 'asc');
+
+        // Restrict to manager's companies (if not admin)
+        if (!empty($managedCompanyIds)) {
+            $query->whereIn('company_id', $managedCompanyIds);
+        }
         
         // Apply filters
         if ($companyId) {
@@ -36,8 +55,10 @@ class StandardExpensesController extends Controller
         }
         
         if ($category) {
-            $query->whereHas('expenseType', function($q) use ($category) {
-                $q->where('category', $category);
+            $query->where(function ($q) use ($category) {
+                $q->whereHas('expenseType', function ($sq) use ($category) {
+                    $sq->where('category', $category);
+                })->orWhere('category_id', $category);
             });
         }
         
@@ -47,8 +68,13 @@ class StandardExpensesController extends Controller
         
         $expenses = $query->get();
         
-        // Get data for filters
-        $companies = Company::where('status', 'active')->get();
+        // Get companies accessible to this manager for filters
+        $companiesQuery = Company::where('status', 'active');
+        if (!empty($managedCompanyIds)) {
+            $companiesQuery->whereIn('id', $managedCompanyIds);
+        }
+        $companies = $companiesQuery->get();
+
         $categories = ExpenseType::select('category')->distinct()->get();
         $expenseTypes = ExpenseType::where('status', 'active')->get();
         $latestLog = ExpenseGenerationLog::latest('run_date')->first();
@@ -60,6 +86,36 @@ class StandardExpensesController extends Controller
             'expenseTypes',
             'latestLog'
         ));
+    }
+
+    public function generateExpenses(Request $request)
+    {
+        try {
+            \Illuminate\Support\Facades\Artisan::call('expenses:generate-standard');
+            $output = \Illuminate\Support\Facades\Artisan::output();
+
+            $latestLog = ExpenseGenerationLog::latest('run_date')->first();
+            $count = $latestLog ? $latestLog->total_generated : 0;
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Standard expenses generated successfully.',
+                    'count'   => $count,
+                    'output'  => $output
+                ]);
+            }
+
+            return redirect()->back()->with('success', "Standard expenses generated successfully ({$count} generated).");
+        } catch (\Exception $e) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Generation failed: ' . $e->getMessage()
+                ], 500);
+            }
+            return redirect()->back()->with('error', 'Generation failed: ' . $e->getMessage());
+        }
     }
     
     public function updateAmount(Request $request, $id)

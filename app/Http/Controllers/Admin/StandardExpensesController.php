@@ -1603,84 +1603,30 @@ class StandardExpensesController extends Controller
   public function generateExpenses(Request $request)
   {
     try {
-      DB::beginTransaction();
+      \Illuminate\Support\Facades\Artisan::call('expenses:generate-standard');
+      $output = \Illuminate\Support\Facades\Artisan::output();
 
-      $userId         = auth()->id();
-      $month          = date('Y-m');
-      $generatedCount = 0;
+      $latestLog = \App\Models\ExpenseGenerationLog::latest('run_date')->first();
+      $count = $latestLog ? $latestLog->total_generated : 0;
 
-      // Get all active recurring templates
-      $templates = Expense::where('is_template', true)
-        ->where('template_status', 'active')
-        ->where('is_recurring', true)
-        ->get();
-
-      foreach ($templates as $template) {
-        // Check if expense already exists for this month
-        $exists = Expense::where('is_template', false)
-          ->where('template_name', $template->template_name)
-          ->where('company_id', $template->company_id)
-          ->where('month_year', $month)
-          ->exists();
-
-        if (!$exists) {
-          // Calculate due date
-          $dueDate = $this->calculateDueDate($month, $template->due_day ?? 1);
-
-          // Determine status based on due date
-          $status = $this->determineExpenseStatus($dueDate);
-
-          // Create actual expense from template
-          Expense::create([
-            'expense_number'     => Expense::generateNewExpenseNumber(),
-            'company_id'         => $template->company_id,
-            'expense_name'       => $template->template_name,
-            'notes'              => 'Auto-generated from template',
-            'planned_amount'     => $template->amount_mode === 'standard'
-              ? $template->default_amount
-              : null,
-            'default_amount'     => $template->default_amount,
-            'actual_amount'      => null,
-            'due_date'           => $dueDate,
-            'due_day'            => $template->due_day,
-            'paid_date'          => null,
-            'status'             => $status,
-            'template_status'    => null,
-            'party_name'         => null,
-            'category'           => $template->category,
-            'source'             => 'standard',
-            'month_year'         => $month,
-            'balance_amount'     => $template->amount_mode === 'standard'
-              ? $template->default_amount
-              : null,
-            'created_by'         => $userId,
-            'entry_direction'    => $template->entry_direction,
-            'amount_mode'        => $template->amount_mode,
-            'frequency'          => $template->frequency,
-            'reminder_days'      => $template->reminder_days,
-            'is_recurring'       => false, // Actual expenses are not recurring
-            'adjustable_balance' => $template->adjustable_balance,
-            'is_template'        => false,
-            'template_id'        => $template->id // Reference to template
-          ]);
-
-          $generatedCount++;
-        }
+      if ($request->ajax() || $request->wantsJson()) {
+        return response()->json([
+          'success' => true,
+          'message' => 'Standard expenses generated successfully.',
+          'count'   => $count,
+          'output'  => $output
+        ]);
       }
 
-      DB::commit();
-
-      return response()->json([
-        'success' => true,
-        'message' => 'Successfully generated ' . $generatedCount . ' expenses.',
-        'count'   => $generatedCount
-      ]);
+      return redirect()->back()->with('success', "Standard expenses generated successfully ({$count} generated).");
     } catch (\Exception $e) {
-      DB::rollBack();
-      return response()->json([
-        'success' => false,
-        'message' => 'Generation failed: ' . $e->getMessage()
-      ], 500);
+      if ($request->ajax() || $request->wantsJson()) {
+        return response()->json([
+          'success' => false,
+          'message' => 'Generation failed: ' . $e->getMessage()
+        ], 500);
+      }
+      return redirect()->back()->with('error', 'Generation failed: ' . $e->getMessage());
     }
   }
 

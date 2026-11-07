@@ -95,6 +95,7 @@ Route::middleware(['auth', 'role:admin'])
         Route::put('/standard-expenses/{id}', [StandardExpensesController::class, 'update'])->name('standard-expenses.update');
         Route::delete('/standard-expenses/{id}', [StandardExpensesController::class, 'destroy'])->name('standard-expenses.destroy');
         Route::post('/generate-expenses', [StandardExpensesController::class, 'generateExpenses'])->name('generate-expenses');
+        Route::post('/standard-expenses/generate', [StandardExpensesController::class, 'generateExpenses'])->name('standard-expenses.generate');
         Route::post('/standard-expenses/get-categories', [StandardExpensesController::class, 'getCategories'])->name('standard-expenses.get-categories');
         Route::get('/standard-expenses/{id}/download-receipt', [StandardExpensesController::class, 'downloadReceipt'])->name('standard-expenses.download-receipt');
         Route::get('/standard-expenses/{id}/taxes', [StandardExpensesController::class, 'getTaxDetails']);

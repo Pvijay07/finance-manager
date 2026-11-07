@@ -173,14 +173,13 @@
                                 </div>
 
                                 <!-- SIMPLE WORKING BUTTON -->
-                                <form id="generateForm" action="{{ route('admin.standard-expenses.generate') }}" method="POST">
+                                <form id="generateForm" action="{{ Route::has('admin.standard-expenses.generate') ? route('admin.standard-expenses.generate') : route('standard-expenses.generate') }}" method="POST">
                                     @csrf
                                     <button type="submit" id="generateButton" class="btn btn-primary btn-lg">
                                         <i class="fas fa-play mr-2"></i> Generate Standard Expenses
                                     </button>
                                     <div class="mt-2 text-muted small">
-                                        <i class="fas fa-info-circle"></i> This will create expenses based on your expense
-                                        types
+                                        <i class="fas fa-info-circle"></i> This will create expenses based on your recurring standard templates
                                     </div>
                                 </form>
 
@@ -231,13 +230,13 @@
             @endif
 
             <div class="form-group">
-                <form action="{{ route('admin.standard-expenses.generate') }}" method="POST" style="display: inline;">
+                <form action="{{ Route::has('admin.standard-expenses.generate') ? route('admin.standard-expenses.generate') : route('standard-expenses.generate') }}" method="POST" style="display: inline;">
                     @csrf
                     <button type="submit" class="btn btn-primary" id="generateBtn">
                         <i class="fas fa-play"></i> Run Generation Now
                     </button>
                 </form>
-                <a href="{{ route('admin.standard-expenses.logs') }}" class="btn btn-outline">
+                <a href="{{ Route::has('admin.standard-expenses.logs') ? route('admin.standard-expenses.logs') : (Route::has('standard-expenses.logs') ? route('standard-expenses.logs') : '#') }}" class="btn btn-outline">
                     <i class="fas fa-history"></i> View Full Log
                 </a>
             </div>

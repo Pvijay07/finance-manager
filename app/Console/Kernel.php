@@ -9,9 +9,9 @@ class Kernel extends ConsoleKernel
 {
     protected function schedule(Schedule $schedule)
     {
-        // Generate standard expenses on 1st of each month
+        // Generate standard expenses daily (has built-in duplicate prevention)
         $schedule->command('expenses:generate-standard')
-                 ->monthlyOn(1, '00:05');
+                 ->dailyAt('00:05');
 
         // Send payment reminders daily at 9 AM
         $schedule->command('notifications:payment-reminders')
