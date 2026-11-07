@@ -23,6 +23,7 @@
                     <option value="month" {{ $dateRange == 'month' ? 'selected' : '' }}>This Month</option>
                     <option value="quarter" {{ $dateRange == 'quarter' ? 'selected' : '' }}>This Quarter</option>
                     <option value="year" {{ $dateRange == 'year' ? 'selected' : '' }}>This Year</option>
+                    <option value="all" {{ $dateRange == 'all' ? 'selected' : '' }}>All Time</option>
                     <option value="custom" {{ $dateRange == 'custom' ? 'selected' : '' }}>Custom Range</option>
                 </select>
             </div>

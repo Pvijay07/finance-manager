@@ -59,7 +59,7 @@ class ExpensesController extends Controller
       $query->where('status', $status);
     }
 
-    // Apply date range filter
+    // Apply date range filter (based on due_date with created_at fallback for standard/recurring & manual expenses)
     $now = Carbon::now();
     $startDate = null;
     $endDate = null;
@@ -96,15 +96,29 @@ class ExpensesController extends Controller
         $endDate = $request->get('end_date') ? Carbon::parse($request->get('end_date'))->endOfDay() : null;
         $dateRangeTitle = 'Custom Range';
         break;
+      case 'all':
+        $startDate = null;
+        $endDate = null;
+        $dateRangeTitle = 'All Time';
+        break;
       default:
         $startDate = $now->copy()->startOfMonth();
         $endDate = $now->copy()->endOfMonth();
         $dateRangeTitle = $now->copy()->format('M-Y');
     }
 
-    if ($startDate && $endDate) {
-      $query->whereBetween('created_at', [$startDate, $endDate]);
-    }
+    $applyDateFilter = function ($q) use ($startDate, $endDate) {
+      if (!$startDate || !$endDate) return;
+      $q->where(function ($sub) use ($startDate, $endDate) {
+        $sub->whereBetween('due_date', [$startDate->toDateString(), $endDate->toDateString()])
+            ->orWhere(function ($fallback) use ($startDate, $endDate) {
+              $fallback->whereNull('due_date')
+                       ->whereBetween('created_at', [$startDate, $endDate]);
+            });
+      });
+    };
+
+    $applyDateFilter($query);
 
     // Get per page count
     $perPage = $request->get('per_page', 10);
@@ -137,9 +151,7 @@ class ExpensesController extends Controller
     if ($status && $status !== 'all') {
       $statsQuery->where('status', $status);
     }
-    if ($startDate && $endDate) {
-      $statsQuery->whereBetween('created_at', [$startDate, $endDate]);
-    }
+    $applyDateFilter($statsQuery);
 
     $allExpensesForStats = $statsQuery->get();
 
@@ -416,45 +428,59 @@ class ExpensesController extends Controller
 
     // Apply date range filter
     $now = Carbon::now();
+    $startDate = null;
+    $endDate = null;
+
     switch ($dateRange) {
       case 'today':
-        $query->whereDate('created_at', $now->toDateString());
+        $startDate = $now->copy()->startOfDay();
+        $endDate = $now->copy()->endOfDay();
         $dateRangeTitle = 'Today';
         break;
       case 'week':
-        $startOfWeek = $now->copy()->startOfWeek();
-        $endOfWeek = $now->copy()->endOfWeek();
-        $query->whereBetween('created_at', [$startOfWeek, $endOfWeek]);
+        $startDate = $now->copy()->startOfWeek();
+        $endDate = $now->copy()->endOfWeek();
         $dateRangeTitle = 'This Week';
         break;
       case 'month':
-        $startOfMonth = $now->copy()->startOfMonth();
-        $endOfMonth = $now->copy()->endOfMonth();
-        $query->whereBetween('created_at', [$startOfMonth, $endOfMonth]);
+        $startDate = $now->copy()->startOfMonth();
+        $endDate = $now->copy()->endOfMonth();
         $dateRangeTitle = $now->copy()->format('M-Y');
         break;
       case 'quarter':
-        $startOfQuarter = $now->copy()->startOfQuarter();
-        $endOfQuarter = $now->copy()->endOfQuarter();
-        $query->whereBetween('created_at', [$startOfQuarter, $endOfQuarter]);
+        $startDate = $now->copy()->startOfQuarter();
+        $endDate = $now->copy()->endOfQuarter();
         $dateRangeTitle = 'Q' . ceil($now->month / 3) . ' ' . $now->year;
         break;
       case 'year':
-        $startOfYear = $now->copy()->startOfYear();
-        $endOfYear = $now->copy()->endOfYear();
-        $query->whereBetween('created_at', [$startOfYear, $endOfYear]);
+        $startDate = $now->copy()->startOfYear();
+        $endDate = $now->copy()->endOfYear();
         $dateRangeTitle = $now->year;
         break;
       case 'custom':
         $startDate = $request->get('start_date') ? Carbon::parse($request->get('start_date'))->startOfDay() : null;
         $endDate = $request->get('end_date') ? Carbon::parse($request->get('end_date'))->endOfDay() : null;
-        if ($startDate && $endDate) {
-          $query->whereBetween('created_at', [$startDate, $endDate]);
-        }
         $dateRangeTitle = 'Custom Range';
         break;
+      case 'all':
+        $startDate = null;
+        $endDate = null;
+        $dateRangeTitle = 'All Time';
+        break;
       default:
+        $startDate = $now->copy()->startOfMonth();
+        $endDate = $now->copy()->endOfMonth();
         $dateRangeTitle = $now->copy()->format('M-Y');
+    }
+
+    if ($startDate && $endDate) {
+      $query->where(function ($sub) use ($startDate, $endDate) {
+        $sub->whereBetween('due_date', [$startDate->toDateString(), $endDate->toDateString()])
+            ->orWhere(function ($fallback) use ($startDate, $endDate) {
+              $fallback->whereNull('due_date')
+                       ->whereBetween('created_at', [$startDate, $endDate]);
+            });
+      });
     }
 
     // Get all expenses for table
@@ -573,45 +599,59 @@ class ExpensesController extends Controller
 
     // Apply date range filter
     $now = Carbon::now();
+    $startDate = null;
+    $endDate = null;
+
     switch ($dateRange) {
       case 'today':
-        $query->whereDate('created_at', $now->toDateString());
+        $startDate = $now->copy()->startOfDay();
+        $endDate = $now->copy()->endOfDay();
         $dateRangeTitle = 'Today';
         break;
       case 'week':
-        $startOfWeek = $now->copy()->startOfWeek();
-        $endOfWeek = $now->copy()->endOfWeek();
-        $query->whereBetween('created_at', [$startOfWeek, $endOfWeek]);
+        $startDate = $now->copy()->startOfWeek();
+        $endDate = $now->copy()->endOfWeek();
         $dateRangeTitle = 'This Week';
         break;
       case 'month':
-        $startOfMonth = $now->copy()->startOfMonth();
-        $endOfMonth = $now->copy()->endOfMonth();
-        $query->whereBetween('created_at', [$startOfMonth, $endOfMonth]);
+        $startDate = $now->copy()->startOfMonth();
+        $endDate = $now->copy()->endOfMonth();
         $dateRangeTitle = $now->copy()->format('M-Y');
         break;
       case 'quarter':
-        $startOfQuarter = $now->copy()->startOfQuarter();
-        $endOfQuarter = $now->copy()->endOfQuarter();
-        $query->whereBetween('created_at', [$startOfQuarter, $endOfQuarter]);
+        $startDate = $now->copy()->startOfQuarter();
+        $endDate = $now->copy()->endOfQuarter();
         $dateRangeTitle = 'Q' . ceil($now->month / 3) . ' ' . $now->year;
         break;
       case 'year':
-        $startOfYear = $now->copy()->startOfYear();
-        $endOfYear = $now->copy()->endOfYear();
-        $query->whereBetween('created_at', [$startOfYear, $endOfYear]);
+        $startDate = $now->copy()->startOfYear();
+        $endDate = $now->copy()->endOfYear();
         $dateRangeTitle = $now->year;
         break;
       case 'custom':
         $startDate = $request->get('start_date') ? Carbon::parse($request->get('start_date'))->startOfDay() : null;
         $endDate = $request->get('end_date') ? Carbon::parse($request->get('end_date'))->endOfDay() : null;
-        if ($startDate && $endDate) {
-          $query->whereBetween('created_at', [$startDate, $endDate]);
-        }
         $dateRangeTitle = 'Custom Range';
         break;
+      case 'all':
+        $startDate = null;
+        $endDate = null;
+        $dateRangeTitle = 'All Time';
+        break;
       default:
+        $startDate = $now->copy()->startOfMonth();
+        $endDate = $now->copy()->endOfMonth();
         $dateRangeTitle = $now->copy()->format('M-Y');
+    }
+
+    if ($startDate && $endDate) {
+      $query->where(function ($sub) use ($startDate, $endDate) {
+        $sub->whereBetween('due_date', [$startDate->toDateString(), $endDate->toDateString()])
+            ->orWhere(function ($fallback) use ($startDate, $endDate) {
+              $fallback->whereNull('due_date')
+                       ->whereBetween('created_at', [$startDate, $endDate]);
+            });
+      });
     }
 
     // Get all expenses for table
