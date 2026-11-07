@@ -1600,6 +1600,14 @@ class StandardExpensesController extends Controller
   }
 
 
+  public function viewLogs(Request $request)
+  {
+    $logs = \App\Models\ExpenseGenerationLog::orderBy('run_date', 'desc')
+      ->paginate(20);
+
+    return view('Admin.expense_generation_logs', compact('logs'));
+  }
+
   public function generateExpenses(Request $request)
   {
     try {

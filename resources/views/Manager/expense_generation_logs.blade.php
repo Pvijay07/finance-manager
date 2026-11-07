@@ -4,7 +4,7 @@
     <div class="container-fluid">
         <div class="d-sm-flex align-items-center justify-content-between mb-4">
             <h1 class="h3 mb-0 text-gray-800">Expense Generation Logs</h1>
-            <a href="{{ route('admin.standard-expenses') }}" class="btn btn-secondary">
+            <a href="{{ Route::has('manager.standard-expenses') ? route('manager.standard-expenses') : (Route::has('standard-expenses.index') ? route('standard-expenses.index') : route('admin.standard-expenses')) }}" class="btn btn-secondary">
                 <i class="fas fa-arrow-left"></i> Back to Expenses
             </a>
         </div>

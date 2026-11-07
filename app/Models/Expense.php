@@ -147,13 +147,23 @@ class Expense extends Model
         }
 
         return $query->where(function ($q) use ($user) {
-            $q->whereNull('assigned_managers')
-              ->orWhere('assigned_managers', '[]')
-              ->orWhere('assigned_managers', '')
-              ->orWhere('created_by', $user->id)
-              ->orWhereJsonContains('assigned_managers', (int)$user->id)
-              ->orWhereJsonContains('assigned_managers', (string)$user->id)
-              ->orWhereRaw("FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(COALESCE(assigned_managers, ''), '[', ''), ']', ''), '\"', ''))", [$user->id]);
+            // 1. Standard expenses or template expenses for companies the manager belongs to
+            $q->where(function ($sub) use ($user) {
+                $sub->where('source', 'standard')
+                    ->whereHas('company', function ($cq) use ($user) {
+                        $cq->forManager($user);
+                    });
+            })
+            // 2. Unassigned expenses (visible to all managers of that company)
+            ->orWhereNull('assigned_managers')
+            ->orWhere('assigned_managers', '[]')
+            ->orWhere('assigned_managers', '')
+            // 3. Created by this manager
+            ->orWhere('created_by', $user->id)
+            // 4. Specifically assigned to this manager
+            ->orWhereJsonContains('assigned_managers', (int)$user->id)
+            ->orWhereJsonContains('assigned_managers', (string)$user->id)
+            ->orWhereRaw("FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(COALESCE(assigned_managers, ''), '[', ''), ']', ''), '\"', ''))", [$user->id]);
         });
     }
 
